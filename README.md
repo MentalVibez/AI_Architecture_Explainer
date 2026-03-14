@@ -150,6 +150,12 @@ The analysis engine is honest about uncertainty:
 
 ---
 
+## Deployment
+
+Deploys to **Railway** (backend) + **Vercel** (frontend) + **Supabase** (Postgres). See [DEPLOY.md](DEPLOY.md) for full step-by-step instructions.
+
+---
+
 ## Environment variables
 
 ### Backend (`backend/.env`)
@@ -158,11 +164,13 @@ The analysis engine is honest about uncertainty:
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
 | `GITHUB_TOKEN` | No | Increases GitHub API rate limit from 60 to 5000 req/hr |
-| `DATABASE_URL` | No | Defaults to `sqlite+aiosqlite:///./dev.db` |
+| `DATABASE_URL` | No | Defaults to `sqlite+aiosqlite:///./dev.db`; use `postgresql+asyncpg://...` for Supabase |
 | `ENVIRONMENT` | No | `development` or `production` |
+| `CORS_ORIGINS` | No | Comma-separated allowed origins; defaults to `http://localhost:3000` |
 
 ### Frontend (`frontend/.env.local`)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Backend base URL |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | Backend base URL (browser) |
+| `API_URL` | falls back to `NEXT_PUBLIC_API_URL` | Backend base URL (server components only) |
