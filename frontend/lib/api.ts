@@ -1,9 +1,20 @@
 import type { AnalyzeResponse, AnalysisResult, JobStatusResponse } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// API_URL resolution:
+// - Server components: use API_URL (private, set to internal service address in prod)
+// - Client components: use NEXT_PUBLIC_API_URL (exposed to browser)
+// Fallback to localhost for local dev in both cases.
+function getApiUrl(): string {
+  if (typeof window === "undefined") {
+    // Server-side: prefer the private API_URL env var
+    return process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  }
+  // Client-side: must use the public env var
+  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getApiUrl()}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });

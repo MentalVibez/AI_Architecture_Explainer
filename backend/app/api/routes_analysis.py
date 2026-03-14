@@ -1,9 +1,13 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+
+limiter = Limiter(key_func=get_remote_address)
 
 from app.core.database import AsyncSessionLocal, get_db
 from app.models.analysis_job import AnalysisJob
@@ -63,25 +67,27 @@ async def run_analysis_job(job_id: int, owner: str, repo: str) -> None:
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
+@limiter.limit("5/minute")
 async def create_analysis(
-    request: AnalyzeRequest,
+    request: Request,
+    body: AnalyzeRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> AnalyzeResponse:
-    parsed = parse_github_url(request.repo_url)
+    parsed = parse_github_url(body.repo_url)
     if not parsed:
         raise HTTPException(status_code=422, detail="Could not parse GitHub repo URL")
 
     owner, repo_name = parsed
 
-    result = await db.execute(select(Repo).where(Repo.github_url == request.repo_url))
+    result = await db.execute(select(Repo).where(Repo.github_url == body.repo_url))
     repo = result.scalar_one_or_none()
 
     if not repo:
         repo = Repo(
             github_owner=owner,
             github_repo=repo_name,
-            github_url=request.repo_url,
+            github_url=body.repo_url,
         )
         db.add(repo)
         await db.flush()
