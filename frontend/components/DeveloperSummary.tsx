@@ -15,21 +15,23 @@ export default function DeveloperSummary({ result }: Props) {
         <p className="text-gray-300 text-sm leading-relaxed">{developer_summary}</p>
       )}
 
-      <div>
-        <h3 className="text-sm font-medium text-gray-400 mb-2">Detected Stack</h3>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(detected_stack)
-            .flatMap(([, items]) => items)
-            .map((item) => (
-              <span
-                key={item}
-                className="px-2 py-1 bg-blue-900/40 text-blue-300 rounded text-xs"
-              >
-                {item}
-              </span>
-            ))}
+      {detected_stack && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-400 mb-2">Detected Stack</h3>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(detected_stack)
+              .flatMap(([, items]) => items as string[])
+              .map((item) => (
+                <span
+                  key={item}
+                  className="px-2 py-1 bg-blue-900/40 text-blue-300 rounded text-xs"
+                >
+                  {item}
+                </span>
+              ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {entry_points.length > 0 && (
         <div>
