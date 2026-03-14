@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal, get_db
@@ -97,7 +98,11 @@ async def create_analysis(
 
 @router.get("/analyze/{job_id}", response_model=JobStatusResponse)
 async def get_job_status(job_id: int, db: AsyncSession = Depends(get_db)) -> JobStatusResponse:
-    result = await db.execute(select(AnalysisJob).where(AnalysisJob.id == job_id))
+    result = await db.execute(
+        select(AnalysisJob)
+        .where(AnalysisJob.id == job_id)
+        .options(selectinload(AnalysisJob.result))
+    )
     job = result.scalar_one_or_none()
 
     if not job:

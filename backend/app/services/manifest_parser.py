@@ -34,14 +34,11 @@ def parse_requirements_txt(content: str) -> list[str]:
 
 
 def parse_pyproject_toml(content: str) -> dict[str, Any]:
-    try:
-        import tomllib
-    except ImportError:
-        import tomli as tomllib  # type: ignore[no-redef]
+    import tomllib  # stdlib in Python 3.11+
 
     try:
         data = tomllib.loads(content)
-    except Exception:
+    except tomllib.TOMLDecodeError:
         return {}
 
     project = data.get("project", {})
