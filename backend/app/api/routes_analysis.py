@@ -60,10 +60,14 @@ async def run_analysis_job(job_id: int, owner: str, repo: str) -> None:
             job.completed_at = datetime.now(UTC)
             await db.commit()
 
-        except Exception:
+        except Exception as exc:
             logger.exception("Analysis pipeline failed for job %d", job_id)
             job.status = "failed"
-            job.error_message = "Analysis failed. Please try again."
+            from app.services.github_service import GitHubError
+            job.error_message = (
+                str(exc) if isinstance(exc, GitHubError)
+                else "Analysis failed. Please try again."
+            )
             job.completed_at = datetime.now(UTC)
             await db.commit()
 
@@ -106,7 +110,9 @@ async def create_analysis(
 
 @router.get("/analyze/{job_id}", response_model=JobStatusResponse)
 @limiter.limit("30/minute")
-async def get_job_status(request: Request, job_id: int, db: AsyncSession = Depends(get_db)) -> JobStatusResponse:
+async def get_job_status(
+    request: Request, job_id: int, db: AsyncSession = Depends(get_db)
+) -> JobStatusResponse:
     result = await db.execute(
         select(AnalysisJob)
         .where(AnalysisJob.id == job_id)

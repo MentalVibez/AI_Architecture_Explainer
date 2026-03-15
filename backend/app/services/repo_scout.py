@@ -18,13 +18,13 @@ from __future__ import annotations
 import logging
 import math
 import re
-from typing import Optional
+from datetime import UTC
 
 import httpx
 
 from app.llm.scout_prompts import (
-    LLMScoutOutput,
     LLMRepoScore,
+    LLMScoutOutput,
     build_scoring_prompt,
     safe_parse_llm_output,
 )
@@ -49,7 +49,7 @@ GITHUB_SEARCH_URL = "https://api.github.com/search/repositories"
 GITLAB_SEARCH_URL = "https://gitlab.com/api/v4/projects"
 
 # Valid GitHub sort values (best-match = omit param entirely)
-_GH_SORT_MAP: dict[SortBy, Optional[str]] = {
+_GH_SORT_MAP: dict[SortBy, str | None] = {
     SortBy.STARS:      "stars",
     SortBy.UPDATED:    "updated",
     SortBy.BEST_MATCH: None,   # FIX [1]: omit param, GitHub defaults to best-match
@@ -63,12 +63,12 @@ _MIRROR_PATTERNS = re.compile(
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def _days_since(date_str: Optional[str]) -> Optional[int]:
+def _days_since(date_str: str | None) -> int | None:
     if not date_str:
         return None
-    from datetime import datetime, timezone
+    from datetime import datetime
     dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-    return (datetime.now(timezone.utc) - dt).days
+    return (datetime.now(UTC) - dt).days
 
 
 def _fmt_num(n: int) -> str:
@@ -251,7 +251,7 @@ def _deduplicate(repos: list[dict]) -> list[dict]:
 async def _fetch_github(
     query: str,
     sort_by: SortBy,
-    token: Optional[str],
+    token: str | None,
 ) -> list[dict]:
     headers = {"Accept": "application/vnd.github+json"}
     # FIX [7]: token used only here, never stored, never logged
@@ -412,7 +412,6 @@ async def run_scout(req: ScoutRequest, llm) -> ScoutResponse:
     for r in unique:
         flags = flag_map.get(r["id"], [])
         q_score, signals = _quality_score(r, flags)
-        query_lower = req.query.lower()
         topic_hits = _find_term_matches(req.query, " ".join(r.get("topics") or []))
         name_desc_hits = _find_term_matches(
             req.query, r["full_name"] + " " + r["description"]

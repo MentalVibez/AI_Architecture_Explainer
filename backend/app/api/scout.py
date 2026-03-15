@@ -7,11 +7,14 @@ FIX [7]: github_token excluded from response serialisation (see schema exclude=T
 """
 
 from __future__ import annotations
+
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException
-from app.schemas.scout import ScoutRequest, ScoutResponse, ScoutError
+
+from app.llm.provider import get_llm_provider  # reuse Atlas's existing DI
+from app.schemas.scout import ScoutError, ScoutRequest, ScoutResponse
 from app.services.repo_scout import run_scout
-from app.llm.provider import get_llm_provider   # reuse Atlas's existing DI
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +23,9 @@ router = APIRouter(prefix="/api/scout", tags=["scout"])
 # Safe error messages keyed to runtime error slugs.
 # Raw exception text is logged server-side only, never sent to client.
 _ERROR_MESSAGES: dict[str, tuple[int, str]] = {
-    "github_rate_limit":    (429, "GitHub rate limit reached. Add a GitHub token to raise it to 5000 req/hr."),
+    "github_rate_limit": (
+        429, "GitHub rate limit reached. Add a GitHub token to raise it to 5000 req/hr."
+    ),
     "github_invalid_query": (400, "GitHub rejected the query. Try simpler search terms."),
     "gitlab_rate_limit":    (429, "GitLab rate limit reached. Try again in a moment."),
 }

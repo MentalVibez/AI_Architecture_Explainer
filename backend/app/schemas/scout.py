@@ -8,32 +8,32 @@ Key changes from prototype:
 """
 
 from __future__ import annotations
-from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, Field, field_validator
 
+from enum import StrEnum
+
+from pydantic import BaseModel, Field, field_validator
 
 # ── enums ─────────────────────────────────────────────────────────────────────
 
-class Platform(str, Enum):
+class Platform(StrEnum):
     GITHUB = "github"
     GITLAB = "gitlab"
 
 
-class SortBy(str, Enum):
+class SortBy(StrEnum):
     STARS = "stars"
     UPDATED = "updated"
     BEST_MATCH = "best-match"   # GitHub: omit sort param entirely
 
 
-class Verdict(str, Enum):
+class Verdict(StrEnum):
     HIGHLY_RECOMMENDED = "HIGHLY_RECOMMENDED"
     RECOMMENDED        = "RECOMMENDED"
     WORTH_CHECKING     = "WORTH_CHECKING"
     AVOID              = "AVOID"
 
 
-class SignalType(str, Enum):
+class SignalType(StrEnum):
     GOOD = "good"
     WARN = "warn"
     BAD  = "bad"
@@ -47,7 +47,7 @@ class ScoutRequest(BaseModel):
     sort_by: SortBy = SortBy.STARS
     # Token is optional. If provided it is used only for the duration
     # of this request and never logged or persisted.
-    github_token: Optional[str] = Field(default=None, exclude=True)
+    github_token: str | None = Field(default=None, exclude=True)
 
     @field_validator("platforms")
     @classmethod
@@ -78,7 +78,7 @@ class ScoreBreakdown(BaseModel):
     overall_score:   int = Field(ge=0, le=100)
 
     @classmethod
-    def blend(cls, quality: int, relevance: int) -> "ScoreBreakdown":
+    def blend(cls, quality: int, relevance: int) -> ScoreBreakdown:
         overall = round(0.4 * quality + 0.6 * relevance)
         return cls(
             quality_score=quality,
@@ -94,9 +94,9 @@ class EvidencePanel(BaseModel):
     """
     stars:            int
     forks:            int
-    days_since_update: Optional[int]
+    days_since_update: int | None
     has_license:      bool
-    license_name:     Optional[str]
+    license_name:     str | None
     readme_verified:  bool          # True only when confirmed via API
     is_fork:          bool
     is_archived:      bool
@@ -116,9 +116,9 @@ class RepoResult(BaseModel):
     owner:         str
     description:   str
     url:           str
-    language:      Optional[str]
-    created_at:    Optional[str]
-    updated_at:    Optional[str]
+    language:      str | None
+    created_at:    str | None
+    updated_at:    str | None
 
     scores:        ScoreBreakdown
     verdict:       Verdict

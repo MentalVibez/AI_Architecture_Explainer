@@ -9,10 +9,10 @@ Key changes:
 """
 
 from __future__ import annotations
-import json
-from typing import Optional
-from pydantic import BaseModel, Field, field_validator
 
+import json
+
+from pydantic import BaseModel, Field, field_validator
 
 # ── strict output schema (what we demand from the LLM) ────────────────────────
 
@@ -40,7 +40,7 @@ class LLMScoutOutput(BaseModel):
 
 # ── safe parse with fallback ──────────────────────────────────────────────────
 
-def safe_parse_llm_output(raw_text: str) -> Optional[LLMScoutOutput]:
+def safe_parse_llm_output(raw_text: str) -> LLMScoutOutput | None:
     """
     Strip markdown fences, parse JSON, validate with Pydantic.
     Returns None on any failure so the caller can retry or fall back.
@@ -92,7 +92,15 @@ def build_scoring_prompt(user_query: str, repos: list[dict]) -> str:
         for r in repos
     ]
 
-    return f"""You are a senior developer helping a user find the best repositories for: "{user_query}"
+    header = (
+        f"You are a senior developer helping a user find the best"
+        f" repositories for: \"{user_query}\""
+    )
+    tldr_hint = (
+        "<3-5 sentences: which repos stand out, the overall landscape,"
+        " any clear winner, key caveats>"
+    )
+    return f"""{header}
 
 A deterministic quality_score (0-100) has already been computed for each repo
 from stars, recency, license, README, and maintenance signals.
@@ -115,7 +123,7 @@ Return ONLY valid JSON with no markdown fences, no preamble, no explanation:
       "risks": ["<risk1>", "<risk2>"]
     }}
   }},
-  "tldr": "<3-5 sentences: which repos stand out, the overall landscape, any clear winner, key caveats>"
+  "tldr": "{tldr_hint}"
 }}
 
 Repositories:

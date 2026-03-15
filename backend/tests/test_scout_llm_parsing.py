@@ -9,11 +9,10 @@ failure mode without crashing — which is the whole point of FIX [4].
 """
 
 from __future__ import annotations
+
 import json
-import pytest
 
-from app.llm.scout_prompts import safe_parse_llm_output, LLMScoutOutput
-
+from app.llm.scout_prompts import LLMScoutOutput, safe_parse_llm_output
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -23,11 +22,17 @@ def _valid_payload(overrides: dict | None = None) -> str:
             "gh_123": {
                 "relevance_score": 82,
                 "verdict": "HIGHLY_RECOMMENDED",
-                "insight": "This repo is the canonical implementation of the pattern you are looking for. It is actively maintained and widely adopted.",
+                "insight": (
+                    "This repo is the canonical implementation of the pattern"
+                    " you are looking for. It is actively maintained and widely adopted."
+                ),
                 "risks": ["requires Python 3.11+"],
             }
         },
-        "tldr": "The top result is a strong match for your query. It has broad community support and recent maintenance activity.",
+        "tldr": (
+            "The top result is a strong match for your query."
+            " It has broad community support and recent maintenance activity."
+        ),
     }
     if overrides:
         base.update(overrides)
@@ -68,7 +73,10 @@ class TestValidOutput:
         data["scores"]["gl_456"] = {
             "relevance_score": 60,
             "verdict": "RECOMMENDED",
-            "insight": "A decent alternative with fewer features but easier setup and good documentation.",
+            "insight": (
+                "A decent alternative with fewer features but easier setup"
+                " and good documentation."
+            ),
             "risks": [],
         }
         result = safe_parse_llm_output(json.dumps(data))

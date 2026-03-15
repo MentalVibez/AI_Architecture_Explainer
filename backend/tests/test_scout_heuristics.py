@@ -11,17 +11,16 @@ Run: pytest tests/test_scout_heuristics.py -v
 """
 
 from __future__ import annotations
-import pytest
-from datetime import datetime, timedelta, timezone
 
-from app.services.repo_scout import _quality_score, _noise_flags, _should_exclude, _deduplicate
+from datetime import UTC, datetime, timedelta
+
 from app.schemas.scout import SignalType
-
+from app.services.repo_scout import _deduplicate, _noise_flags, _quality_score, _should_exclude
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 def _ago(days: int) -> str:
-    return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    return (datetime.now(UTC) - timedelta(days=days)).isoformat()
 
 
 def _repo(**kwargs) -> dict:
@@ -55,7 +54,7 @@ class TestStarsScoring:
         score, signals = _quality_score(_repo(stars=10_000), [])
         assert score >= 20
         good_labels = [s.label for s in signals if s.type == SignalType.GOOD]
-        assert any("stars" in l for l in good_labels)
+        assert any("stars" in lbl for lbl in good_labels)
 
     def test_thousand_star_repo_receives_established_tier_bonus(self):
         score, _ = _quality_score(_repo(stars=1_500), [])
