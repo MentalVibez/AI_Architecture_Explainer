@@ -168,9 +168,8 @@ function PhaseTracker({ phase }: { phase: number }) {
   return (
     <div className="flex flex-col gap-3 w-full max-w-sm">
       {PHASES.map((p, i) => {
-        const done    = i < phase;
-        const active  = i === phase;
-        const pending = i > phase;
+        const done   = i < phase;
+        const active = i === phase;
         return (
           <div key={p.id} className="flex items-start gap-3">
             <div
