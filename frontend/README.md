@@ -1,8 +1,13 @@
-# Codebase Atlas — Frontend
+# CodebaseAtlas — Frontend
 
-Next.js 14 (App Router) frontend for [Codebase Atlas](../README.md).
+Next.js 14 (App Router) frontend for [CodebaseAtlas](../README.md).
 
-Paste a public GitHub URL → get an architecture diagram, dependency breakdown, and audience-specific summaries for developers and hiring managers.
+**Live:** [www.codebaseatlas.com](https://www.codebaseatlas.com)
+
+Paste a public GitHub URL → get an architecture diagram, dependency breakdown, and two audience-specific summaries:
+
+- **Technical View** — stack, entry points, architectural patterns, and component responsibilities
+- **Non-Technical View** — plain-English board-room summary: what the project does, skills demonstrated, complexity, and standout points
 
 ## Stack
 
@@ -15,19 +20,19 @@ Paste a public GitHub URL → get an architecture diagram, dependency breakdown,
 
 | Route | File | Purpose |
 |-------|------|---------|
-| `/` | `app/page.tsx` | Homepage — URL input form |
-| `/analyze` | `app/analyze/page.tsx` | Polls job status while backend runs |
+| `/` | `app/page.tsx` | Homepage — URL input form + tool cards |
+| `/scout` | `app/scout/page.tsx` | RepoScout — search and rank repositories |
+| `/map` | `app/map/page.tsx` | API Endpoint Mapper |
 | `/results/[id]` | `app/results/[id]/page.tsx` | Displays completed analysis |
 
 ## Key components
 
 | Component | Purpose |
 |-----------|---------|
-| `RepoUrlForm` | Submits repo URL, redirects to `/analyze` |
-| `LoadingAnalysis` | Spinner + status label during polling |
+| `RepoUrlForm` | Submits repo URL, redirects to polling page |
 | `DiagramPanel` | Renders Mermaid architecture diagram |
-| `DeveloperSummary` | Shows stack, entry points, and developer narrative |
-| `HiringManagerSummary` | Plain-English summary with confidence badge |
+| `DeveloperSummary` | Stack detection + Technical View (bullet-point presentation format) |
+| `HiringManagerSummary` | Non-Technical View with confidence badge (bullet-point presentation format) |
 
 ## Running locally
 
@@ -37,7 +42,7 @@ npm install
 npm run dev
 ```
 
-Requires the backend to be running at `http://localhost:8000`. See the [backend README](../backend/README.md) or the [root quickstart](../README.md#quickstart).
+Requires the backend to be running at `http://localhost:8000`. See the [root quickstart](../README.md#quickstart).
 
 ## Environment variables
 

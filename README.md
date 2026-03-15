@@ -1,12 +1,14 @@
-# Codebase Atlas Toolkit
+# CodebaseAtlas
 
 [![Backend CI](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/backend.yml/badge.svg)](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/backend.yml)
 [![Frontend CI](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/frontend.yml/badge.svg)](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/frontend.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-Two instruments. One workflow.
+**Live:** [www.codebaseatlas.com](https://www.codebaseatlas.com)
 
-**RepoScout** discovers and ranks GitHub and GitLab repositories by quality and semantic relevance. **Atlas** reads the winner and explains its architecture — deterministically, without guesswork.
+Three instruments. One workflow.
+
+**RepoScout** discovers and ranks GitHub and GitLab repositories by quality and semantic relevance. **Atlas** reads the winner and explains its architecture — deterministically, without guesswork. **Map** charts the full API surface of any repo.
 
 ---
 
@@ -20,9 +22,17 @@ Noise suppression filters out forks, archived repos, mirrors, and awesome-lists 
 
 ### 02 / Atlas — `/`
 
-Paste a GitHub URL. Atlas fetches the repo tree, parses manifests deterministically, detects frameworks with heuristics, then uses Claude to generate a Mermaid architecture diagram and dual summaries — one for developers, one for hiring managers.
+Paste a GitHub URL. Atlas fetches the repo tree, parses manifests deterministically, detects frameworks with heuristics, then uses Claude to generate:
+
+- A **Mermaid architecture diagram**
+- A **Technical View** — stack, entry points, architectural patterns, and component responsibilities
+- A **Non-Technical View** — plain-English board-room summary: what the project does, skills demonstrated, complexity, and standout points
 
 The LLM is used only for final summarization. All dependency extraction and framework detection is deterministic and testable.
+
+### 03 / Map — `/map`
+
+Paste a GitHub URL. Map detects the framework, selects targeted regex patterns, extracts every route, then uses Claude to group and describe the full API surface — no guessing required.
 
 ---
 
@@ -31,7 +41,7 @@ The LLM is used only for final summarization. All dependency extraction and fram
 1. **Fetch** — GitHub API retrieves the repo tree and priority files (manifests, configs, entry points)
 2. **Parse** — deterministic heuristics extract dependencies, detect frameworks, infer folder responsibilities
 3. **Evidence** — structured analysis object is built from verifiable file evidence only
-4. **Summarize** — Claude generates developer and hiring manager summaries from the evidence, not from raw files
+4. **Summarize** — Claude generates a Technical View and Non-Technical View from the evidence, not from raw files
 5. **Diagram** — Mermaid flowchart is generated from the structured component graph
 
 ## How RepoScout works
@@ -66,7 +76,7 @@ graph TD
     ScoutAPI --> Scorer[Heuristic Scorer]
     ScoutAPI --> LLM
 
-    LLM -->|summaries + diagram| AtlasAPI
+    LLM -->|Technical View + Non-Technical View + diagram| AtlasAPI
     LLM -->|relevance scores + tldr| ScoutAPI
 ```
 
@@ -80,6 +90,7 @@ graph TD
 | Backend | FastAPI, Python 3.11+, SQLAlchemy (async), Alembic |
 | LLM | Anthropic `claude-sonnet-4-6` — tool-use for Atlas, text for Scout |
 | Database | SQLite (dev) → Supabase Postgres (prod) |
+| Hosting | Vercel (frontend) + Railway (backend) + Supabase (database) |
 | Testing | pytest — deterministic tests, no real API calls |
 
 ---
@@ -156,8 +167,8 @@ App: `http://localhost:3000`
 │   ├── current.json          Latest benchmark run
 │   └── tests/                Deterministic unit tests (Atlas + Scout)
 ├── frontend/
-│   ├── app/                  Next.js pages — / (Atlas), /scout (RepoScout)
-│   ├── components/           UI — form, diagram panel, summaries
+│   ├── app/                  Next.js pages — / (Atlas), /scout (RepoScout), /map (Map)
+│   ├── components/           UI — form, diagram panel, Technical View, Non-Technical View
 │   └── lib/                  Typed API client + shared types
 ├── docs/
 │   ├── RANKING_PHILOSOPHY.md  Why Scout scores the way it does
