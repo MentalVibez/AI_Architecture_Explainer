@@ -2,6 +2,7 @@
 
 [![Backend CI](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/backend.yml/badge.svg)](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/backend.yml)
 [![Frontend CI](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/frontend.yml/badge.svg)](https://github.com/MentalVibez/AI_Architecture_Explainer/actions/workflows/frontend.yml)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 Two instruments. One workflow.
 
