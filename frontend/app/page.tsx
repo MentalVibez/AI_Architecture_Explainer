@@ -80,7 +80,7 @@ export default function HomePage() {
             tagline="Deep analysis"
             description="Paste a GitHub URL. Atlas fetches the repo tree, parses manifests, detects frameworks with deterministic heuristics, then generates an architecture diagram and dual plain-English summaries."
             cta="Analyze a repo →"
-            signals={["Mermaid diagram", "Framework detection", "Dev summary", "Hiring summary"]}
+            signals={["Mermaid diagram", "Framework detection", "Technical View", "Non-Technical View"]}
             accent="#7cb9c8"
           />
           <ToolCard
@@ -111,7 +111,7 @@ export default function HomePage() {
           </span>
           <span className="h-px flex-1 bg-[#1a1a1a] max-w-[40px]" />
           <h2 className="font-serif text-3xl text-[#e8e0d4]">
-            Codebase Atlas
+            CodebaseAtlas
           </h2>
         </div>
 
@@ -129,8 +129,8 @@ export default function HomePage() {
           {[
             { icon: "🗺️", title: "Architecture diagram", body: "Mermaid flowchart from real file structure, not guesswork." },
             { icon: "🔍", title: "Framework detection",  body: "Frontend, backend, database, infra, testing — from manifests." },
-            { icon: "👩‍💻", title: "Developer summary",   body: "Entry points, responsibilities, dependencies, patterns." },
-            { icon: "🤝", title: "Hiring summary",       body: "What the project does, skills demonstrated, complexity." },
+            { icon: "👩‍💻", title: "Technical View",      body: "Entry points, responsibilities, dependencies, patterns." },
+            { icon: "🤝", title: "Non-Technical View",   body: "What the project does, skills demonstrated, complexity." },
           ].map(({ icon, title, body }) => (
             <div
               key={title}

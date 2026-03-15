@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Codebase Atlas — Developer Toolkit",
+  title: "CodebaseAtlas — Developer Toolkit",
   description:
     "Discover, evaluate, and deeply understand open-source repositories. " +
     "RepoScout finds the right repo. Atlas explains it. Map charts the API surface.",
@@ -45,7 +45,7 @@ export default function RootLayout({
             <a
               href="/"
               className="flex items-center gap-3 group"
-              aria-label="Codebase Atlas home"
+              aria-label="CodebaseAtlas home"
             >
               <span className="font-mono text-[11px] tracking-[0.25em] text-[#c8a96e] uppercase select-none">
                 Atlas
@@ -82,7 +82,7 @@ export default function RootLayout({
           <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <p className="font-mono text-[11px] tracking-[0.2em] text-[#3a3a3a] uppercase">
-                Codebase Atlas Toolkit
+                CodebaseAtlas Toolkit
               </p>
               <p className="font-mono text-[10px] text-[#2a2a2a] mt-1">
                 Analysis engine powered by Anthropic claude-sonnet-4-6

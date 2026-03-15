@@ -9,11 +9,23 @@ _MAX_README_CHARS = 1500
 _MAX_DEPS = 40
 
 
+def _flatten_stack(raw_stack: dict) -> dict:
+    """Flatten detected_stack to simple name lists for LLM input.
+
+    Handles both the new rich format ({name, evidence, confidence}) and the
+    legacy string format so old stored results don't break.
+    """
+    return {
+        cat: [d["name"] if isinstance(d, dict) else d for d in items]
+        for cat, items in raw_stack.items()
+    }
+
+
 def _safe_evidence(evidence: dict[str, Any]) -> str:
     """Return a token-safe JSON snapshot of the evidence dict."""
     safe = {
         "repo": evidence.get("repo", {}),
-        "detected_stack": evidence.get("detected_stack", {}),
+        "detected_stack": _flatten_stack(evidence.get("detected_stack", {})),
         "npm_dependencies": evidence.get("npm_dependencies", [])[:_MAX_DEPS],
         "python_dependencies": evidence.get("python_dependencies", [])[:_MAX_DEPS],
         "fetched_files": evidence.get("fetched_files", []),
@@ -27,37 +39,65 @@ def build_developer_summary_prompt(evidence: dict[str, Any]) -> str:
     return f"""You are analyzing a GitHub repository. \
 You have been given structured evidence from static analysis.
 
-Generate a developer-facing architecture summary based ONLY on the evidence provided.
+Generate a Technical View summary based ONLY on the evidence provided.
 Do NOT invent components, files, or services not supported by the evidence.
 
 Evidence:
 {_safe_evidence(evidence)}
 
-Write a clear, technical summary covering:
-- What this project appears to do
-- Detected stack and frameworks
-- Key architectural patterns
-- Entry points and component responsibilities
-- Deployment/infra clues if present
+Format your response as a presentation slide — clear section headings followed by bullet points.
+Use bullet character • for every bullet point. Do NOT use dashes.
+Keep each bullet concise (one idea per bullet). No prose paragraphs.
 
-Be specific and factual. Note uncertainty where evidence is weak."""
+Sections to cover:
+What This Project Does
+• What this project appears to do
+
+Stack & Frameworks
+• Detected technologies and frameworks
+
+Architecture
+• Key architectural patterns observed
+
+Entry Points & Responsibilities
+• Main components and what they own
+
+Infrastructure
+• Deployment or infra clues if present (omit section if none)
+
+Confidence Notes
+• Note any areas where evidence is weak or uncertain"""
 
 
 def build_hiring_manager_summary_prompt(evidence: dict[str, Any]) -> str:
-    return f"""You are analyzing a GitHub repository for a non-technical hiring manager.
+    return f"""You are analyzing a GitHub repository for a non-technical audience.
 
-Generate a plain-English summary based ONLY on the evidence provided.
-Avoid jargon where possible. Explain technical terms briefly if you must use them.
+Generate a Non-Technical View summary based ONLY on the evidence provided.
+Write as if presenting a slide at a board meeting or conference. No jargon.
+If you must use a technical term, explain it in plain English immediately after.
 
 Evidence:
 {_safe_evidence(evidence)}
 
-Write a concise summary covering:
-- What this project does (in business terms)
-- What technical skills it demonstrates
-- Likely complexity level (simple / moderate / complex)
-- What stands out as impressive or notable
-- Any relevant business context you can infer
+Format your response as a presentation slide — clear section headings followed by bullet points.
+Use bullet character • for every bullet point. Do NOT use dashes.
+Keep each bullet concise (one idea per bullet). No prose paragraphs.
+
+Sections to cover:
+What This Project Does
+• What the project does in plain business terms
+
+Skills Demonstrated
+• Technical capabilities this project shows
+
+Complexity
+• Simple / Moderate / Complex — with one-line justification
+
+Standout Points
+• What is most impressive or notable
+
+Business Context
+• Any relevant business or market context you can infer (omit if none)
 
 Be honest about uncertainty. Do not overstate."""
 

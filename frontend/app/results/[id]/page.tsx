@@ -10,22 +10,41 @@ interface Props {
 export default async function ResultPage({ params }: Props) {
   const result = await getResult(Number(params.id));
 
+  const evidence = (result.raw_evidence?.[0] as Record<string, unknown>) ?? {};
+  const repo = (evidence.repo as Record<string, string>) ?? {};
+  const filesScanned = (evidence.tree_paths as string[])?.length ?? 0;
+  const repoLabel =
+    repo.owner && repo.name ? `${repo.owner}/${repo.name}` : null;
+
   return (
     <main className="min-h-screen bg-gray-950 text-white px-4 py-10">
       <div className="max-w-5xl mx-auto space-y-8">
-        <header className="space-y-1">
-          <h1 className="text-3xl font-bold">Architecture Analysis</h1>
-          <p className="text-gray-400 text-sm">Result #{result.id}</p>
+
+        {/* Header */}
+        <header className="border-b border-gray-800 pb-5">
+          <p className="text-xs font-mono text-blue-400 uppercase tracking-widest mb-1">
+            CodebaseAtlas Report
+          </p>
+          <h1 className="text-2xl font-bold font-mono">
+            {repoLabel ?? `Result #${result.id}`}
+          </h1>
+          <div className="flex gap-5 mt-2 text-xs text-gray-500 font-mono">
+            {filesScanned > 0 && <span>Files scanned: {filesScanned}</span>}
+            <span>Result #{result.id}</span>
+          </div>
         </header>
 
+        {/* Architecture Map — hero */}
         {result.diagram_mermaid && (
           <DiagramPanel mermaid={result.diagram_mermaid} />
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <DeveloperSummary result={result} />
-          <HiringManagerSummary result={result} />
-        </div>
+        {/* Stack Detection + Developer Summary */}
+        <DeveloperSummary result={result} />
+
+        {/* Hiring Manager View */}
+        <HiringManagerSummary result={result} />
+
       </div>
     </main>
   );
