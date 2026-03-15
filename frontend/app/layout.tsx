@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "Codebase Atlas — Developer Toolkit",
   description:
     "Discover, evaluate, and deeply understand open-source repositories. " +
-    "RepoScout finds the right repo. Atlas explains it.",
+    "RepoScout finds the right repo. Atlas explains it. Map charts the API surface.",
 };
 
 export default function RootLayout({
@@ -60,6 +60,7 @@ export default function RootLayout({
             <div className="flex items-center gap-1">
               <NavLink href="/" label="01 / Atlas" />
               <NavLink href="/scout" label="02 / RepoScout" />
+              <NavLink href="/map" label="03 / Map" />
               <a
                 href="https://github.com/MentalVibez/AI_Architecture_Explainer"
                 target="_blank"
@@ -90,6 +91,7 @@ export default function RootLayout({
             <div className="flex gap-6">
               <FooterLink href="/" label="Atlas" />
               <FooterLink href="/scout" label="RepoScout" />
+              <FooterLink href="/map" label="Map" />
               <FooterLink
                 href="https://github.com/MentalVibez/AI_Architecture_Explainer"
                 label="GitHub"

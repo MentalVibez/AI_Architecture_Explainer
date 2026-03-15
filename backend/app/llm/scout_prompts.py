@@ -47,13 +47,21 @@ def safe_parse_llm_output(raw_text: str) -> Optional[LLMScoutOutput]:
     """
     try:
         clean = raw_text.strip()
-        # strip ```json ... ``` or ``` ... ``` fences
+        # strip ```json ... ``` or ``` ... ``` fences (with optional trailing text)
         if clean.startswith("```"):
+            # Extract only the content between the opening and closing fence
             lines = clean.splitlines()
-            clean = "\n".join(
-                line for line in lines
-                if not line.strip().startswith("```")
-            ).strip()
+            inner: list[str] = []
+            in_fence = False
+            for line in lines:
+                if line.strip().startswith("```") and not in_fence:
+                    in_fence = True
+                    continue
+                if line.strip().startswith("```") and in_fence:
+                    break  # stop at closing fence; discard trailing text
+                if in_fence:
+                    inner.append(line)
+            clean = "\n".join(inner).strip()
         data = json.loads(clean)
         return LLMScoutOutput.model_validate(data)
     except Exception:

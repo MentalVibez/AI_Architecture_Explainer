@@ -10,6 +10,7 @@ from sqlalchemy import update
 
 from app.api.routes_analysis import router as analysis_router
 from app.api.routes_health import router as health_router
+from app.api.routes_map import router as map_router
 from app.api.routes_results import router as results_router
 from app.api.scout import router as scout_router
 from app.core.database import AsyncSessionLocal, Base, engine
@@ -63,3 +64,4 @@ app.include_router(health_router)
 app.include_router(analysis_router)
 app.include_router(results_router)
 app.include_router(scout_router)
+app.include_router(map_router)

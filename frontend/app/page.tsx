@@ -26,20 +26,22 @@ export default function HomePage() {
             </h1>
 
             <p className="font-sans text-[#6a6a6a] text-lg leading-relaxed max-w-xl">
-              Two instruments. One workflow. RepoScout discovers and ranks
-              repositories by intent and quality. Atlas reads the winner and
-              explains its architecture — deterministically, without guesswork.
+              Three instruments. One workflow. RepoScout discovers and ranks
+              repositories by intent and quality. Atlas explains the architecture.
+              Map charts the full API surface — deterministically, without guesswork.
             </p>
           </div>
 
           {/* Workflow diagram */}
           <div className="hidden lg:flex flex-col gap-2 font-mono text-[11px] tracking-wider">
             {[
-              { n: "01", label: "Search", tool: "RepoScout" },
-              { n: "→",  label: "",       tool: "" },
+              { n: "01", label: "Search",  tool: "RepoScout" },
+              { n: "→",  label: "",        tool: "" },
               { n: "02", label: "Analyze", tool: "Atlas" },
-              { n: "→",  label: "",       tool: "" },
-              { n: "✓",  label: "Done",   tool: "" },
+              { n: "→",  label: "",        tool: "" },
+              { n: "03", label: "Map",     tool: "Map" },
+              { n: "→",  label: "",        tool: "" },
+              { n: "✓",  label: "Done",    tool: "" },
             ].map((row, i) =>
               row.tool ? (
                 <div key={i} className="flex items-center gap-3">
@@ -60,7 +62,7 @@ export default function HomePage() {
 
       {/* ── Tool cards ───────────────────────────────────────────────── */}
       <section className="py-14 border-b border-[#1a1a1a]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <ToolCard
             number="01"
             name="RepoScout"
@@ -81,11 +83,21 @@ export default function HomePage() {
             signals={["Mermaid diagram", "Framework detection", "Dev summary", "Hiring summary"]}
             accent="#7cb9c8"
           />
+          <ToolCard
+            number="03"
+            name="Map"
+            href="/map"
+            tagline="API surface"
+            description="Paste a GitHub URL. Map detects the framework, selects targeted regex patterns, extracts every route, then uses Claude to group and describe the full API surface — no guessing required."
+            cta="Map the API →"
+            signals={["Framework-targeted", "Grouped endpoints", "Auth detection", "LLM-described"]}
+            accent="#8ab58a"
+          />
         </div>
 
         {/* Workflow connector — mobile */}
         <p className="mt-6 font-mono text-[11px] text-[#2a2a2a] tracking-widest text-center">
-          REPOSCOUT → ATLAS — the complete workflow
+          REPOSCOUT → ATLAS → MAP — the complete workflow
         </p>
       </section>
 
