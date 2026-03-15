@@ -1,13 +1,12 @@
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-
-limiter = Limiter(key_func=get_remote_address)
+from sqlalchemy.orm import selectinload
 
 from app.core.database import AsyncSessionLocal, get_db
 from app.models.analysis_job import AnalysisJob
@@ -19,6 +18,8 @@ from app.services.analysis_pipeline import run_analysis
 from app.services.summary_service import generate_summaries
 from app.utils.github_url import parse_github_url
 
+logger = logging.getLogger(__name__)
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api")
 
 
@@ -30,7 +31,7 @@ async def run_analysis_job(job_id: int, owner: str, repo: str) -> None:
             return
 
         job.status = "running"
-        job.started_at = datetime.now(timezone.utc)
+        job.started_at = datetime.now(UTC)
         await db.commit()
 
         try:
@@ -56,13 +57,14 @@ async def run_analysis_job(job_id: int, owner: str, repo: str) -> None:
             db.add(result)
 
             job.status = "completed"
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             await db.commit()
 
-        except Exception as exc:
+        except Exception:
+            logger.exception("Analysis pipeline failed for job %d", job_id)
             job.status = "failed"
-            job.error_message = str(exc)
-            job.completed_at = datetime.now(timezone.utc)
+            job.error_message = "Analysis failed. Please try again."
+            job.completed_at = datetime.now(UTC)
             await db.commit()
 
 
@@ -103,7 +105,8 @@ async def create_analysis(
 
 
 @router.get("/analyze/{job_id}", response_model=JobStatusResponse)
-async def get_job_status(job_id: int, db: AsyncSession = Depends(get_db)) -> JobStatusResponse:
+@limiter.limit("30/minute")
+async def get_job_status(request: Request, job_id: int, db: AsyncSession = Depends(get_db)) -> JobStatusResponse:
     result = await db.execute(
         select(AnalysisJob)
         .where(AnalysisJob.id == job_id)

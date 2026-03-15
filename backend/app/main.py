@@ -1,5 +1,5 @@
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +11,7 @@ from sqlalchemy import update
 from app.api.routes_analysis import router as analysis_router
 from app.api.routes_health import router as health_router
 from app.api.routes_results import router as results_router
-from app.core.config import settings
+from app.api.scout import router as scout_router
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.analysis_job import AnalysisJob
 
@@ -62,3 +62,4 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(analysis_router)
 app.include_router(results_router)
+app.include_router(scout_router)

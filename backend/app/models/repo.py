@@ -14,5 +14,7 @@ class Repo(Base):
     github_repo: Mapped[str] = mapped_column(String(255))
     github_url: Mapped[str] = mapped_column(String(512), unique=True)
     default_branch: Mapped[str] = mapped_column(String(255), default="main")
-    last_analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_analyzed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

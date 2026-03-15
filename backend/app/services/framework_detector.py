@@ -1,5 +1,4 @@
 """Infers frameworks and stack from file names, dependencies, and config files."""
-from typing import Any
 
 
 def detect_stack(

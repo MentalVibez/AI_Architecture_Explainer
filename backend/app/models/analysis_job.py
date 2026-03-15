@@ -11,7 +11,8 @@ class AnalysisJob(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     repo_id: Mapped[int] = mapped_column(ForeignKey("repos.id"))
-    status: Mapped[str] = mapped_column(String(50), default="queued")  # queued | running | completed | failed
+    # queued | running | completed | failed
+    status: Mapped[str] = mapped_column(String(50), default="queued")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

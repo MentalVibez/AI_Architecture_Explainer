@@ -24,7 +24,8 @@ def _safe_evidence(evidence: dict[str, Any]) -> str:
 
 
 def build_developer_summary_prompt(evidence: dict[str, Any]) -> str:
-    return f"""You are analyzing a GitHub repository. You have been given structured evidence from static analysis.
+    return f"""You are analyzing a GitHub repository. \
+You have been given structured evidence from static analysis.
 
 Generate a developer-facing architecture summary based ONLY on the evidence provided.
 Do NOT invent components, files, or services not supported by the evidence.

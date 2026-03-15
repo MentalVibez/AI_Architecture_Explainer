@@ -1,8 +1,7 @@
 """Orchestrates the full repo analysis pipeline."""
 from typing import Any
 
-from app.services import github_service, manifest_parser, framework_detector
-
+from app.services import framework_detector, github_service, manifest_parser
 
 # Files to always attempt to fetch
 PRIORITY_FILES = [

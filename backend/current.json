@@ -1,0 +1,769 @@
+{
+  "weights": [
+    0.4,
+    0.6
+  ],
+  "mean_ndcg": 0.8457,
+  "mean_p3": 0.5694,
+  "subset_ndcg": {
+    "ambiguous": 0.5946,
+    "discovery_intent": 0.6667,
+    "low_star": 1.0,
+    "misleading": 0.8774,
+    "noise": 1.0,
+    "standard": 0.9413
+  },
+  "subset_p3": {
+    "ambiguous": 0.4167,
+    "discovery_intent": 0.2222,
+    "low_star": 0.4444,
+    "misleading": 0.6667,
+    "noise": 0.6667,
+    "standard": 0.75
+  },
+  "noise_gate_failures": [
+    "q09"
+  ],
+  "results": [
+    {
+      "id": "q01",
+      "query": "RAG pipeline LangChain",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "langchain-ai/langchain",
+        "run-llama/llama_index",
+        "chroma-core/chroma",
+        "langchain-ai/langgraph",
+        "archived/old-rag"
+      ],
+      "ideal": [
+        "langchain-ai/langchain",
+        "run-llama/llama_index",
+        "chroma-core/chroma"
+      ],
+      "must_not_top3": [
+        "some-user/rag-tutorial",
+        "someone/awesome-rag",
+        "random/rag-fork"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": true
+    },
+    {
+      "id": "q02",
+      "query": "AWS CDK infrastructure as code Python",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "aws/aws-cdk",
+        "pulumi/pulumi",
+        "terraform-aws-modules/terraform-aws-vpc",
+        "awslabs/aws-sam-cli",
+        "aws/chalice"
+      ],
+      "ideal": [
+        "aws/aws-cdk",
+        "awslabs/aws-sam-cli",
+        "pulumi/pulumi"
+      ],
+      "must_not_top3": [
+        "some-user/cdk-tutorial",
+        "awesome-aws-cdk"
+      ],
+      "ndcg3": 0.7653606369886217,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": true
+    },
+    {
+      "id": "q03",
+      "query": "self-hosted vector database",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "milvus-io/milvus",
+        "qdrant/qdrant",
+        "weaviate/weaviate",
+        "chroma-core/chroma",
+        "ggerganov/llama.cpp"
+      ],
+      "ideal": [
+        "weaviate/weaviate",
+        "qdrant/qdrant",
+        "milvus-io/milvus"
+      ],
+      "must_not_top3": [
+        "someone/awesome-vectors"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": true
+    },
+    {
+      "id": "q04",
+      "query": "open source LLM inference server",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "ollama/ollama",
+        "ggerganov/llama.cpp",
+        "milvus-io/milvus",
+        "vllm-project/vllm",
+        "chroma-core/chroma"
+      ],
+      "ideal": [
+        "vllm-project/vllm",
+        "ggerganov/llama.cpp",
+        "ollama/ollama"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 0.7653606369886217,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": true
+    },
+    {
+      "id": "q05",
+      "query": "Terraform AWS reusable modules",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "terraform-aws-modules/terraform-aws-vpc",
+        "terraform-aws-modules/terraform-aws-eks",
+        "pulumi/pulumi",
+        "aws/aws-cdk",
+        "awslabs/aws-sam-cli"
+      ],
+      "ideal": [
+        "terraform-aws-modules/terraform-aws-vpc",
+        "terraform-aws-modules/terraform-aws-eks"
+      ],
+      "must_not_top3": [
+        "some-user/terraform-example"
+      ],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q06",
+      "query": "agent framework",
+      "cls": "ambiguous",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "microsoft/autogen",
+        "crewAIInc/crewAI",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django"
+      ],
+      "ideal": [
+        "microsoft/autogen",
+        "langchain-ai/langgraph",
+        "crewAIInc/crewAI"
+      ],
+      "must_not_top3": [
+        "some-user/agent-demo"
+      ],
+      "ndcg3": 0.7653606369886217,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q07",
+      "query": "memory framework Python",
+      "cls": "ambiguous",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "scrapy/scrapy",
+        "django/django",
+        "run-llama/llama_index",
+        "microsoft/autogen",
+        "crewAIInc/crewAI"
+      ],
+      "ideal": [
+        "mem0ai/mem0",
+        "zep-cloud/zep"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 0.0,
+      "p3": 0.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q08",
+      "query": "Python queue",
+      "cls": "ambiguous",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "celery/celery",
+        "rq/rq",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django"
+      ],
+      "ideal": [
+        "celery/celery",
+        "rq/rq"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q09",
+      "query": "embeddings",
+      "cls": "ambiguous",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "chroma-core/chroma",
+        "someone/awesome-embeddings",
+        "langchain-ai/langchain",
+        "ggerganov/llama.cpp",
+        "ollama/ollama"
+      ],
+      "ideal": [
+        "chroma-core/chroma",
+        "qdrant/qdrant"
+      ],
+      "must_not_top3": [
+        "someone/awesome-embeddings"
+      ],
+      "ndcg3": 0.6131471927654584,
+      "p3": 0.3333333333333333,
+      "noise_gate": false,
+      "critical": false
+    },
+    {
+      "id": "q10",
+      "query": "Python web scraping production",
+      "cls": "misleading",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "scrapy/scrapy",
+        "microsoft/playwright-python",
+        "django/django",
+        "tiangolo/full-stack-fastapi-template",
+        "zhanymkanov/fastapi-best-practices"
+      ],
+      "ideal": [
+        "scrapy/scrapy",
+        "microsoft/playwright-python"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q11",
+      "query": "FastAPI production boilerplate",
+      "cls": "misleading",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "tiangolo/full-stack-fastapi-template",
+        "zhanymkanov/fastapi-best-practices",
+        "scrapy/scrapy",
+        "qdrant/qdrant",
+        "weaviate/weaviate"
+      ],
+      "ideal": [
+        "tiangolo/full-stack-fastapi-template",
+        "zhanymkanov/fastapi-best-practices"
+      ],
+      "must_not_top3": [
+        "some-user/fastapi-hello-world",
+        "some-user/fastapi-tutorial"
+      ],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q12",
+      "query": "logging Python structured",
+      "cls": "misleading",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "hynek/structlog",
+        "madzak/python-json-logger",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django"
+      ],
+      "ideal": [
+        "hynek/structlog",
+        "madzak/python-json-logger"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q13",
+      "query": "mature Python web framework still maintained",
+      "cls": "misleading",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "scrapy/scrapy",
+        "django/django",
+        "run-llama/llama_index",
+        "microsoft/autogen",
+        "crewAIInc/crewAI"
+      ],
+      "ideal": [
+        "celery/celery",
+        "django/django"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 0.38685280723454163,
+      "p3": 0.3333333333333333,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q14",
+      "query": "Kubernetes operator Python kopf",
+      "cls": "low_star",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "nolar/kopf",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django",
+        "run-llama/llama_index"
+      ],
+      "ideal": [
+        "nolar/kopf"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.3333333333333333,
+      "noise_gate": true,
+      "critical": true
+    },
+    {
+      "id": "q15",
+      "query": "zep conversational memory LLM",
+      "cls": "low_star",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "zep-cloud/zep",
+        "microsoft/autogen",
+        "vllm-project/vllm",
+        "mem0ai/mem0",
+        "langchain-ai/langchain"
+      ],
+      "ideal": [
+        "zep-cloud/zep"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.3333333333333333,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q16",
+      "query": "Python JSON logger structured logging",
+      "cls": "low_star",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "madzak/python-json-logger",
+        "hynek/structlog",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django"
+      ],
+      "ideal": [
+        "madzak/python-json-logger",
+        "hynek/structlog"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q17",
+      "query": "RAG tutorial beginner",
+      "cls": "noise",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "langchain-ai/langchain",
+        "run-llama/llama_index",
+        "chroma-core/chroma",
+        "someone/awesome-rag",
+        "ggerganov/llama.cpp"
+      ],
+      "ideal": [
+        "langchain-ai/langchain",
+        "run-llama/llama_index"
+      ],
+      "must_not_top3": [
+        "random/rag-fork",
+        "archived/old-rag"
+      ],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q18",
+      "query": "Python fork multiprocessing",
+      "cls": "noise",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django",
+        "run-llama/llama_index",
+        "microsoft/autogen"
+      ],
+      "ideal": [],
+      "must_not_top3": [
+        "random/rag-fork"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q19",
+      "query": "archived legacy Python library",
+      "cls": "noise",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django",
+        "run-llama/llama_index",
+        "microsoft/autogen"
+      ],
+      "ideal": [],
+      "must_not_top3": [
+        "archived/old-rag"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q20",
+      "query": "awesome machine learning resources",
+      "cls": "anti_awesome",
+      "intent": "discovery_intent",
+      "ranked_top5": [
+        "josephmisiti/awesome-machine-learning",
+        "sindresorhus/awesome",
+        "vinta/awesome-python",
+        "someone/awesome-rag",
+        "someone/awesome-vectors"
+      ],
+      "ideal": [],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q21",
+      "query": "best Python libraries 2024",
+      "cls": "anti_awesome",
+      "intent": "discovery_intent",
+      "ranked_top5": [
+        "zhanymkanov/fastapi-best-practices",
+        "vinta/awesome-python",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django"
+      ],
+      "ideal": [],
+      "must_not_top3": [
+        "someone/awesome-rag",
+        "someone/awesome-vectors",
+        "someone/awesome-embeddings"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q22",
+      "query": "awesome LLM tools",
+      "cls": "anti_awesome",
+      "intent": "discovery_intent",
+      "ranked_top5": [
+        "langchain-ai/langchain",
+        "ggerganov/llama.cpp",
+        "ollama/ollama",
+        "run-llama/llama_index",
+        "microsoft/autogen"
+      ],
+      "ideal": [],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q23",
+      "query": "Next.js auth starter template",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "nextauthjs/next-auth",
+        "supabase/auth-helpers",
+        "tiangolo/full-stack-fastapi-template",
+        "some-user/fastapi-hello-world",
+        "some-user/nextjs-hello-world"
+      ],
+      "ideal": [
+        "nextauthjs/next-auth",
+        "supabase/auth-helpers"
+      ],
+      "must_not_top3": [
+        "some-user/nextjs-hello-world"
+      ],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q24",
+      "query": "serverless AWS Lambda Python deployment",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "awslabs/aws-sam-cli",
+        "aws/chalice",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django"
+      ],
+      "ideal": [
+        "aws/chalice",
+        "awslabs/aws-sam-cli"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q25",
+      "query": "React accessible component primitives",
+      "cls": "standard",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "radix-ui/primitives",
+        "ariakit/ariakit",
+        "tiangolo/full-stack-fastapi-template",
+        "langchain-ai/langchain",
+        "ggerganov/llama.cpp"
+      ],
+      "ideal": [
+        "radix-ui/primitives",
+        "ariakit/ariakit"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.6666666666666666,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q26",
+      "query": "chatbot",
+      "cls": "ambiguous",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "mem0ai/mem0",
+        "langchain-ai/langchain",
+        "ggerganov/llama.cpp",
+        "ollama/ollama",
+        "scrapy/scrapy"
+      ],
+      "ideal": [],
+      "must_not_top3": [
+        "random/rag-fork",
+        "archived/old-rag"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q27",
+      "query": "Python",
+      "cls": "ambiguous",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django",
+        "run-llama/llama_index",
+        "microsoft/autogen"
+      ],
+      "ideal": [],
+      "must_not_top3": [
+        "random/rag-fork",
+        "archived/old-rag"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q28",
+      "query": "vector database production scale Kubernetes",
+      "cls": "misleading",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "qdrant/qdrant",
+        "milvus-io/milvus",
+        "weaviate/weaviate",
+        "chroma-core/chroma",
+        "terraform-aws-modules/terraform-aws-eks"
+      ],
+      "ideal": [
+        "qdrant/qdrant",
+        "milvus-io/milvus",
+        "weaviate/weaviate"
+      ],
+      "must_not_top3": [
+        "someone/awesome-vectors"
+      ],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q29",
+      "query": "LLM fine-tuning LoRA parameter efficient",
+      "cls": "noise",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "ggerganov/llama.cpp",
+        "vllm-project/vllm",
+        "langchain-ai/langchain",
+        "ollama/ollama",
+        "run-llama/llama_index"
+      ],
+      "ideal": [],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q30",
+      "query": "github copilot alternative self-hosted code completion",
+      "cls": "noise",
+      "intent": "implementation_intent",
+      "ranked_top5": [
+        "ggerganov/llama.cpp",
+        "milvus-io/milvus",
+        "qdrant/qdrant",
+        "pulumi/pulumi",
+        "weaviate/weaviate"
+      ],
+      "ideal": [],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 1.0,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q31",
+      "query": "awesome Python resources curated list",
+      "cls": "discovery_intent",
+      "intent": "discovery_intent",
+      "ranked_top5": [
+        "vinta/awesome-python",
+        "sindresorhus/awesome",
+        "josephmisiti/awesome-machine-learning",
+        "someone/awesome-rag",
+        "someone/awesome-vectors"
+      ],
+      "ideal": [
+        "vinta/awesome-python"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.3333333333333333,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q32",
+      "query": "awesome machine learning list resources ecosystem",
+      "cls": "discovery_intent",
+      "intent": "discovery_intent",
+      "ranked_top5": [
+        "josephmisiti/awesome-machine-learning",
+        "sindresorhus/awesome",
+        "vinta/awesome-python",
+        "someone/awesome-rag",
+        "someone/awesome-vectors"
+      ],
+      "ideal": [
+        "josephmisiti/awesome-machine-learning"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 1.0,
+      "p3": 0.3333333333333333,
+      "noise_gate": true,
+      "critical": false
+    },
+    {
+      "id": "q33",
+      "query": "best Python alternatives comparison tools libraries",
+      "cls": "discovery_intent",
+      "intent": "discovery_intent",
+      "ranked_top5": [
+        "zhanymkanov/fastapi-best-practices",
+        "langchain-ai/langchain",
+        "scrapy/scrapy",
+        "django/django",
+        "run-llama/llama_index"
+      ],
+      "ideal": [
+        "vinta/awesome-python"
+      ],
+      "must_not_top3": [],
+      "ndcg3": 0.0,
+      "p3": 0.0,
+      "noise_gate": true,
+      "critical": false
+    }
+  ],
+  "patch": "v5: conditional adoption floor (tutorial/beginner repos \u2265200 stars, impl_intent only)"
+}

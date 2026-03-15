@@ -1,8 +1,7 @@
 import re
 
-
 _GITHUB_URL_RE = re.compile(
-    r"https?://github\.com/(?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?/?$"
+    r"https://github\.com/(?P<owner>[a-zA-Z0-9_-]+)/(?P<repo>[a-zA-Z0-9_.-]+?)(?:\.git)?/?$"
 )
 
 

@@ -1,10 +1,10 @@
 import json
+
 from app.services.manifest_parser import (
     parse_package_json,
-    parse_requirements_txt,
     parse_pyproject_toml,
+    parse_requirements_txt,
 )
-
 
 # --- parse_package_json ---
 
