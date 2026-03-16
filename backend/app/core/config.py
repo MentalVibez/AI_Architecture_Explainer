@@ -32,21 +32,32 @@ class Settings(BaseSettings):
         """Return a valid SQLAlchemy async DB URL.
 
         Priority:
-        1. DATABASE_URL if set and non-empty (stripped of whitespace)
-        2. Individual DB_* components if DB_HOST is set
+        1. DATABASE_URL if set, non-empty, and parseable
+        2. Individual DB_* components if DB_HOST is set (password is url-encoded)
         3. SQLite dev fallback
         """
-        url = self.database_url.strip()
-        if url:
-            # Normalise bare postgres:// → postgresql+asyncpg://
-            if url.startswith("postgres://"):
-                url = "postgresql+asyncpg://" + url[len("postgres://"):]
-            elif url.startswith("postgresql://"):
-                url = "postgresql+asyncpg://" + url[len("postgresql://"):]
-            return url
+        from urllib.parse import quote_plus, urlparse
+
+        raw = self.database_url.strip()
+        if raw:
+            # Normalise scheme
+            if raw.startswith("postgres://"):
+                raw = "postgresql+asyncpg://" + raw[len("postgres://"):]
+            elif raw.startswith("postgresql://") and "+asyncpg" not in raw:
+                raw = "postgresql+asyncpg://" + raw[len("postgresql://"):]
+            # Strip query params unsupported by asyncpg (e.g. pgbouncer=true)
+            if "?" in raw:
+                raw = raw.split("?")[0]
+            # Validate: must have a recognisable netloc; reject placeholders
+            try:
+                parsed = urlparse(raw)
+                if parsed.hostname and "[" not in (parsed.password or ""):
+                    return raw
+            except Exception:
+                pass
+            # Fall through — DATABASE_URL was malformed
 
         if self.db_host.strip():
-            from urllib.parse import quote_plus
             password = quote_plus(self.db_password)
             return (
                 f"postgresql+asyncpg://{self.db_user}:{password}"
