@@ -1,0 +1,45 @@
+{
+  "repo": "https://github.com/tiangolo/fastapi",
+  "commit": "0.110.0",
+  "bucket": "strong_python",
+  "description": "FastAPI itself \u2014 canonical well-structured Python project",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        70,
+        100
+      ],
+      "reliability": [
+        70,
+        100
+      ],
+      "security": [
+        65,
+        100
+      ],
+      "testing": [
+        55,
+        100
+      ],
+      "operational_readiness": [
+        65,
+        100
+      ],
+      "developer_experience": [
+        70,
+        100
+      ]
+    },
+    "must_find": [],
+    "must_not_find": [
+      "TESTING-001",
+      "HYGIENE-CI-001",
+      "HYGIENE-README-001"
+    ],
+    "trust_recommendation": "high",
+    "expected_limits": [
+      "Runtime execution not performed"
+    ],
+    "notes": "Should produce few or no critical/high findings. Strong reference baseline."
+  }
+}

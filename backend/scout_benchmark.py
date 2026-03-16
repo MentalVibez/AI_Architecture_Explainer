@@ -38,12 +38,11 @@ import json
 import math
 import statistics
 import sys
-from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
 
-from app.services.repo_scout import _quality_score, _noise_flags, _should_exclude
-
+from app.services.repo_scout import _noise_flags, _quality_score, _should_exclude
 
 # ═════════════════════════════════════════════════════════════════════════════
 # QUERY CLASSES
@@ -307,7 +306,7 @@ def _r(
     platform: str = "github",
     lang: str = "Python",
 ) -> dict:
-    updated = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    updated = (datetime.now(UTC) - timedelta(days=days)).isoformat()
     return {
         "id": repo_id, "full_name": repo_id, "platform": platform,
         "stars": stars, "forks": forks, "updated_at": updated,
@@ -536,7 +535,7 @@ def print_report(report: BenchmarkReport) -> None:
     print(f"  Mean NDCG@3 : {report.mean_ndcg:.3f}")
     print(f"  Mean P@3    : {report.mean_p3:.3f}")
 
-    print(f"\n  BY SUBSET")
+    print("\n  BY SUBSET")
     print(f"  {'Class':<14} {'NDCG@3':>8} {'P@3':>8}")
     for cls in sorted(report.subset_ndcg):
         print(f"  {cls:<14} {report.subset_ndcg[cls]:>8.3f} {report.subset_p3.get(cls,0):>8.3f}")
@@ -550,7 +549,7 @@ def print_report(report: BenchmarkReport) -> None:
             print(f"    [{qid}] {q.query[:55]}")
             for j in junk: print(f"          junk in top-3: {j}")
     else:
-        print(f"\n  ✓  All noise gates passed")
+        print("\n  ✓  All noise gates passed")
 
     print(f"\n  {'ID':<5} {'Query':<36} {'Class':<12} {'NDCG':>6} {'P@3':>5}  {'Top Result':<32} Gate")
     print(f"  {'-'*5} {'-'*36} {'-'*12} {'-'*6} {'-'*5}  {'-'*32} ----")
@@ -563,7 +562,7 @@ def print_report(report: BenchmarkReport) -> None:
         print(f"  {crit}{r.id:<4} {r.query[:36]:<36} {r.cls:<12} {nd:>6} {p:>5}  {top[:32]:<32} {gate}")
 
     if report.worst_regressions:
-        print(f"\n  WORST REGRESSIONS")
+        print("\n  WORST REGRESSIONS")
         for reg in report.worst_regressions[:5]:
             print(f"    [{reg['id']}] {reg['query'][:55]:<55}  NDCG Δ {reg['delta']:+.3f}")
     print()
@@ -571,12 +570,12 @@ def print_report(report: BenchmarkReport) -> None:
 
 def write_markdown(report: BenchmarkReport, path: str) -> None:
     qw, rw = report.weights
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     lines = [
         "# RepoScout Benchmark Report", "",
         f"**Weights:** quality={qw}  relevance={rw} &nbsp;|&nbsp; **Generated:** {ts}", "",
         "## Overall", "",
-        f"| Metric | Value |", f"|--------|-------|",
+        "| Metric | Value |", "|--------|-------|",
         f"| Mean NDCG@3 | {report.mean_ndcg:.3f} |",
         f"| Mean P@3 | {report.mean_p3:.3f} |",
         f"| Noise gate failures | {len(report.noise_gate_failures)} |", "",
@@ -654,10 +653,10 @@ def compare_reports(baseline_path: str, new_path: str, gate: bool = False) -> Be
 
     gate_passed = True
     if gate:
-        print(f"\n  GATE CHECKS")
+        print("\n  GATE CHECKS")
         checks = [
             (new_mn >= base_mn - 0.001, f"Mean NDCG did not decrease ({base_mn:.3f} → {new_mn:.3f})"),
-            (not critical_fails,         f"No critical query regressed > 0.15"),
+            (not critical_fails,         "No critical query regressed > 0.15"),
             (not (set(new_data.get("noise_gate_failures",[])) - set(base_data.get("noise_gate_failures",[]))), "No new noise gate failures"),
         ]
         for passed, msg in checks:

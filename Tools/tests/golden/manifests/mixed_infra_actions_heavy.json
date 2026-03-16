@@ -1,0 +1,42 @@
+{
+  "repo": "https://github.com/actions/runner-images",
+  "commit": "main",
+  "bucket": "mixed_infra",
+  "description": "GitHub Actions runner images \u2014 infra-heavy, multi-ecosystem, limited Python",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        40,
+        75
+      ],
+      "reliability": [
+        50,
+        80
+      ],
+      "security": [
+        45,
+        80
+      ],
+      "testing": [
+        20,
+        60
+      ],
+      "operational_readiness": [
+        50,
+        85
+      ],
+      "developer_experience": [
+        45,
+        80
+      ]
+    },
+    "must_find": [],
+    "must_not_find": [],
+    "trust_recommendation": "medium",
+    "expected_limits": [
+      "Runtime execution not performed",
+      "Unsupported language"
+    ],
+    "notes": "Tests coverage honesty \u2014 many files in unsupported languages should appear in limits, not fake scores. [2026.03: OPS-DEPLOY-001 added, bands adjusted for deployment config signal.]"
+  }
+}

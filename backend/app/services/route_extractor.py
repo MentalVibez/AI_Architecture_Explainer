@@ -15,10 +15,8 @@ Supported frameworks (via detected_stack["backend"]):
 import asyncio
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 from app.services import github_service
-
 
 # ── Route patterns per framework ─────────────────────────────────────────────
 
@@ -97,8 +95,8 @@ class RouteEndpoint:
     method: str
     path: str
     source_file: str
-    line_number: Optional[int] = None
-    handler_name: Optional[str] = None
+    line_number: int | None = None
+    handler_name: str | None = None
     params: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:

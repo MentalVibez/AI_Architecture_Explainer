@@ -13,7 +13,6 @@ service call required.
 """
 import logging
 import time
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -90,7 +89,7 @@ async def map_endpoints(
     request: Request,
     owner: str,
     repo: str,
-    force_framework: Optional[str] = None,
+    force_framework: str | None = None,
 ) -> MapResponse:
     """
     Map API endpoints for a public GitHub repository.
@@ -103,7 +102,7 @@ async def map_endpoints(
     # Step 1: deterministic stack analysis (reuse Atlas pipeline, no LLM)
     try:
         evidence = await run_analysis(owner, repo)
-    except Exception as exc:
+    except Exception:
         logger.exception("Stack analysis failed for %s/%s", owner, repo)
         raise HTTPException(status_code=502, detail="Could not fetch repository data.")
 
@@ -135,14 +134,14 @@ async def map_endpoints(
             framework_confidence=confidence,
             from_profile=from_profile,
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Route extraction failed for %s/%s", owner, repo)
         raise HTTPException(status_code=502, detail="Route extraction failed.")
 
     # Step 4: LLM enrichment (grouping + descriptions)
     try:
         enriched = await enrich_endpoint_map(endpoint_map=endpoint_map)
-    except Exception as exc:
+    except Exception:
         logger.exception("Endpoint enrichment failed for %s/%s", owner, repo)
         raise HTTPException(status_code=502, detail="Endpoint enrichment failed.")
 

@@ -1,0 +1,43 @@
+{
+  "repo": "https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker",
+  "commit": "master",
+  "bucket": "mixed_infra",
+  "description": "FastAPI Docker image repo \u2014 infra + Python",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        50,
+        80
+      ],
+      "reliability": [
+        50,
+        80
+      ],
+      "security": [
+        45,
+        80
+      ],
+      "testing": [
+        10,
+        50
+      ],
+      "operational_readiness": [
+        50,
+        85
+      ],
+      "developer_experience": [
+        50,
+        80
+      ]
+    },
+    "must_find": [],
+    "must_not_find": [
+      "HYGIENE-README-001"
+    ],
+    "trust_recommendation": "medium",
+    "expected_limits": [
+      "Runtime execution not performed"
+    ],
+    "notes": "Docker-heavy repo. Ensure Dockerfile checks engage. Coverage honesty critical here. [2026.03: OPS-DEPLOY-001 added, bands adjusted for deployment config signal.]"
+  }
+}

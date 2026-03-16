@@ -1,0 +1,45 @@
+{
+  "repo": "https://github.com/encode/httpx",
+  "commit": "0.27.0",
+  "bucket": "strong_python",
+  "description": "encode/httpx \u2014 disciplined OSS library with strong CI and typing",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        70,
+        100
+      ],
+      "reliability": [
+        70,
+        100
+      ],
+      "security": [
+        70,
+        100
+      ],
+      "testing": [
+        65,
+        100
+      ],
+      "operational_readiness": [
+        60,
+        100
+      ],
+      "developer_experience": [
+        70,
+        100
+      ]
+    },
+    "must_find": [],
+    "must_not_find": [
+      "HYGIENE-README-001",
+      "HYGIENE-LICENSE-001",
+      "HYGIENE-CI-001"
+    ],
+    "trust_recommendation": "high",
+    "expected_limits": [
+      "Runtime execution not performed"
+    ],
+    "notes": "Well-typed, well-tested, well-documented OSS library. Should score high across all categories."
+  }
+}

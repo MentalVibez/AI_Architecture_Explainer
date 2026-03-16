@@ -1,0 +1,44 @@
+{
+  "repo": "https://github.com/mjhea0/flaskr-tdd",
+  "commit": "main",
+  "bucket": "tutorial_python",
+  "description": "Flask TDD tutorial \u2014 structured for teaching, not production deployment",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        25,
+        55
+      ],
+      "reliability": [
+        25,
+        55
+      ],
+      "security": [
+        30,
+        65
+      ],
+      "testing": [
+        30,
+        70
+      ],
+      "operational_readiness": [
+        3,
+        38
+      ],
+      "developer_experience": [
+        30,
+        65
+      ]
+    },
+    "must_find": [
+      "OPS-ENV-001",
+      "HYGIENE-CI-001"
+    ],
+    "must_not_find": [],
+    "trust_recommendation": "low",
+    "expected_limits": [
+      "Runtime execution not performed"
+    ],
+    "notes": "Tutorial pattern: decent README, weak ops, thin CI. Should expose ops gap. [2026.03: OPS-DEPLOY-001 added, bands adjusted for deployment config signal.]"
+  }
+}

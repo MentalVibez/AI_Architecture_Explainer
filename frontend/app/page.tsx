@@ -62,7 +62,7 @@ export default function HomePage() {
 
       {/* ── Tool cards ───────────────────────────────────────────────── */}
       <section className="py-14 border-b border-[#1a1a1a]">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <ToolCard
             number="01"
             name="RepoScout"
@@ -93,11 +93,22 @@ export default function HomePage() {
             signals={["Framework-targeted", "Grouped endpoints", "Auth detection", "LLM-described"]}
             accent="#8ab58a"
           />
+          <ToolCard
+            number="04"
+            name="Review"
+            href="/review"
+            tagline="Quality assessment"
+            description="Evidence-backed scoring across security, testing, reliability, and maintainability. Deterministic rules, static analysis adapters, anti-gaming detection, and depth-aware confidence labels."
+            cta="Review a repo →"
+            signals={["Scorecard", "Findings", "Anti-gaming", "Depth-aware"]}
+            accent="#9a7cb8"
+            beta
+          />
         </div>
 
         {/* Workflow connector — mobile */}
         <p className="mt-6 font-mono text-[11px] text-[#2a2a2a] tracking-widest text-center">
-          REPOSCOUT → ATLAS → MAP — the complete workflow
+          REPOSCOUT → ATLAS → MAP → REVIEW (Beta)
         </p>
       </section>
 
@@ -150,7 +161,7 @@ export default function HomePage() {
 /* ── ToolCard ─────────────────────────────────────────────────────────────── */
 
 function ToolCard({
-  number, name, href, tagline, description, cta, signals, accent,
+  number, name, href, tagline, description, cta, signals, accent, beta,
 }: {
   number: string;
   name: string;
@@ -160,6 +171,7 @@ function ToolCard({
   cta: string;
   signals: string[];
   accent: string;
+  beta?: boolean;
 }) {
   return (
     <a
@@ -181,11 +193,20 @@ function ToolCard({
         </span>
       </div>
 
-      {/* Name */}
-      <div>
+      {/* Name + beta badge */}
+      <div className="flex items-center gap-3">
         <h2 className="font-serif text-3xl text-[#e8e0d4] group-hover:text-white transition-colors">
           {name}
         </h2>
+        {beta && (
+          <span
+            className="font-mono text-[9px] tracking-[0.2em] uppercase
+                       px-2 py-0.5 border rounded self-start mt-1"
+            style={{ color: accent, borderColor: accent + "40", backgroundColor: accent + "0d" }}
+          >
+            Beta
+          </span>
+        )}
       </div>
 
       {/* Description */}

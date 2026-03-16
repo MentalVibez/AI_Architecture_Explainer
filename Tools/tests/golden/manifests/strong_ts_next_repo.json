@@ -1,0 +1,46 @@
+{
+  "repo": "https://github.com/vercel/next.js",
+  "commit": "v14.1.0",
+  "bucket": "strong_typescript",
+  "description": "Next.js \u2014 canonical TS framework repo",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        60,
+        100
+      ],
+      "reliability": [
+        60,
+        100
+      ],
+      "security": [
+        55,
+        100
+      ],
+      "testing": [
+        55,
+        100
+      ],
+      "operational_readiness": [
+        55,
+        100
+      ],
+      "developer_experience": [
+        65,
+        100
+      ]
+    },
+    "must_find": [],
+    "must_not_find": [
+      "HYGIENE-README-001",
+      "HYGIENE-CI-001",
+      "HYGIENE-LICENSE-001"
+    ],
+    "trust_recommendation": "high",
+    "expected_limits": [
+      "Runtime execution not performed",
+      "No Dockerfile found"
+    ],
+    "notes": "Strong TS baseline. Ensure Python rules do not fire inappropriately."
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "repo": "https://github.com/nsidnev/fastapi-realworld-example-app",
+  "commit": "master",
+  "bucket": "tutorial_python",
+  "description": "FastAPI RealWorld example \u2014 teaching repo that looks production-ish",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        40,
+        70
+      ],
+      "reliability": [
+        35,
+        65
+      ],
+      "security": [
+        40,
+        70
+      ],
+      "testing": [
+        20,
+        60
+      ],
+      "operational_readiness": [
+        23,
+        58
+      ],
+      "developer_experience": [
+        45,
+        75
+      ]
+    },
+    "must_find": [
+      "FASTAPI-ARCH-001",
+      "PY-TYPING-001"
+    ],
+    "must_not_find": [],
+    "trust_recommendation": "medium",
+    "expected_limits": [
+      "Runtime execution not performed"
+    ],
+    "notes": "Looks polished, but likely has architecture concentration and weak typing. Good trust-filter test. [2026.03: OPS-DEPLOY-001 added, bands adjusted for deployment config signal.]"
+  }
+}

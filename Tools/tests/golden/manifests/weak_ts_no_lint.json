@@ -1,0 +1,45 @@
+{
+  "repo": "https://github.com/bradtraversy/vanillawebprojects",
+  "commit": "master",
+  "bucket": "weak_typescript",
+  "description": "Vanilla JS project collection \u2014 minimal toolchain, no lint, no tests",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        20,
+        55
+      ],
+      "reliability": [
+        15,
+        50
+      ],
+      "security": [
+        40,
+        80
+      ],
+      "testing": [
+        0,
+        30
+      ],
+      "operational_readiness": [
+        3,
+        33
+      ],
+      "developer_experience": [
+        25,
+        60
+      ]
+    },
+    "must_find": [
+      "TESTING-001",
+      "HYGIENE-CI-001"
+    ],
+    "must_not_find": [],
+    "trust_recommendation": "low",
+    "expected_limits": [
+      "Runtime execution not performed",
+      "No Dockerfile found"
+    ],
+    "notes": "Pure JS learning repo. Expect weak toolchain signals across the board. [2026.03: OPS-DEPLOY-001 added, bands adjusted for deployment config signal.]"
+  }
+}

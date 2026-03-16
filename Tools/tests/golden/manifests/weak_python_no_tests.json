@@ -1,0 +1,45 @@
+{
+  "repo": "https://github.com/realpython/reader",
+  "commit": "main",
+  "bucket": "weak_python",
+  "description": "Simple RSS reader tutorial project \u2014 minimal structure, minimal tests",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        30,
+        65
+      ],
+      "reliability": [
+        30,
+        60
+      ],
+      "security": [
+        40,
+        80
+      ],
+      "testing": [
+        0,
+        40
+      ],
+      "operational_readiness": [
+        13,
+        48
+      ],
+      "developer_experience": [
+        35,
+        70
+      ]
+    },
+    "must_find": [
+      "TESTING-001",
+      "HYGIENE-CI-001",
+      "PY-TYPING-001"
+    ],
+    "must_not_find": [],
+    "trust_recommendation": "low",
+    "expected_limits": [
+      "Runtime execution not performed"
+    ],
+    "notes": "Should expose testing and CI gaps clearly. A good weak-baseline test. [2026.03: OPS-DEPLOY-001 added, bands adjusted for deployment config signal.]"
+  }
+}

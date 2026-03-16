@@ -1,0 +1,44 @@
+{
+  "repo": "https://github.com/pallets/flask",
+  "commit": "3.0.0",
+  "bucket": "strong_python",
+  "description": "Flask \u2014 included as a cross-check: mature OSS should not score weak",
+  "expected": {
+    "score_bands": {
+      "maintainability": [
+        65,
+        100
+      ],
+      "reliability": [
+        65,
+        100
+      ],
+      "security": [
+        60,
+        100
+      ],
+      "testing": [
+        55,
+        100
+      ],
+      "operational_readiness": [
+        55,
+        100
+      ],
+      "developer_experience": [
+        65,
+        100
+      ]
+    },
+    "must_find": [],
+    "must_not_find": [
+      "HYGIENE-README-001",
+      "HYGIENE-CI-001"
+    ],
+    "trust_recommendation": "high",
+    "expected_limits": [
+      "Runtime execution not performed"
+    ],
+    "notes": "Mature project. Mainly a false-positive guard \u2014 ensure strong OSS does not score poorly."
+  }
+}

@@ -1,0 +1,37 @@
+# ── Atlas Reviewer — Backend Container ─────────────────────────────────────
+# Extends the existing AI_Architecture_Explainer backend Dockerfile.
+# Add these RUN commands after the pip install step.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System dependencies — git is required for repo cloning (Option A)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies (existing backend)
+COPY backend/pyproject.toml backend/requirements*.txt ./
+RUN pip install --no-cache-dir -e ".[prod]"
+
+# Atlas Reviewer adapter tools
+RUN pip install --no-cache-dir ruff bandit pip-audit
+
+# Gitleaks (optional — provides secrets depth level)
+# Uncomment when Railway network allows:
+# RUN curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+#     | tar -xz -C /usr/local/bin gitleaks
+
+# Verify tools are available
+RUN ruff --version && bandit --version && pip-audit --version && git --version
+
+# Application code
+COPY backend/ .
+
+# Verify reviewer is importable
+RUN python -c "from app.services.reviewer.service import run_review; print('reviewer OK')"
+
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
