@@ -46,7 +46,6 @@ const SEVERITY_COLOR: Record<string, string> = {
 export default function ReviewPage() {
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("");
-  const [_jobId, setJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<JobStatus>("idle");
   const [result, setResult] = useState<ReviewResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +77,6 @@ export default function ReviewPage() {
       }
 
       const data = await res.json();
-      setJobId(data.job_id);
       setStatus("queued");
       pollStatus(data.job_id);
     } catch {
