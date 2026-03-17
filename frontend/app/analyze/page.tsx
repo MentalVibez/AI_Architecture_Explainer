@@ -56,9 +56,17 @@ function AnalyzeInner() {
 
   if (error) {
     return (
-      <div className="text-center space-y-4 max-w-md px-4">
-        <p className="text-red-400">{error}</p>
-        <a href="/" className="text-sm text-gray-400 underline">
+      <div className="text-center space-y-6 max-w-md px-4">
+        <div className="font-mono text-[10px] tracking-[0.3em] text-[#b86a6a] uppercase">
+          Analysis failed
+        </div>
+        <p className="font-sans text-[14px] text-[#4a4a4a] leading-relaxed">{error}</p>
+        <a
+          href="/"
+          className="inline-block font-mono text-[12px] tracking-widest uppercase
+                     px-5 py-2.5 border border-[#1e1e1e] text-[#4a4a4a] rounded
+                     hover:border-[#2a2a2a] hover:text-[#6a6a6a] transition-colors"
+        >
           Try again
         </a>
       </div>
@@ -66,10 +74,10 @@ function AnalyzeInner() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="w-full max-w-4xl px-6 space-y-4">
       <LoadingAnalysis status={status} />
       {slow && (
-        <p className="text-xs text-gray-600 text-center">
+        <p className="font-mono text-[11px] text-[#2a2a2a] tracking-wider text-center">
           Large repos take longer — still working…
         </p>
       )}
@@ -79,10 +87,10 @@ function AnalyzeInner() {
 
 export default function AnalyzePage() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
+    <div className="min-h-[70vh] flex flex-col items-center justify-center py-20">
       <Suspense fallback={<LoadingAnalysis status="queued" />}>
         <AnalyzeInner />
       </Suspense>
-    </main>
+    </div>
   );
 }

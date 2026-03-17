@@ -1,19 +1,23 @@
 export default function NotFound() {
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-950 text-white px-4">
-      <div className="text-center space-y-4">
-        <h1 className="text-6xl font-bold text-gray-700">404</h1>
-        <h2 className="text-xl font-semibold text-gray-300">Page not found</h2>
-        <p className="text-sm text-gray-500">
-          This analysis result doesn&apos;t exist or may have been removed.
-        </p>
-        <a
-          href="/"
-          className="inline-block mt-4 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-medium transition-colors"
-        >
-          Analyze a repo
-        </a>
+    <div className="max-w-lg mx-auto px-6 py-32 text-center">
+      <div className="font-mono text-[10px] tracking-[0.3em] text-[#c8a96e] uppercase mb-6">
+        404
       </div>
-    </main>
+      <h1 className="font-serif text-5xl text-[#e8e0d4] mb-4">
+        Page not found
+      </h1>
+      <p className="font-sans text-[14px] text-[#4a4a4a] leading-relaxed mb-10">
+        This page doesn&apos;t exist or may have been removed.
+      </p>
+      <a
+        href="/"
+        className="inline-block font-mono text-[12px] tracking-widest uppercase
+                   px-6 py-3 bg-[#c8a96e] text-[#0a0a0a] rounded
+                   hover:bg-[#d4b87a] transition-colors"
+      >
+        Back to CodebaseAtlas
+      </a>
+    </div>
   );
 }

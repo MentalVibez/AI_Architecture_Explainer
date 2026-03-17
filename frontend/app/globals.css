@@ -25,3 +25,21 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Skeleton shimmer animation for loading states */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #1a1a1a 25%,
+    #242424 50%,
+    #1a1a1a 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 4px;
+}

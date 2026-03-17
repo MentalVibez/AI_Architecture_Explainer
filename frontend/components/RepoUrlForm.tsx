@@ -32,17 +32,21 @@ export default function RepoUrlForm() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           required
-          className="flex-1 px-4 py-3 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          className="flex-1 px-4 py-3 rounded-lg bg-[#0a0a0a] border border-[#1e1e1e] text-[#e8e0d4]
+                     placeholder-[#3a3a3a] focus:outline-none focus:border-[#7cb9c8] font-mono text-[13px]
+                     transition-colors"
         />
         <button
           type="submit"
           disabled={loading || !url}
-          className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+          className="px-6 py-3 rounded-lg bg-[#c8a96e] hover:bg-[#d4b87a] text-[#0a0a0a]
+                     disabled:opacity-40 disabled:cursor-not-allowed font-mono text-[12px]
+                     tracking-wider transition-colors"
         >
-          {loading ? "Submitting…" : "Analyze"}
+          {loading ? "Submitting…" : "Analyze →"}
         </button>
       </div>
-      {error && <p className="text-red-400 text-sm text-left">{error}</p>}
+      {error && <p className="font-mono text-[12px] text-[#c84b4b] text-left">{error}</p>}
     </form>
   );
 }

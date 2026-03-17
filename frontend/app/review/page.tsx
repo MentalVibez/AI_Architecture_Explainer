@@ -120,17 +120,17 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-16">
+    <div className="max-w-4xl mx-auto px-6">
       {/* Header */}
-      <div className="mb-12">
+      <section className="pt-16 pb-10 border-b border-[#1a1a1a] mb-12">
         <div className="flex items-center gap-3 mb-4">
           <span className="font-mono text-[10px] tracking-[0.3em] text-[#8ab58a] uppercase">
             Tool 04
           </span>
-          <span className="h-px flex-1 bg-[#1a1a1a] max-w-[40px]" />
+          <span className="h-px w-8 bg-[#1e1e1e]" />
           <BetaBadge />
         </div>
-        <h1 className="font-serif text-4xl sm:text-5xl text-[#e8e0d4] mb-4">
+        <h1 className="font-serif text-5xl text-[#e8e0d4] mb-4">
           Review
         </h1>
         <p className="font-sans text-[#5a5a5a] text-base leading-relaxed max-w-xl">
@@ -145,7 +145,7 @@ export default function ReviewPage() {
           <p><span className="text-[#8ab58a]">▸</span> Score reflects analysis depth — the report shows structural, lint, or full toolchain coverage. Trust the confidence label.</p>
           <p><span className="text-[#8ab58a]">▸</span> Beta: results are calibrated but not perfect. The system tells you when confidence is low.</p>
         </div>
-      </div>
+      </section>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="mb-10">
@@ -306,8 +306,8 @@ function ReviewResult({ result }: { result: ReviewResult }) {
       {/* Summaries */}
       {result.summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SummaryCard title="Developer" body={result.summary.developer} accent="#7cb9c8" />
-          <SummaryCard title="Hiring Manager" body={result.summary.manager} accent="#c8a96e" />
+          <SummaryCard title="Technical" body={result.summary.developer} accent="#7cb9c8" />
+          <SummaryCard title="Non-Technical" body={result.summary.manager} accent="#c8a96e" />
         </div>
       )}
 

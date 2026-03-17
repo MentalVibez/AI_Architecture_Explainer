@@ -14,6 +14,7 @@ from app.api.routes_map import router as map_router
 from app.api.routes_results import router as results_router
 from app.api.routes_review import router as review_router
 from app.api.scout import router as scout_router
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.analysis_job import AnalysisJob
 from app.models.review_job import ReviewJob
@@ -61,7 +62,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

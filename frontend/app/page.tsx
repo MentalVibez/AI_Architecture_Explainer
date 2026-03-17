@@ -12,11 +12,22 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-12 items-end">
           <div>
             {/* Eyebrow */}
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="font-mono text-[10px] tracking-[0.3em] text-[#c8a96e] uppercase">
                 Developer Toolkit
               </span>
-              <span className="flex-1 h-px bg-[#1e1e1e] max-w-[60px]" />
+              <span className="h-px bg-[#1e1e1e] w-10" />
+              <a
+                href="https://github.com/MentalVibez/AI_Architecture_Explainer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-2.5 py-1 border border-[#1e1e1e] rounded-full
+                           font-mono text-[10px] text-[#3a3a3a] hover:text-[#5a5a5a]
+                           hover:border-[#2a2a2a] transition-colors"
+              >
+                <span>★</span>
+                <span>Star on GitHub</span>
+              </a>
             </div>
 
             {/* Headline */}
@@ -25,11 +36,32 @@ export default function HomePage() {
               <em className="text-[#c8a96e] not-italic">Understand</em> it.
             </h1>
 
-            <p className="font-sans text-[#6a6a6a] text-lg leading-relaxed max-w-xl">
-              Three instruments. One workflow. RepoScout discovers and ranks
-              repositories by intent and quality. Atlas explains the architecture.
-              Map charts the full API surface — deterministically, without guesswork.
+            <p className="font-sans text-[#6a6a6a] text-lg leading-relaxed max-w-xl mb-8">
+              Save hours of onboarding time. Three instruments, one workflow.
+              RepoScout discovers and ranks repositories by intent and quality.
+              Atlas explains the architecture. Map charts the full API surface —
+              deterministically, without guesswork.
             </p>
+
+            {/* CTAs */}
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="/#analyze"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#c8a96e] text-[#0a0a0a]
+                           font-mono text-[12px] tracking-widest uppercase rounded
+                           hover:bg-[#d4b87a] transition-colors"
+              >
+                Analyze a repo →
+              </a>
+              <a
+                href="/scout"
+                className="inline-flex items-center gap-2 px-6 py-3 border border-[#1e1e1e]
+                           text-[#4a4a4a] font-mono text-[12px] tracking-widest uppercase rounded
+                           hover:border-[#2a2a2a] hover:text-[#6a6a6a] transition-colors"
+              >
+                Scout repos
+              </a>
+            </div>
           </div>
 
           {/* Workflow diagram */}
@@ -80,7 +112,7 @@ export default function HomePage() {
             tagline="Deep analysis"
             description="Paste a GitHub URL. Atlas fetches the repo tree, parses manifests, detects frameworks with deterministic heuristics, then generates an architecture diagram and dual plain-English summaries."
             cta="Analyze a repo →"
-            signals={["Mermaid diagram", "Framework detection", "Technical View", "Non-Technical View"]}
+            signals={["Mermaid diagram", "Framework detection", "Technical", "Non-Technical"]}
             accent="#7cb9c8"
           />
           <ToolCard
@@ -112,6 +144,50 @@ export default function HomePage() {
         </p>
       </section>
 
+      {/* ── How it works strip ───────────────────────────────────────── */}
+      <section className="py-14 border-b border-[#1a1a1a]">
+        <div className="flex items-center gap-3 mb-10">
+          <span className="font-mono text-[10px] tracking-[0.3em] text-[#3a3a3a] uppercase">
+            How it works
+          </span>
+          <span className="h-px flex-1 bg-[#1a1a1a]" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-[#1a1a1a] rounded-lg overflow-hidden">
+          {[
+            {
+              step: "01",
+              title: "Search",
+              body: "RepoScout scans GitHub and GitLab simultaneously, scores each result for quality and relevance, and surfaces the repos actually worth your time.",
+              accent: "#c8a96e",
+            },
+            {
+              step: "02",
+              title: "Analyze",
+              body: "Paste any public GitHub URL into Atlas. It fetches the file tree, parses manifests deterministically, then generates an architecture diagram and plain-English summaries.",
+              accent: "#7cb9c8",
+            },
+            {
+              step: "03",
+              title: "Understand",
+              body: "Map charts every API endpoint. Review scores security, testing, and maintainability. Together they give you the full picture before you write a single line of code.",
+              accent: "#8ab58a",
+            },
+          ].map(({ step, title, body, accent }) => (
+            <div key={step} className="bg-[#0a0a0a] p-8 flex flex-col gap-4">
+              <div
+                className="font-mono text-[11px] tracking-[0.3em] uppercase w-8 h-8
+                           flex items-center justify-center rounded border"
+                style={{ color: accent, borderColor: `${accent}30`, backgroundColor: `${accent}08` }}
+              >
+                {step}
+              </div>
+              <h3 className="font-serif text-2xl text-[#e8e0d4]">{title}</h3>
+              <p className="font-sans text-[13px] text-[#4a4a4a] leading-relaxed flex-1">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── Atlas tool section ────────────────────────────────────────── */}
       <section id="analyze" className="py-16">
 
@@ -140,8 +216,8 @@ export default function HomePage() {
           {[
             { icon: "🗺️", title: "Architecture diagram", body: "Mermaid flowchart from real file structure, not guesswork." },
             { icon: "🔍", title: "Framework detection",  body: "Frontend, backend, database, infra, testing — from manifests." },
-            { icon: "👩‍💻", title: "Technical View",      body: "Entry points, responsibilities, dependencies, patterns." },
-            { icon: "🤝", title: "Non-Technical View",   body: "What the project does, skills demonstrated, complexity." },
+            { icon: "👩‍💻", title: "Technical",      body: "Entry points, responsibilities, dependencies, patterns." },
+            { icon: "🤝", title: "Non-Technical",   body: "What the project does, skills demonstrated, complexity." },
           ].map(({ icon, title, body }) => (
             <div
               key={title}

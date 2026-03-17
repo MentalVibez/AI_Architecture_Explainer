@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark rounded background -->
+  <rect width="32" height="32" rx="7" fill="#0a0a0a"/>
+
+  <!-- Edges connecting the three nodes -->
+  <line x1="16" y1="6"  x2="5"  y2="24" stroke="#c8a96e" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="16" y1="6"  x2="27" y2="24" stroke="#c8a96e" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="5"  y1="24" x2="27" y2="24" stroke="#c8a96e" stroke-width="1.8" stroke-linecap="round"/>
+
+  <!-- Nodes -->
+  <circle cx="16" cy="6"  r="2.8" fill="#c8a96e"/>
+  <circle cx="5"  cy="24" r="2.8" fill="#c8a96e"/>
+  <circle cx="27" cy="24" r="2.8" fill="#c8a96e"/>
+</svg>

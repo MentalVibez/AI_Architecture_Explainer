@@ -11,9 +11,9 @@ interface Props {
 function ConfidenceBar({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   const color =
-    value >= 0.9 ? "bg-green-500" : value >= 0.7 ? "bg-yellow-500" : "bg-red-500";
+    value >= 0.9 ? "bg-[#8ab58a]" : value >= 0.7 ? "bg-[#c8a96e]" : "bg-[#c84b4b]";
   return (
-    <div className="w-14 h-1.5 bg-gray-700 rounded-full overflow-hidden shrink-0">
+    <div className="w-14 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden shrink-0">
       <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -22,10 +22,10 @@ function ConfidenceBar({ value }: { value: number }) {
 function ConfidenceLabel({ value }: { value: number }) {
   const color =
     value >= 0.9
-      ? "text-green-400"
+      ? "text-[#8ab58a]"
       : value >= 0.7
-      ? "text-yellow-400"
-      : "text-red-400";
+      ? "text-[#c8a96e]"
+      : "text-[#c84b4b]";
   return (
     <span className={`font-mono text-xs w-8 text-right shrink-0 ${color}`}>
       {value.toFixed(2)}
@@ -51,30 +51,30 @@ export default function DeveloperSummary({ result }: Props) {
     <div className="space-y-6">
 
       {/* Stack Detection */}
-      <section className="bg-gray-900 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800">
-          <h2 className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-widest">
+      <section className="border border-[#1a1a1a] rounded-lg overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#1a1a1a]">
+          <h2 className="font-mono text-[11px] tracking-[0.3em] text-[#3a3a3a] uppercase">
             Stack Detection
           </h2>
         </div>
 
         {rows.length === 0 ? (
-          <p className="px-6 py-4 text-sm text-gray-500">No frameworks detected.</p>
+          <p className="px-6 py-4 font-mono text-[12px] text-[#4a4a4a]">No frameworks detected.</p>
         ) : (
           <div>
             {rows.map(({ cat, item, key }) => (
-              <div key={key} className="border-b border-gray-800/50 last:border-0">
+              <div key={key} className="border-b border-[#1a1a1a]/50 last:border-0">
                 <button
-                  className="w-full flex items-center gap-3 px-6 py-3 hover:bg-gray-800/50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-6 py-3 hover:bg-[#0e0e0e] transition-colors text-left"
                   onClick={() => toggle(key)}
                 >
-                  <span className="w-16 text-xs text-gray-500 font-mono capitalize shrink-0">
+                  <span className="w-16 font-mono text-[11px] text-[#3a3a3a] capitalize shrink-0">
                     {cat}
                   </span>
-                  <span className="flex-1 text-sm font-medium">{item.name}</span>
+                  <span className="flex-1 font-sans text-[13px] text-[#c8c0b8]">{item.name}</span>
                   <ConfidenceBar value={item.confidence} />
                   <ConfidenceLabel value={item.confidence} />
-                  <span className="text-gray-600 text-xs w-3 shrink-0">
+                  <span className="font-mono text-[10px] text-[#2a2a2a] w-3 shrink-0">
                     {expanded === key ? "▲" : "▼"}
                   </span>
                 </button>
@@ -85,13 +85,13 @@ export default function DeveloperSummary({ result }: Props) {
                       item.evidence.map((ev, i) => (
                         <span
                           key={i}
-                          className="block font-mono text-xs text-gray-400 bg-gray-800/60 px-2 py-0.5 rounded"
+                          className="block font-mono text-[11px] text-[#5a5a5a] bg-[#111111] px-2 py-0.5 rounded"
                         >
                           {ev}
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-gray-600 italic">
+                      <span className="font-mono text-[11px] text-[#2a2a2a] italic">
                         No evidence recorded
                       </span>
                     )}
@@ -103,11 +103,11 @@ export default function DeveloperSummary({ result }: Props) {
         )}
       </section>
 
-      {/* Technical View */}
+      {/* Technical */}
       {developer_summary && (
-        <section className="bg-gray-900 rounded-xl p-6 space-y-3">
-          <h2 className="text-xs font-mono font-semibold text-gray-400 uppercase tracking-widest">
-            Technical View
+        <section className="border border-[#1a1a1a] rounded-lg p-6 space-y-3">
+          <h2 className="font-mono text-[11px] tracking-[0.3em] text-[#3a3a3a] uppercase">
+            Technical
           </h2>
           <div className="space-y-3">
             {developer_summary.split("\n").filter((l) => l.trim() !== "").map((line, i) => {
@@ -117,13 +117,13 @@ export default function DeveloperSummary({ result }: Props) {
                 const content = trimmed.replace(/^[•*-]\s*/, "");
                 return (
                   <div key={i} className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-0.5 shrink-0">•</span>
-                    <span className="text-gray-300 text-sm leading-relaxed">{content}</span>
+                    <span className="text-[#7cb9c8] mt-0.5 shrink-0">•</span>
+                    <span className="font-sans text-[13px] text-[#8a8a8a] leading-relaxed">{content}</span>
                   </div>
                 );
               }
               return (
-                <p key={i} className="text-gray-400 text-xs font-mono uppercase tracking-widest pt-2 first:pt-0">
+                <p key={i} className="font-mono text-[11px] text-[#3a3a3a] uppercase tracking-widest pt-2 first:pt-0">
                   {trimmed}
                 </p>
               );
@@ -134,13 +134,13 @@ export default function DeveloperSummary({ result }: Props) {
 
       {/* Caveats / Unknowns */}
       {caveats.length > 0 && (
-        <section className="bg-gray-900 rounded-xl p-6">
-          <h2 className="text-xs font-mono font-semibold text-yellow-500/70 uppercase tracking-widest mb-3">
+        <section className="border border-[#c8a96e]/20 rounded-lg p-6">
+          <h2 className="font-mono text-[11px] tracking-[0.3em] text-[#c8a96e] uppercase mb-3">
             Unknowns
           </h2>
           <ul className="space-y-1">
             {caveats.map((c, i) => (
-              <li key={i} className="text-xs text-yellow-300 font-mono">
+              <li key={i} className="font-mono text-[11px] text-[#c8a96e]/70">
                 {c}
               </li>
             ))}

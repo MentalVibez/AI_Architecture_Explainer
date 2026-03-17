@@ -295,6 +295,7 @@ export default function ScoutPage() {
   const [status,  setStatus]  = useState("");
   const [result,  setResult]  = useState<ScoutResponse | null>(null);
   const [error,   setError]   = useState("");
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleScan = useCallback(async () => {
     if (!query.trim() || (!github && !gitlab)) return;
@@ -315,6 +316,7 @@ export default function ScoutPage() {
       await new Promise((r) => setTimeout(r, 300));
       const data: ScoutResponse = await res.json();
       setResult(data); setProgress(100); setStatus(`✦ ${data.total} repositories analysed`);
+      setHasSearched(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "An unexpected error occurred.");
       setStatus(""); setProgress(0);
@@ -442,8 +444,27 @@ export default function ScoutPage() {
         </section>
       )}
 
-      {/* Empty state */}
-      {!loading && !result && !error && (
+      {/* No results empty state */}
+      {!loading && hasSearched && result && result.repos.length === 0 && !error && (
+        <div className="text-center py-24">
+          <div className="font-mono text-4xl mb-5 text-[#1e1e1e]">⌖</div>
+          <p className="font-serif text-2xl text-[#3a3a3a] mb-2">
+            No repositories found
+          </p>
+          <p className="font-sans text-[13px] text-[#2a2a2a] mb-8">
+            for &ldquo;{result.query}&rdquo;
+          </p>
+          <ul className="font-mono text-[11px] text-[#2a2a2a] tracking-wider space-y-2 inline-block text-left">
+            <li>→ Try broader or shorter search terms</li>
+            <li>→ Switch from GitHub-only to both GitHub and GitLab</li>
+            <li>→ Search by technology instead of project name</li>
+            <li>→ Use English keywords — repo names are typically English</li>
+          </ul>
+        </div>
+      )}
+
+      {/* Initial empty state */}
+      {!loading && !hasSearched && !error && (
         <div className="text-center py-24">
           <div className="font-mono text-5xl mb-4 text-[#1a1a1a]">⌖</div>
           <p className="font-sans text-[#2a2a2a]">Enter a query to begin scouting</p>

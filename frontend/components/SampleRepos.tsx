@@ -26,13 +26,16 @@ export default function SampleRepos() {
   };
 
   return (
-    <div className="flex flex-wrap justify-center gap-2">
+    <div className="flex flex-wrap gap-2">
       {SAMPLES.map(({ label, url }) => (
         <button
           key={label}
           onClick={() => handleClick(url, label)}
           disabled={loading !== null}
-          className="px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs font-mono text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-1.5 rounded border border-[#1e1e1e] bg-[#0a0a0a]
+                     hover:border-[#2a2a2a] hover:bg-[#0e0e0e] font-mono text-[11px]
+                     text-[#4a4a4a] hover:text-[#6a6a6a] disabled:opacity-40
+                     disabled:cursor-not-allowed transition-colors"
         >
           {loading === label ? "Submitting…" : label}
         </button>

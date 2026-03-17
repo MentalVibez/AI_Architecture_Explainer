@@ -28,14 +28,16 @@ export default function DiagramPanel({ mermaid }: Props) {
   }, [mermaid]);
 
   return (
-    <section className="bg-gray-900 rounded-xl p-6 overflow-auto">
-      <h2 className="text-lg font-semibold mb-4">Architecture Diagram</h2>
+    <section className="border border-[#1a1a1a] rounded-lg p-6 overflow-auto">
+      <h2 className="font-mono text-[11px] tracking-[0.3em] text-[#3a3a3a] uppercase mb-4">
+        Architecture Diagram
+      </h2>
       {renderError ? (
-        <div className="text-sm text-gray-500 py-4">
+        <div className="font-mono text-[12px] text-[#4a4a4a] py-4">
           Could not render diagram.{" "}
           <details className="inline">
             <summary className="cursor-pointer underline">Show raw</summary>
-            <pre className="mt-2 text-xs text-gray-400 whitespace-pre-wrap">{mermaid}</pre>
+            <pre className="mt-2 text-[11px] text-[#5a5a5a] whitespace-pre-wrap">{mermaid}</pre>
           </details>
         </div>
       ) : (

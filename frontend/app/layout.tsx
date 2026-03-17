@@ -1,20 +1,34 @@
 /**
  * app/layout.tsx  —  Codebase Atlas Toolkit
  *
- * Drop-in replacement for the existing Atlas layout.tsx.
- * Adds platform-level nav with both tools. Everything else unchanged.
- *
  * Stack: Next.js 14 App Router · TypeScript · Tailwind CSS
  */
 
 import type { Metadata } from "next";
 import "./globals.css";
+import Nav from "@/components/Nav";
+import Logo from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: "CodebaseAtlas — Developer Toolkit",
   description:
     "Discover, evaluate, and deeply understand open-source repositories. " +
     "RepoScout finds the right repo. Atlas explains it. Map charts the API surface.",
+  metadataBase: new URL("https://www.codebaseatlas.com"),
+  openGraph: {
+    title: "CodebaseAtlas — Developer Toolkit",
+    description:
+      "Understand any GitHub repository in seconds. Architecture diagrams, framework detection, API surface mapping — powered by Anthropic Claude.",
+    url: "https://www.codebaseatlas.com",
+    siteName: "CodebaseAtlas",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CodebaseAtlas — Developer Toolkit",
+    description:
+      "Understand any GitHub repository in seconds. Architecture diagrams, framework detection, API surface mapping.",
+  },
 };
 
 export default function RootLayout({
@@ -37,66 +51,129 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#0a0a0a] text-[#e8e0d4] font-sans antialiased min-h-screen">
+        {/* ── JSON-LD structured data ───────────────────────────────────── */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: "CodebaseAtlas",
+              url: "https://www.codebaseatlas.com",
+              description:
+                "AI-powered developer toolkit for discovering, evaluating, and understanding open-source repositories. Includes architecture analysis, API surface mapping, and quality assessment.",
+              applicationCategory: "DeveloperApplication",
+              operatingSystem: "Web",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+              creator: {
+                "@type": "Organization",
+                name: "CodebaseAtlas",
+                url: "https://www.codebaseatlas.com",
+              },
+              license: "https://www.gnu.org/licenses/agpl-3.0.html",
+              codeRepository:
+                "https://github.com/MentalVibez/AI_Architecture_Explainer",
+            }),
+          }}
+        />
+
         {/* ── Platform nav ─────────────────────────────────────────────── */}
-        <nav className="border-b border-[#1e1e1e] bg-[#0a0a0a]/95 backdrop-blur-sm sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-
-            {/* Wordmark */}
-            <a
-              href="/"
-              className="flex items-center gap-3 group"
-              aria-label="CodebaseAtlas home"
-            >
-              <span className="font-mono text-[11px] tracking-[0.25em] text-[#c8a96e] uppercase select-none">
-                Atlas
-              </span>
-              <span className="w-px h-4 bg-[#2a2a2a]" />
-              <span className="font-mono text-[11px] tracking-[0.2em] text-[#4a4a4a] uppercase">
-                Toolkit
-              </span>
-            </a>
-
-            {/* Tool links */}
-            <div className="flex items-center gap-1">
-              <NavLink href="/" label="01 / Atlas" />
-              <NavLink href="/scout" label="02 / RepoScout" />
-              <NavLink href="/map" label="03 / Map" />
-              <a
-                href="https://github.com/MentalVibez/AI_Architecture_Explainer"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-3 text-[11px] font-mono tracking-widest text-[#3a3a3a] hover:text-[#5a5a5a] transition-colors"
-                aria-label="GitHub"
-              >
-                GH ↗
-              </a>
-            </div>
-          </div>
-        </nav>
+        <Nav />
 
         {/* ── Page content ─────────────────────────────────────────────── */}
         <main>{children}</main>
 
         {/* ── Platform footer ───────────────────────────────────────────── */}
-        <footer className="border-t border-[#1a1a1a] mt-24 py-10">
-          <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="font-mono text-[11px] tracking-[0.2em] text-[#3a3a3a] uppercase">
-                CodebaseAtlas Toolkit
+        <footer className="border-t border-[#1a1a1a] mt-24">
+          {/* Main footer grid */}
+          <div className="max-w-6xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+
+            {/* Brand column */}
+            <div className="lg:col-span-1">
+              <div className="flex items-center gap-2.5 mb-4">
+                <Logo size={18} />
+                <span className="font-sans font-medium text-[13px] text-[#e8e0d4] tracking-tight">
+                  CodebaseAtlas
+                </span>
+              </div>
+              <p className="font-sans text-[13px] text-[#4a4a4a] leading-relaxed mb-5 max-w-[220px]">
+                Understand any codebase in seconds. No signup required.
               </p>
-              <p className="font-mono text-[10px] text-[#2a2a2a] mt-1">
-                Analysis engine powered by Anthropic claude-sonnet-4-6
+              <p className="font-mono text-[10px] text-[#2a2a2a] leading-relaxed">
+                Analysis engine powered by<br />
+                <span className="text-[#3a3a3a]">Anthropic claude-sonnet-4-6</span>
               </p>
             </div>
-            <div className="flex gap-6">
-              <FooterLink href="/" label="Atlas" />
-              <FooterLink href="/scout" label="RepoScout" />
-              <FooterLink href="/map" label="Map" />
-              <FooterLink
-                href="https://github.com/MentalVibez/AI_Architecture_Explainer"
-                label="GitHub"
-                external
-              />
+
+            {/* Product column */}
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.25em] text-[#3a3a3a] uppercase mb-4">
+                Product
+              </p>
+              <ul className="flex flex-col gap-2.5">
+                <li><FooterLink href="/#analyze" label="Atlas — Architecture Analysis" /></li>
+                <li><FooterLink href="/scout" label="RepoScout — Discovery" /></li>
+                <li><FooterLink href="/map" label="Map — API Surface" /></li>
+                <li><FooterLink href="/review" label="Review — Quality Score" badge="Beta" /></li>
+              </ul>
+            </div>
+
+            {/* Resources column */}
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.25em] text-[#3a3a3a] uppercase mb-4">
+                Resources
+              </p>
+              <ul className="flex flex-col gap-2.5">
+                <li><FooterLink href="/how-it-works" label="How It Works" /></li>
+                <li>
+                  <FooterLink
+                    href="https://github.com/MentalVibez/AI_Architecture_Explainer"
+                    label="GitHub Repository"
+                    external
+                  />
+                </li>
+                <li>
+                  <FooterLink
+                    href="https://docs.anthropic.com"
+                    label="Anthropic Docs"
+                    external
+                  />
+                </li>
+              </ul>
+            </div>
+
+            {/* Legal column */}
+            <div>
+              <p className="font-mono text-[10px] tracking-[0.25em] text-[#3a3a3a] uppercase mb-4">
+                Legal
+              </p>
+              <ul className="flex flex-col gap-2.5">
+                <li><FooterLink href="/privacy" label="Privacy Policy" /></li>
+                <li><FooterLink href="/terms" label="Terms of Use" /></li>
+                <li>
+                  <FooterLink
+                    href="https://github.com/MentalVibez/AI_Architecture_Explainer/blob/main/LICENSE"
+                    label="AGPL-3.0 License"
+                    external
+                  />
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="border-t border-[#141414]">
+            <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <p className="font-mono text-[10px] text-[#2a2a2a]">
+                © 2026 CodebaseAtlas. Open source under AGPL-3.0.
+              </p>
+              <p className="font-mono text-[10px] text-[#2a2a2a]">
+                Analyzes public repositories only · No account required
+              </p>
             </div>
           </div>
         </footer>
@@ -107,37 +184,36 @@ export default function RootLayout({
 
 /* ── Sub-components ──────────────────────────────────────────────────────── */
 
-function NavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a
-      href={href}
-      className="px-3 py-1.5 font-mono text-[11px] tracking-widest text-[#4a4a4a]
-                 hover:text-[#c8a96e] hover:bg-[#c8a96e]/5 rounded
-                 transition-all duration-150 uppercase"
-    >
-      {label}
-    </a>
-  );
-}
-
 function FooterLink({
   href,
   label,
   external,
+  badge,
 }: {
   href: string;
   label: string;
   external?: boolean;
+  badge?: string;
 }) {
   return (
     <a
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
-      className="font-mono text-[11px] tracking-widest text-[#2a2a2a]
-                 hover:text-[#4a4a4a] transition-colors uppercase"
+      className="group flex items-center gap-2 font-sans text-[13px] text-[#3a3a3a]
+                 hover:text-[#6a6a6a] transition-colors"
     >
-      {label}
+      <span>{label}</span>
+      {external && (
+        <span className="text-[10px] text-[#2a2a2a] group-hover:text-[#4a4a4a] transition-colors">
+          ↗
+        </span>
+      )}
+      {badge && (
+        <span className="font-mono text-[9px] tracking-wider px-1.5 py-0.5 border border-[#9a7cb8]/30 text-[#9a7cb8]/60 rounded">
+          {badge}
+        </span>
+      )}
     </a>
   );
 }
