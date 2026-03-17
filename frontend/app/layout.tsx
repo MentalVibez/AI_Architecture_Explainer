@@ -119,6 +119,7 @@ export default function RootLayout({
                 <li><FooterLink href="/scout" label="RepoScout — Discovery" /></li>
                 <li><FooterLink href="/map" label="Map — API Surface" /></li>
                 <li><FooterLink href="/review" label="Review — Quality Score" badge="Beta" /></li>
+                <li><FooterLink href="/pricing" label="Pricing" /></li>
               </ul>
             </div>
 

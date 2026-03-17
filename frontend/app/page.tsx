@@ -92,6 +92,37 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Trust strip ──────────────────────────────────────────────── */}
+      <section className="py-7 border-b border-[#1a1a1a]">
+        <div className="flex flex-wrap items-center gap-x-10 gap-y-3">
+          <span className="font-mono text-[10px] tracking-[0.3em] text-[#2a2a2a] uppercase shrink-0">
+            Works with
+          </span>
+          <div className="flex flex-wrap items-center gap-x-7 gap-y-2">
+            {[
+              { label: "GitHub",     accent: "#e8e0d4" },
+              { label: "GitLab",     accent: "#e8e0d4" },
+              { label: "Python",     accent: "#7cb9c8" },
+              { label: "TypeScript", accent: "#7cb9c8" },
+              { label: "Go",         accent: "#7cb9c8" },
+              { label: "Rust",       accent: "#c8a96e" },
+              { label: "Java",       accent: "#c8a96e" },
+              { label: "Ruby",       accent: "#c84b4b" },
+              { label: "PHP",        accent: "#8ab58a" },
+              { label: "C#",         accent: "#9a7cb8" },
+            ].map(({ label, accent }) => (
+              <span
+                key={label}
+                className="font-mono text-[11px] tracking-wider"
+                style={{ color: accent + "60" }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Tool cards ───────────────────────────────────────────────── */}
       <section className="py-14 border-b border-[#1a1a1a]">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -142,6 +173,111 @@ export default function HomePage() {
         <p className="mt-6 font-mono text-[11px] text-[#2a2a2a] tracking-widest text-center">
           REPOSCOUT → ATLAS → MAP → REVIEW (Beta)
         </p>
+      </section>
+
+      {/* ── Product preview ──────────────────────────────────────────── */}
+      <section className="py-14 border-b border-[#1a1a1a]">
+        <div className="flex items-center gap-3 mb-10">
+          <span className="font-mono text-[10px] tracking-[0.3em] text-[#3a3a3a] uppercase">
+            Sample output
+          </span>
+          <span className="h-px flex-1 bg-[#1a1a1a]" />
+          <span className="font-mono text-[10px] text-[#2a2a2a]">github.com/vercel/next.js</span>
+        </div>
+
+        <div className="border border-[#1a1a1a] rounded-lg overflow-hidden">
+          {/* Window chrome */}
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1a1a1a] bg-[#0d0d0d]">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#1e1e1e]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#1e1e1e]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#1e1e1e]" />
+            <span className="ml-3 font-mono text-[11px] text-[#3a3a3a]">CodebaseAtlas — Atlas Report</span>
+          </div>
+
+          {/* Two-column result */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-[#1a1a1a]">
+
+            {/* Diagram column */}
+            <div className="bg-[#0f0f0f] p-6">
+              <p className="font-mono text-[10px] tracking-[0.3em] text-[#7cb9c8] uppercase mb-4">
+                Architecture Diagram
+              </p>
+              <div className="font-mono text-[11px] leading-loose text-[#3a3a3a] select-none">
+                <p><span className="text-[#7cb9c8]">flowchart</span> <span className="text-[#c8a96e]">TD</span></p>
+                {[
+                  ["Browser", "NextApp"],
+                  ["NextApp", "AppRouter"],
+                  ["AppRouter", "ServerComponents"],
+                  ["AppRouter", "APIRoutes"],
+                  ["ServerComponents", "ReactCache"],
+                  ["APIRoutes", "EdgeRuntime"],
+                ].map(([a, b], i) => (
+                  <p key={i} className="pl-4">
+                    <span className="text-[#5a5a5a]">{a}</span>
+                    <span className="text-[#2a2a2a]"> {"-->"} </span>
+                    <span className="text-[#5a5a5a]">{b}</span>
+                  </p>
+                ))}
+              </div>
+
+              <div className="mt-5 pt-5 border-t border-[#1a1a1a]">
+                <p className="font-mono text-[10px] tracking-[0.3em] text-[#3a3a3a] uppercase mb-3">
+                  Stack detected
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {["Next.js 14", "React 18", "TypeScript", "Turbopack", "Edge Runtime"].map((t) => (
+                    <span
+                      key={t}
+                      className="font-mono text-[10px] px-2 py-0.5 border border-[#1e1e1e] text-[#3a3a3a] rounded"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Summaries column */}
+            <div className="bg-[#0f0f0f] p-6 space-y-6">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.3em] text-[#7cb9c8] uppercase mb-3">
+                  Technical
+                </p>
+                <div className="space-y-2">
+                  {[
+                    "App Router as the core routing layer with full RSC support",
+                    "Turbopack replaces Webpack for sub-100ms HMR in dev",
+                    "Edge-compatible API routes via Next.js Route Handlers",
+                    "Streaming and Suspense boundaries throughout UI tree",
+                  ].map((line) => (
+                    <div key={line} className="flex items-start gap-2">
+                      <span className="text-[#7cb9c8] mt-0.5 shrink-0 text-[10px]">•</span>
+                      <span className="font-sans text-[12px] text-[#4a4a4a] leading-relaxed">{line}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-[#1a1a1a] pt-5">
+                <p className="font-mono text-[10px] tracking-[0.3em] text-[#c8a96e] uppercase mb-3">
+                  Non-Technical
+                </p>
+                <div className="space-y-2">
+                  {[
+                    "The backbone framework powering most of today's React apps",
+                    "Production-grade — used by Fortune 500s and thousands of startups",
+                    "Demonstrates mastery of modern full-stack JavaScript architecture",
+                  ].map((line) => (
+                    <div key={line} className="flex items-start gap-2">
+                      <span className="text-[#c8a96e] mt-0.5 shrink-0 text-[10px]">•</span>
+                      <span className="font-sans text-[12px] text-[#4a4a4a] leading-relaxed">{line}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ── How it works strip ───────────────────────────────────────── */}
