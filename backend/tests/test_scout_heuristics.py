@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from app.schemas.scout import SignalType
-from app.services.repo_scout import _deduplicate, _noise_flags, _quality_score, _should_exclude
+from app.services.repo_scout import _classify_intent, _deduplicate, _noise_flags, _quality_score, _should_exclude
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +32,7 @@ def _repo(**kwargs) -> dict:
         "stars": 500,
         "forks": 50,
         "updated_at": _ago(30),
+        "created_at": _ago(400),   # ~13 months old — old enough for sustained activity bonus
         "license_name": "MIT",
         "readme_verified": False,
         "is_fork": False,
@@ -88,7 +89,11 @@ class TestRecencyScoring:
 
     def test_repo_updated_within_30_days_receives_active_maintenance_signal(self):
         _, signals = _quality_score(_repo(updated_at=_ago(15)), [])
-        good = [s for s in signals if s.type == SignalType.GOOD and "updated" in s.label.lower()]
+        good = [
+            s for s in signals
+            if s.type == SignalType.GOOD
+            and ("updated" in s.label.lower() or "active" in s.label.lower())
+        ]
         assert good
 
     def test_repo_not_updated_in_over_a_year_receives_stale_bad_signal(self):
@@ -284,3 +289,159 @@ class TestDeduplication:
     def test_single_repo_list_returns_itself_unchanged(self):
         repos = [_repo()]
         assert _deduplicate(repos) == repos
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Activity scoring (replaces flat recency)
+# ═════════════════════════════════════════════════════════════════════════════
+
+class TestActivityScoring:
+    def test_sustained_repo_outscores_recently_reactivated_equivalent(self):
+        """
+        Same update recency, different track record.
+        Old + recently active > new + recently active.
+        """
+        sustained, _ = _quality_score(
+            _repo(updated_at=_ago(20), created_at=_ago(730)), []
+        )
+        reactivated, _ = _quality_score(
+            _repo(updated_at=_ago(20), created_at=_ago(25)), []
+        )
+        assert sustained > reactivated
+
+    def test_sustained_activity_signal_contains_track_record_text(self):
+        _, signals = _quality_score(
+            _repo(updated_at=_ago(20), created_at=_ago(730)), []
+        )
+        track_record_signals = [
+            s for s in signals
+            if "track record" in s.label.lower() and s.type == SignalType.GOOD
+        ]
+        assert track_record_signals
+
+    def test_recently_created_repo_gets_no_sustained_bonus(self):
+        """A brand-new repo cannot have a track record."""
+        _, signals = _quality_score(
+            _repo(updated_at=_ago(5), created_at=_ago(10)), []
+        )
+        track_record_signals = [s for s in signals if "track record" in s.label.lower()]
+        assert not track_record_signals
+
+    def test_activity_score_never_exceeds_15_point_budget(self):
+        """Recency + sustained bonus is capped at 15 pts regardless."""
+        score_active, _ = _quality_score(
+            _repo(
+                stars=0, forks=0, license_name=None, platform="github",
+                description="x" * 5, topics=[],
+                updated_at=_ago(1), created_at=_ago(800),
+                open_issues=0,
+            ),
+            [],
+        )
+        score_stale, _ = _quality_score(
+            _repo(
+                stars=0, forks=0, license_name=None, platform="github",
+                description="x" * 5, topics=[],
+                updated_at=_ago(500), created_at=_ago(800),
+                open_issues=0,
+            ),
+            [],
+        )
+        assert (score_active - score_stale) <= 15
+
+    def test_missing_created_at_falls_back_gracefully_without_crash(self):
+        score, _ = _quality_score(_repo(updated_at=_ago(20), created_at=None), [])
+        assert isinstance(score, int)
+        assert score >= 0
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Issue health signal
+# ═════════════════════════════════════════════════════════════════════════════
+
+class TestIssueHealth:
+    def test_high_issue_ratio_above_threshold_reduces_score(self):
+        """open_issues / stars > 0.5 with >= 50 stars should penalise quality."""
+        penalised, _ = _quality_score(_repo(stars=100, open_issues=60), [])   # ratio 0.6
+        baseline,  _ = _quality_score(_repo(stars=100, open_issues=5),  [])   # ratio 0.05
+        assert baseline > penalised
+
+    def test_low_issue_ratio_below_threshold_adds_points(self):
+        """open_issues / stars < 0.05 with >= 100 stars should boost quality."""
+        boosted,  _ = _quality_score(_repo(stars=200, open_issues=3),  [])   # ratio 0.015
+        baseline, _ = _quality_score(_repo(stars=200, open_issues=20), [])   # ratio 0.10
+        assert boosted > baseline
+
+    def test_issue_penalty_not_applied_below_50_star_threshold(self):
+        """Small repos with high ratio should not be penalised — sample too small."""
+        score_high, _ = _quality_score(_repo(stars=10, open_issues=20), [])   # ratio 2.0
+        score_low,  _ = _quality_score(_repo(stars=10, open_issues=0),  [])
+        assert score_high == score_low
+
+    def test_issue_bonus_not_applied_below_100_star_threshold(self):
+        """Low-ratio but low-star repos should not receive the bonus."""
+        score_low_stars, _ = _quality_score(_repo(stars=50, open_issues=0),  [])
+        score_neutral,   _ = _quality_score(_repo(stars=50, open_issues=10), [])
+        assert score_low_stars == score_neutral
+
+    def test_zero_stars_does_not_cause_division_by_zero(self):
+        score, _ = _quality_score(_repo(stars=0, open_issues=5), [])
+        assert isinstance(score, int)
+        assert score >= 0
+
+    def test_high_issue_ratio_signal_is_labelled_warn(self):
+        _, signals = _quality_score(_repo(stars=200, open_issues=150), [])
+        warn_signals = [
+            s for s in signals
+            if s.type == SignalType.WARN and "issue" in s.label.lower()
+        ]
+        assert warn_signals
+
+    def test_low_issue_ratio_signal_is_labelled_good(self):
+        _, signals = _quality_score(_repo(stars=200, open_issues=2), [])
+        good_signals = [
+            s for s in signals
+            if s.type == SignalType.GOOD and "issue" in s.label.lower()
+        ]
+        assert good_signals
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Intent classifier
+# ═════════════════════════════════════════════════════════════════════════════
+
+class TestIntentClassifier:
+    def test_library_keywords_map_to_library_intent(self):
+        assert _classify_intent("Python SDK for OpenAI API") == "library"
+        assert _classify_intent("npm package for date formatting") == "library"
+
+    def test_example_keywords_map_to_example_intent(self):
+        assert _classify_intent("RAG tutorial LangChain") == "example"
+        assert _classify_intent("nextjs starter boilerplate") == "example"
+
+    def test_tool_keywords_map_to_tool_intent(self):
+        assert _classify_intent("CLI tool for docker automation") == "tool"
+        assert _classify_intent("bash script utility") == "tool"
+
+    def test_framework_keywords_map_to_framework_intent(self):
+        assert _classify_intent("web framework Python") == "framework"
+        assert _classify_intent("ML platform for training") == "framework"
+
+    def test_model_keywords_map_to_model_intent(self):
+        assert _classify_intent("fine-tuned model weights LLaMA") == "model"
+        assert _classify_intent("training dataset benchmark") == "model"
+
+    def test_unrecognised_query_falls_back_to_general(self):
+        assert _classify_intent("RAG pipeline LangChain") == "general"
+        assert _classify_intent("async queue processor") == "general"
+
+    def test_classifier_is_case_insensitive(self):
+        assert _classify_intent("PYTHON SDK") == "library"
+        assert _classify_intent("CLI TOOL") == "tool"
+
+    def test_empty_query_returns_general(self):
+        assert _classify_intent("") == "general"
+
+    def test_word_boundary_prevents_partial_keyword_match(self):
+        """'learning' should not match the 'learn' keyword."""
+        assert _classify_intent("best repos for learning") == "general"

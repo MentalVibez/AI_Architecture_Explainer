@@ -68,9 +68,44 @@ def safe_parse_llm_output(raw_text: str) -> LLMScoutOutput | None:
         return None
 
 
+# ── intent scoring guides ─────────────────────────────────────────────────────
+
+_INTENT_SCORING_GUIDE: dict[str, str] = {
+    "library": (
+        "This is a LIBRARY search. Weight stars and maintenance history heavily. "
+        "Penalise repos with no versioned releases, poor API documentation, or unclear "
+        "ownership. Prefer well-tested, actively maintained packages."
+    ),
+    "example": (
+        "This is an EXAMPLE/TUTORIAL search. Weight recency and documentation quality "
+        "heavily. A high-starred but 3-year-old example may be outdated. Prefer repos "
+        "with clear README walkthroughs, recent activity, and up-to-date dependencies."
+    ),
+    "tool": (
+        "This is a TOOL/CLI search. Weight active maintenance and clear installation "
+        "instructions. Penalise tools with many open bugs or no recent releases. "
+        "Prefer tools with a clear, focused use-case description."
+    ),
+    "framework": (
+        "This is a FRAMEWORK search. Weight ecosystem size (stars, forks, community) "
+        "and long-term maintenance trajectory. Penalise frameworks that appear abandoned "
+        "or lack evidence of production adoption."
+    ),
+    "model": (
+        "This is a MODEL/DATASET search. Weight licence clarity (commercial use rights), "
+        "provenance, and documentation of training data. Penalise repos with missing "
+        "model cards or unverified data sources."
+    ),
+    "general": (
+        "Score relevance based on how directly this repo addresses the user's query. "
+        "Balance semantic fit against practical adoption signals."
+    ),
+}
+
+
 # ── prompt builder ────────────────────────────────────────────────────────────
 
-def build_scoring_prompt(user_query: str, repos: list[dict]) -> str:
+def build_scoring_prompt(user_query: str, repos: list[dict], intent_class: str = "general") -> str:
     """
     Evidence-first: LLM receives structured facts only.
     It is NOT asked to re-evaluate quality signals (stars, recency, license) —
@@ -92,6 +127,8 @@ def build_scoring_prompt(user_query: str, repos: list[dict]) -> str:
         for r in repos
     ]
 
+    intent_guidance = _INTENT_SCORING_GUIDE.get(intent_class, _INTENT_SCORING_GUIDE["general"])
+
     header = (
         f"You are a senior developer helping a user find the best"
         f" repositories for: \"{user_query}\""
@@ -101,6 +138,9 @@ def build_scoring_prompt(user_query: str, repos: list[dict]) -> str:
         " any clear winner, key caveats>"
     )
     return f"""{header}
+
+Search intent: {intent_class.upper()}
+Scoring guidance: {intent_guidance}
 
 A deterministic quality_score (0-100) has already been computed for each repo
 from stars, recency, license, README, and maintenance signals.

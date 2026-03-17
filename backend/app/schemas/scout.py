@@ -105,6 +105,8 @@ class EvidencePanel(BaseModel):
     topic_matches:    list[str]     # query terms found in repo topics
     matched_terms:    list[str]     # query terms found in name/description
     noise_flags:      list[str]     # e.g. "fork", "archived", "no description"
+    repo_age_days:    int | None = None   # days since repo was created
+    issue_ratio:      float | None = None # open_issues / max(stars, 1)
 
 
 # ── repo result ───────────────────────────────────────────────────────────────

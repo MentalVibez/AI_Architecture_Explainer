@@ -81,6 +81,30 @@ def _find_term_matches(query: str, text: str) -> list[str]:
     return [t for t in tokens if t in text.lower()]
 
 
+# ── intent classifier ────────────────────────────────────────────────────────
+
+_INTENT_KEYWORDS: dict[str, list[str]] = {
+    "library":   ["library", "package", "module", "sdk", "client", "wrapper"],
+    "example":   ["tutorial", "example", "demo", "starter", "boilerplate", "template", "learn"],
+    "tool":      ["cli", "tool", "utility", "script", "automation"],
+    "framework": ["framework", "stack", "platform", "engine"],
+    "model":     ["model", "dataset", "weights", "checkpoint"],
+}
+
+
+def _classify_intent(query: str) -> str:
+    """
+    Classify search intent from query keywords using word-boundary matching.
+    Returns one of: library | example | tool | framework | model | general
+    First match wins — ordering in _INTENT_KEYWORDS is intentional.
+    """
+    q_lower = query.lower()
+    for intent, keywords in _INTENT_KEYWORDS.items():
+        if any(re.search(r"\b" + re.escape(kw) + r"\b", q_lower) for kw in keywords):
+            return intent
+    return "general"
+
+
 # ── noise filter ─────────────────────────────────────────────────────────────
 
 def _noise_flags(raw: dict) -> list[str]:
@@ -151,20 +175,47 @@ def _quality_score(raw: dict, flags: list[str]) -> tuple[int, list[RepoSignal]]:
     else:
         signals.append(RepoSignal(label=f"★ {_fmt_num(stars)} stars", type=SignalType.BAD))
 
-    # ── recency ──
-    days = _days_since(raw.get("updated_at"))
-    if days is not None:
-        if days <= 30:
-            score += 15
-            signals.append(RepoSignal(label="Active: updated this month", type=SignalType.GOOD))
-        elif days <= 90:
-            score += 10
-            signals.append(RepoSignal(label=f"Updated {days}d ago", type=SignalType.GOOD))
-        elif days <= 365:
-            score += 4
-            signals.append(RepoSignal(label=f"Updated {days}d ago", type=SignalType.WARN))
+    # ── activity (recency + sustained track record) ──
+    days_updated = _days_since(raw.get("updated_at"))
+    days_created = _days_since(raw.get("created_at"))
+    if days_updated is not None:
+        # Component 1: recency (0-10 pts)
+        if days_updated <= 14:
+            recency_pts = 10
+        elif days_updated <= 30:
+            recency_pts = 8
+        elif days_updated <= 90:
+            recency_pts = 5
+        elif days_updated <= 365:
+            recency_pts = 2
         else:
-            years = math.floor(days / 365)
+            recency_pts = 0
+
+        # Component 2: sustained activity bonus (0-5 pts)
+        # Rewards repos that have been maintained consistently, not just recently
+        # reactivated. Missing created_at → treat repo_age as 0 (no bonus).
+        repo_age = days_created if days_created is not None else 0
+        if repo_age > 365 and days_updated <= 90:
+            sustained_pts = 5
+        elif repo_age > 180 and days_updated <= 30:
+            sustained_pts = 3
+        else:
+            sustained_pts = 0
+
+        score += min(recency_pts + sustained_pts, 15)  # 15pt budget preserved
+
+        if sustained_pts > 0:
+            track_months = math.floor(repo_age / 30)
+            signals.append(RepoSignal(
+                label=f"Active {days_updated}d ago ({track_months}mo track record)",
+                type=SignalType.GOOD,
+            ))
+        elif recency_pts >= 5:
+            signals.append(RepoSignal(label=f"Updated {days_updated}d ago", type=SignalType.GOOD))
+        elif recency_pts >= 2:
+            signals.append(RepoSignal(label=f"Updated {days_updated}d ago", type=SignalType.WARN))
+        else:
+            years = math.floor(days_updated / 365)
             signals.append(RepoSignal(label=f"Stale: ~{years}yr ago", type=SignalType.BAD))
 
     # ── license ──
@@ -213,6 +264,19 @@ def _quality_score(raw: dict, flags: list[str]) -> tuple[int, list[RepoSignal]]:
         signals.append(RepoSignal(label=f"⑂ {_fmt_num(forks)} forks", type=SignalType.GOOD))
     elif forks >= 50:
         score += 2
+
+    # ── issue health ──
+    open_issues = raw.get("open_issues", 0)
+    issue_ratio = open_issues / max(stars, 1)
+    if issue_ratio > 0.5 and stars >= 50:
+        score = max(0, score - 2)
+        signals.append(RepoSignal(
+            label=f"High open issue ratio ({open_issues} issues / {stars} stars)",
+            type=SignalType.WARN,
+        ))
+    elif issue_ratio < 0.05 and stars >= 100:
+        score += 2
+        signals.append(RepoSignal(label="Low issue backlog", type=SignalType.GOOD))
 
     # ── noise penalties FIX [6] ──
     if "fork" in flags:
@@ -353,12 +417,13 @@ async def _score_with_llm(
     user_query: str,
     repos: list[dict],
     llm,
+    intent_class: str = "general",
 ) -> LLMScoutOutput:
     """
     FIX [4]: strict Pydantic parse, one retry, graceful fallback.
     The caller never sees raw exception text.
     """
-    prompt = build_scoring_prompt(user_query, repos)
+    prompt = build_scoring_prompt(user_query, repos, intent_class=intent_class)
 
     for attempt in range(2):   # try twice before falling back
         try:
@@ -426,7 +491,8 @@ async def run_scout(req: ScoutRequest, llm) -> ScoutResponse:
         })
 
     # 5. LLM relevance scoring FIX [4]
-    llm_output = await _score_with_llm(req.query, pre, llm)
+    intent_class = _classify_intent(req.query)
+    llm_output = await _score_with_llm(req.query, pre, llm, intent_class=intent_class)
 
     # 6. Merge and build results FIX [3]
     results: list[RepoResult] = []
@@ -453,9 +519,11 @@ async def run_scout(req: ScoutRequest, llm) -> ScoutResponse:
             relevance=relevance,
         )
 
+        r_stars = r.get("stars") or 0
+        r_open_issues = r.get("open_issues", 0)
         evidence = EvidencePanel(
-            stars=r["stars"],
-            forks=r["forks"],
+            stars=r_stars,
+            forks=r.get("forks", 0),
             days_since_update=_days_since(r.get("updated_at")),
             has_license=bool(r.get("license_name")),
             license_name=r.get("license_name"),
@@ -463,10 +531,12 @@ async def run_scout(req: ScoutRequest, llm) -> ScoutResponse:
             is_fork=r.get("is_fork", False),
             is_archived=r.get("is_archived", False),
             is_template=r.get("is_template", False),
-            open_issues=r.get("open_issues", 0),
+            open_issues=r_open_issues,
             topic_matches=r["topic_matches"],
             matched_terms=r["matched_terms"],
             noise_flags=r["noise_flags"],
+            repo_age_days=_days_since(r.get("created_at")),
+            issue_ratio=round(r_open_issues / max(r_stars, 1), 3),
         )
 
         results.append(RepoResult(
