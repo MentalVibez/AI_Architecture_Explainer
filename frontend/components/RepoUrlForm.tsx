@@ -32,7 +32,7 @@ export default function RepoUrlForm() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           required
-          className="flex-1 px-4 py-3 rounded-lg bg-[#0a0a0a] border border-[#1e1e1e] text-[#e8e0d4]
+          className="flex-1 px-4 py-3 rounded-lg bg-[#0f0f0f] border border-[#1e1e1e] text-[#e8e0d4]
                      placeholder-[#3a3a3a] focus:outline-none focus:border-[#7cb9c8] font-mono text-[13px]
                      transition-colors"
         />

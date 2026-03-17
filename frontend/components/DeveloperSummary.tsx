@@ -65,7 +65,7 @@ export default function DeveloperSummary({ result }: Props) {
             {rows.map(({ cat, item, key }) => (
               <div key={key} className="border-b border-[#1a1a1a]/50 last:border-0">
                 <button
-                  className="w-full flex items-center gap-3 px-6 py-3 hover:bg-[#0e0e0e] transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-6 py-3 hover:bg-[#161616] transition-colors text-left"
                   onClick={() => toggle(key)}
                 >
                   <span className="w-16 font-mono text-[11px] text-[#3a3a3a] capitalize shrink-0">
@@ -85,7 +85,7 @@ export default function DeveloperSummary({ result }: Props) {
                       item.evidence.map((ev, i) => (
                         <span
                           key={i}
-                          className="block font-mono text-[11px] text-[#5a5a5a] bg-[#111111] px-2 py-0.5 rounded"
+                          className="block font-mono text-[11px] text-[#5a5a5a] bg-[#171717] px-2 py-0.5 rounded"
                         >
                           {ev}
                         </span>

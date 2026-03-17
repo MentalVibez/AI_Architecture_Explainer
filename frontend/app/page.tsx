@@ -173,7 +173,7 @@ export default function HomePage() {
               accent: "#8ab58a",
             },
           ].map(({ step, title, body, accent }) => (
-            <div key={step} className="bg-[#0a0a0a] p-8 flex flex-col gap-4">
+            <div key={step} className="bg-[#0f0f0f] p-8 flex flex-col gap-4">
               <div
                 className="font-mono text-[11px] tracking-[0.3em] uppercase w-8 h-8
                            flex items-center justify-center rounded border"
@@ -254,7 +254,7 @@ function ToolCard({
       href={href}
       className="group relative border border-[#1a1a1a] rounded-lg p-7
                  hover:border-[#2a2a2a] transition-all duration-200
-                 hover:bg-[#0e0e0e] flex flex-col gap-5 cursor-pointer"
+                 hover:bg-[#161616] flex flex-col gap-5 cursor-pointer"
     >
       {/* Number + tagline */}
       <div className="flex items-center justify-between">

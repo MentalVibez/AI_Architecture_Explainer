@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
       "Discover, evaluate, and deeply understand open-source repositories.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0a0a0a",
+    background_color: "#0f0f0f",
     theme_color: "#c8a96e",
     icons: [
       {

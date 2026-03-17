@@ -136,7 +136,7 @@ function GroupCard({ group }: { group: EndpointGroup }) {
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-5 py-4
-                   hover:bg-[#0e0e0e] transition-colors text-left"
+                   hover:bg-[#161616] transition-colors text-left"
       >
         <div>
           <span className="font-sans font-semibold text-[13px] text-[#c8c0b8]">{group.name}</span>

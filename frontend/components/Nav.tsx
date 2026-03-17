@@ -16,7 +16,7 @@ export default function Nav() {
   ];
 
   return (
-    <nav className="border-b border-[#1e1e1e] bg-[#0a0a0a]/95 backdrop-blur-sm sticky top-0 z-50">
+    <nav className="border-b border-[#1e1e1e] bg-[#0f0f0f]/95 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
 
         {/* Wordmark */}
@@ -66,7 +66,7 @@ export default function Nav() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="sm:hidden border-t border-[#1a1a1a] bg-[#0a0a0a]">
+        <div className="sm:hidden border-t border-[#1a1a1a] bg-[#0f0f0f]">
           <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-1">
             {links.map(({ href, label }) => (
               <a

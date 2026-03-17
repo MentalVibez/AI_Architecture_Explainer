@@ -156,7 +156,7 @@ export default function ReviewPage() {
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://github.com/owner/repo"
             required
-            className="flex-1 bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg
+            className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg
                        px-4 py-3 font-mono text-[13px] text-[#e8e0d4]
                        placeholder-[#3a3a3a] focus:outline-none focus:border-[#8ab58a]
                        transition-colors"
@@ -166,7 +166,7 @@ export default function ReviewPage() {
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
             placeholder="branch (default: main)"
-            className="w-48 bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg
+            className="w-48 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg
                        px-4 py-3 font-mono text-[13px] text-[#e8e0d4]
                        placeholder-[#3a3a3a] focus:outline-none focus:border-[#8ab58a]
                        transition-colors"
@@ -346,7 +346,7 @@ function FindingCard({ finding }: { finding: Finding }) {
     <div className="border border-[#1a1a1a] rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-[#0e0e0e] transition-colors"
+        className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-[#161616] transition-colors"
       >
         <span
           className="font-mono text-[9px] tracking-wider uppercase px-1.5 py-0.5 border rounded flex-shrink-0"

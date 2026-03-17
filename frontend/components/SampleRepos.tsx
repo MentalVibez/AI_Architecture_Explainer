@@ -32,8 +32,8 @@ export default function SampleRepos() {
           key={label}
           onClick={() => handleClick(url, label)}
           disabled={loading !== null}
-          className="px-3 py-1.5 rounded border border-[#1e1e1e] bg-[#0a0a0a]
-                     hover:border-[#2a2a2a] hover:bg-[#0e0e0e] font-mono text-[11px]
+          className="px-3 py-1.5 rounded border border-[#1e1e1e] bg-[#0f0f0f]
+                     hover:border-[#2a2a2a] hover:bg-[#161616] font-mono text-[11px]
                      text-[#4a4a4a] hover:text-[#6a6a6a] disabled:opacity-40
                      disabled:cursor-not-allowed transition-colors"
         >
