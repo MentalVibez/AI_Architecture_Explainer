@@ -4,10 +4,12 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-import app.models  # noqa: F401 — ensure all models are registered
+import app.models  # noqa: F401 — ensure all existing models are registered
+import app.models.analysis  # noqa: F401 — registers new public-lane models
 from alembic import context
 from app.core.config import settings
-from app.core.database import Base
+from app.core.database import Base as CoreBase
+from app.models.analysis import Base as AnalysisBase
 
 config = context.config
 
@@ -17,7 +19,19 @@ if config.config_file_name is not None:
 # Override the sqlalchemy.url from our settings
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
-target_metadata = Base.metadata
+# Merge both metadata objects so autogenerate sees all tables.
+# CoreBase: existing models (analysis_job, analysis_result, repo, review, etc.)
+# AnalysisBase: new public-lane models (accounts, public_cache, workspaces, etc.)
+from sqlalchemy import MetaData
+_combined = MetaData()
+for _table in (
+    list(CoreBase.metadata.tables.values())
+    + list(AnalysisBase.metadata.tables.values())
+):
+    # tometadata copies table definitions without duplicating if already present
+    if _table.name not in _combined.tables:
+        _table.tometadata(_combined)
+target_metadata = _combined
 
 
 def run_migrations_offline() -> None:

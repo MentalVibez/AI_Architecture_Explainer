@@ -14,6 +14,7 @@ from app.api.routes_map import router as map_router
 from app.api.routes_results import router as results_router
 from app.api.routes_review import router as review_router
 from app.api.scout import router as scout_router
+from app.api.routes.routes_public_analysis import router as public_analyze_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.analysis_job import AnalysisJob
@@ -74,3 +75,4 @@ app.include_router(results_router)
 app.include_router(scout_router)
 app.include_router(map_router)
 app.include_router(review_router)
+app.include_router(public_analyze_router)

@@ -12,6 +12,7 @@ engine = create_async_engine(
 )
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+async_session_factory = AsyncSessionLocal  # alias for workers
 
 
 class Base(DeclarativeBase):

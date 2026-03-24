@@ -19,3 +19,10 @@ frontend/.env.local
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Test artifacts & scratch folders
+output/
+Testing/
+.playwright-cli/
+frontend/test-results/
+frontend/playwright-report/
