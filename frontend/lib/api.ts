@@ -10,7 +10,7 @@ function getApiUrl(): string {
     return process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   }
   // Client-side: must use the public env var
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  return process.env.NEXT_PUBLIC_API_URL ?? "";
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
