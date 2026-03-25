@@ -11,9 +11,9 @@ Proxy signals:
 This is a very low confidence signal — used only to add weight
 to the facade detection pattern, not standalone.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class ReadmeWithoutSubstanceRule(Rule):

@@ -15,7 +15,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from app.schemas.scout import SignalType
-from app.services.repo_scout import _classify_intent, _deduplicate, _noise_flags, _quality_score, _should_exclude
+from app.services.repo_scout import (
+    _classify_intent,
+    _deduplicate,
+    _noise_flags,
+    _quality_score,
+    _should_exclude,
+)
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 

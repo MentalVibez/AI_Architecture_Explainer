@@ -10,9 +10,9 @@ Calibration note (2026-03-15):
   library and the other is a tutorial. This rule helps differentiate by
   looking at test ratio even when tests exist.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 THIN_RATIO = 0.12    # test files < 12% of source files = thin
 MIN_SOURCE_FILES = 5

@@ -9,9 +9,10 @@ signals indicate..." to reflect the actual evidence level.
 """
 import json
 import logging
-from .contract import LLMReportInput, LLMSummaryOutput, build_llm_input
-from .trace import build_deterministic_trace, SummaryTrace
+
 from ..models.report import ReviewSummary
+from .contract import LLMReportInput, LLMSummaryOutput, build_llm_input
+from .trace import SummaryTrace, build_deterministic_trace
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ def _build_sentences(llm_input: LLMReportInput) -> dict[str, str]:
     else:
         if llm_input.confidence_label == "Low":
             # Low confidence: structural signals only, be explicit about the limitation
-            hire = f"Structural signals suggest this repository has basic engineering hygiene in place."
+            hire = "Structural signals suggest this repository has basic engineering hygiene in place."
             if not llm_input.adapters_ran:
                 hire += " Static analysis was not available — deeper quality assessment requires tool output."
         else:

@@ -7,10 +7,9 @@ What changes: FastAPI/Express/Django apps without health routes should score
 lower on ops. Deepens the ops category with real signal.
 What must NOT change: non-web repos, static sites, library repos.
 """
-from pathlib import Path
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 HEALTH_PATTERNS = {"/health", "/healthz", "/ready", "/readiness", "/ping", "/status"}
 WEB_FRAMEWORKS = {"FastAPI", "Flask", "Django", "Express", "Fastify", "Koa", "NestJS"}

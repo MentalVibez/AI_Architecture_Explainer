@@ -8,13 +8,13 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import update
 
+from app.api.routes.routes_public_analysis import router as public_analyze_router
 from app.api.routes_analysis import router as analysis_router
 from app.api.routes_health import router as health_router
 from app.api.routes_map import router as map_router
 from app.api.routes_results import router as results_router
 from app.api.routes_review import router as review_router
 from app.api.scout import router as scout_router
-from app.api.routes.routes_public_analysis import router as public_analyze_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.analysis_job import AnalysisJob

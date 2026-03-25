@@ -16,7 +16,8 @@ When gitleaks binary is not installed, returns TOOL_NOT_FOUND cleanly.
 """
 import json
 import time
-from .base import ToolAdapter, ToolIssue, AdapterResult, AdapterStatus
+
+from .base import AdapterResult, AdapterStatus, ToolAdapter, ToolIssue
 from .severity_map import normalize_gitleaks
 
 

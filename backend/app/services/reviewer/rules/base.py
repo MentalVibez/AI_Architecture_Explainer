@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+
 from ..models.finding import Finding
 
 if TYPE_CHECKING:

@@ -3,9 +3,10 @@ Detects primary programming languages from the file tree.
 Uses file extension counting — no AST, no external tools.
 Populates facts.languages.primary and facts.languages.by_file_count.
 """
-from pathlib import Path
-from ..models import RepoFacts, LanguageFacts
 from collections import Counter
+from pathlib import Path
+
+from ..models import LanguageFacts, RepoFacts
 
 EXTENSION_MAP = {
     ".py":     "Python",

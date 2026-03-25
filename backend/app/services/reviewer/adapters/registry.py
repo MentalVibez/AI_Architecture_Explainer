@@ -1,7 +1,8 @@
 """Adapter registry — now includes offline secret scanner."""
 import logging
-from .base import ToolAdapter, AdapterResult, AdapterStatus
+
 from ..facts.models import RepoFacts
+from .base import AdapterResult, AdapterStatus, ToolAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,10 @@ class AdapterRegistry:
 
 
 def build_default_adapter_registry() -> AdapterRegistry:
-    from .ruff import RuffAdapter
     from .bandit import BanditAdapter
     from .gitleaks import GitleaksAdapter
     from .pip_audit import PipAuditAdapter
+    from .ruff import RuffAdapter
     from .secret_patterns import SecretPatternsAdapter
 
     registry = AdapterRegistry()

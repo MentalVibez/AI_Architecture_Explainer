@@ -19,14 +19,11 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from pathlib import Path
-from typing import Optional
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.services.contracts.onboarding_models import ScanState
-
 
 # ─────────────────────────────────────────────────────────
 # Minimal async-compatible DB and result fakes
@@ -96,14 +93,12 @@ def _make_mock_analyzer(return_level="low", fail=False):
 # ─────────────────────────────────────────────────────────
 
 from app.services.pipeline.onboarding_assembler_async import (
-    run_onboarding_analysis,
-    mark_onboarding_failed_if_needed,
-    deserialize_setup_risk,
-    deserialize_debug_readiness,
     deserialize_change_risk,
-    deserialize_section,
+    deserialize_debug_readiness,
+    deserialize_setup_risk,
+    mark_onboarding_failed_if_needed,
+    run_onboarding_analysis,
 )
-
 
 # ─────────────────────────────────────────────────────────
 # 1. Happy path — all three sections complete

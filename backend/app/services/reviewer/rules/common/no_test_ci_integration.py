@@ -9,10 +9,9 @@ Proxy: checks for test-execution signals in the CI config file names
 or directory structure (e.g., no pytest/jest reference found nearby).
 Confidence: low — we can't read the workflow YAML without filesystem access in rules.
 """
-from pathlib import Path
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 TEST_CI_KEYWORDS = {"pytest", "jest", "mocha", "cargo test", "go test", "rspec"}
 

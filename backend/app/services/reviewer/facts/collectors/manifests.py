@@ -3,6 +3,7 @@ Parses manifest files: pyproject.toml, requirements.txt, package.json, Dockerfil
 """
 import json
 from pathlib import Path
+
 from ..models import RepoFacts
 
 try:

@@ -7,8 +7,9 @@ Design law:
   - LLM never sees: raw code, repo tree, file contents
   - LLM never decides: verdict, scores, production_suitable, findings
 """
-from pydantic import BaseModel, Field
 from typing import Literal
+
+from pydantic import BaseModel, Field
 
 
 class LLMFindingInput(BaseModel):

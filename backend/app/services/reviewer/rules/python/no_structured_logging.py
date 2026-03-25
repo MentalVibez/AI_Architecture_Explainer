@@ -7,10 +7,9 @@ What changes: Python web apps with print() or no logging config should score
 lower on ops. Pure library repos are exempt.
 What must NOT change: repos with logging.config or structlog already configured.
 """
-from pathlib import Path
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 LOGGING_SIGNALS = {
     "logging.config", "structlog", "loguru", "logging.basicConfig",

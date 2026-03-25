@@ -7,9 +7,9 @@ What changes: Python repos over a size threshold without type checker config
 should score lower. Small utility scripts get a pass.
 What must NOT change: repos with mypy.ini, pyrightconfig.json, or [tool.mypy].
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 MIN_SOURCE_FILES = 8   # below this, type checking is less critical
 

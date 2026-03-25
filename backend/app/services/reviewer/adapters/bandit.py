@@ -5,7 +5,8 @@ Bandit uses a severity × confidence matrix, which we map to Atlas internal seve
 """
 import json
 import time
-from .base import ToolAdapter, ToolIssue, AdapterResult, AdapterStatus
+
+from .base import AdapterResult, AdapterStatus, ToolAdapter, ToolIssue
 from .severity_map import normalize_bandit
 
 

@@ -4,11 +4,11 @@ Adapter base contract. Every tool adapter must implement this interface.
 Law: adapters are fact producers, not final truth.
 They emit normalized ToolIssue objects. Rules and heuristics reason over them.
 """
+import shutil
+import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-import subprocess
-import shutil
 
 
 class AdapterStatus(str, Enum):

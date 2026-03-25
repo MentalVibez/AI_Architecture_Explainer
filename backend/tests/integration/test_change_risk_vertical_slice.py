@@ -21,22 +21,18 @@ These tests use:
 
 from __future__ import annotations
 
-import json
-import uuid
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
+from app.services.contracts.onboarding_models import RiskLevel, ScanState
 from app.services.pipeline.onboarding_assembler import (
-    run_onboarding_analysis,
-    deserialize_setup_risk,
-    deserialize_debug_readiness,
     deserialize_change_risk,
+    deserialize_debug_readiness,
+    deserialize_setup_risk,
+    run_onboarding_analysis,
 )
-from app.services.contracts.onboarding_models import ScanState, RiskLevel
-from app.services.contracts.change_risk_models import ChangeRisk
-
 
 # ─────────────────────────────────────────────────────────
 # Minimal ORM-compatible fake for AnalysisResult
@@ -327,8 +323,9 @@ class TestDeserialization:
 class TestDBRoundTrip:
     def test_change_risk_survives_db_round_trip(self, db, full_healthy_repo):
         """Write change_risk to a real DB session, read it back, deserialize."""
-        from app.models.analysis import AnalysisResult, AnalysisJob
         import uuid as _uuid
+
+        from app.models.analysis import AnalysisJob, AnalysisResult
 
         # Create a minimal job row first (FK requirement)
         job_id = str(_uuid.uuid4())
@@ -365,8 +362,9 @@ class TestDBRoundTrip:
 
     def test_scan_failed_sentinel_round_trips(self, db):
         """SCAN_FAILED sentinel written to DB reads back correctly."""
-        from app.models.analysis import AnalysisResult, AnalysisJob
         import uuid as _uuid
+
+        from app.models.analysis import AnalysisJob, AnalysisResult
 
         job_id = str(_uuid.uuid4())
         job = AnalysisJob(

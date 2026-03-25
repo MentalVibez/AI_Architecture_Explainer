@@ -21,10 +21,9 @@ This rule detects the "polished facade" pattern:
 Confidence is always low-medium — we cannot be certain.
 But the finding warrants a note and lowers the trust signal.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
-
+from ...models.finding import Finding
+from ..base import Rule
 
 EASY_SIGNALS = ["has_readme", "has_license"]
 HARD_SIGNALS = ["has_tests", "has_ci", "has_type_checker", "has_linter"]
@@ -83,7 +82,7 @@ class FacadeDetectionRule(Rule):
             suggested_fix="Add real tests, CI pipeline, and type checking. "
                           "These signals are harder to fake and reflect genuine engineering discipline.",
             evidence=[
-                EvidenceItem(kind="metric", value=f"Easy signals present: README, LICENSE"),
+                EvidenceItem(kind="metric", value="Easy signals present: README, LICENSE"),
                 EvidenceItem(kind="metric", value=f"Missing hard signals: {', '.join(missing_hard)}"),
             ],
             score_impact={"reliability": -5, "developer_experience": -5},

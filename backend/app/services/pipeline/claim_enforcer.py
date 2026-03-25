@@ -20,15 +20,13 @@ the enforcer gates that claim at the response layer.
 
 from __future__ import annotations
 
-import os
-
 from app.services.policy.tier_policy import (
+    NEVER_ALLOWED_CLAIMS,
     AnalysisTier,
     ClaimBoundary,
-    NEVER_ALLOWED_CLAIMS,
     allowed_claims,
-    is_claim_allowed,
 )
+
 
 class ClaimEnforcer:
     """

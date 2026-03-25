@@ -7,9 +7,10 @@ Grouping law:
   - medium/low findings grouped into one "security hygiene" finding
 """
 from collections import Counter
-from ..base import Rule
-from ...models.finding import Finding
+
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class BanditGroupedRule(Rule):

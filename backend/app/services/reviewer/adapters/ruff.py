@@ -15,7 +15,8 @@ Ruff JSON output per issue:
 """
 import json
 import time
-from .base import ToolAdapter, ToolIssue, AdapterResult, AdapterStatus
+
+from .base import AdapterResult, AdapterStatus, ToolAdapter, ToolIssue
 from .severity_map import normalize_ruff
 
 RUFF_TAGS: dict[str, list[str]] = {

@@ -2,9 +2,9 @@
 Tool-aware rule: fires when mypy or pyright produced high-severity output
 OR when ruff found ANN-family (annotation) issues at significant density.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class NoTypeSignalRule(Rule):

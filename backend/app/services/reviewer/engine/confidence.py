@@ -2,8 +2,9 @@
 Report confidence badge. Category-aware depth is computed separately in engine/depth.py.
 """
 from dataclasses import dataclass, field
-from ..facts.models import RepoFacts
+
 from ..adapters.base import AdapterResult, AdapterStatus
+from ..facts.models import RepoFacts
 
 SUPPORTED_RULE_PACKS = {"python", "typescript", "javascript", "docker", "github_actions", "common"}
 

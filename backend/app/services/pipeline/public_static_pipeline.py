@@ -21,30 +21,27 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Optional
-from urllib.parse import urlparse, quote
+from urllib.parse import quote, urlparse
 
 import httpx
 from fastapi import BackgroundTasks
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.services.cache.public_cache import (
     ENGINE_VERSION,
     find_active_job,
     lookup_public_cache,
     make_public_cache_key,
-    write_public_cache,
 )
 from app.services.pipeline.claim_enforcer import (
     ClaimEnforcer,
-    build_public_static_disclosure,
 )
 from app.services.policy.tier_policy import (
+    PUBLIC_WORKER_POLICY,
     AnalysisTier,
     JobScope,
     JobStatus,
-    PUBLIC_WORKER_POLICY,
 )
 
 log = logging.getLogger(__name__)
@@ -95,10 +92,10 @@ def parse_repo_url(repo_url: str) -> RepoIdentity:
 @dataclass
 class SubmitPublicJobRequest:
     repo_url:      str
-    branch:        Optional[str] = None
+    branch:        str | None = None
     force_refresh: bool          = False
-    account_id:    Optional[str] = None
-    ip_address:    Optional[str] = None
+    account_id:    str | None = None
+    ip_address:    str | None = None
 
 
 @dataclass
@@ -108,8 +105,8 @@ class SubmitPublicJobResult:
     is_cache_hit:      bool
     is_dedup:          bool
     poll_url:          str
-    estimated_seconds: Optional[int]
-    error:             Optional[str] = None
+    estimated_seconds: int | None
+    error:             str | None = None
 
     @property
     def success(self) -> bool:
@@ -122,14 +119,14 @@ class SubmitPublicJobResult:
 
 class PublicStaticPipeline:
 
-    def __init__(self, db: Optional[Session] = None):
+    def __init__(self, db: Session | None = None):
         self.db     = db
         self.policy = PUBLIC_WORKER_POLICY
 
     def submit(
         self,
         req:               SubmitPublicJobRequest,
-        background_tasks:  Optional[BackgroundTasks] = None,
+        background_tasks:  BackgroundTasks | None = None,
     ) -> SubmitPublicJobResult:
         """
         Full submit flow:
@@ -201,8 +198,8 @@ class PublicStaticPipeline:
     def _resolve_head_sha(
         self,
         identity: RepoIdentity,
-        branch:   Optional[str],
-    ) -> Optional[str]:
+        branch:   str | None,
+    ) -> str | None:
         try:
             if identity.provider == "github":
                 return self._github_head_sha(identity, branch)
@@ -215,7 +212,7 @@ class PublicStaticPipeline:
             )
         return None
 
-    def _github_head_sha(self, identity: RepoIdentity, branch: Optional[str]) -> Optional[str]:
+    def _github_head_sha(self, identity: RepoIdentity, branch: str | None) -> str | None:
         import os
         ref = branch or "HEAD"
         url = (
@@ -237,7 +234,7 @@ class PublicStaticPipeline:
         resp.raise_for_status()
         return resp.json().get("sha")
 
-    def _gitlab_head_sha(self, identity: RepoIdentity, branch: Optional[str]) -> Optional[str]:
+    def _gitlab_head_sha(self, identity: RepoIdentity, branch: str | None) -> str | None:
         ref     = branch or "HEAD"
         proj_id = quote(f"{identity.repo_owner}/{identity.repo_name}", safe="")
         url     = f"https://gitlab.com/api/v4/projects/{proj_id}/repository/commits/{ref}"
@@ -255,7 +252,7 @@ class PublicStaticPipeline:
     def _create_job(
         self,
         identity:   RepoIdentity,
-        commit_sha: Optional[str],
+        commit_sha: str | None,
         req:        SubmitPublicJobRequest,
     ) -> tuple[str, bool]:
         if self.db is None:
@@ -329,9 +326,9 @@ class PublicStaticPipeline:
         self,
         job_id:           str,
         identity:         RepoIdentity,
-        commit_sha:       Optional[str],
-        branch:           Optional[str],
-        background_tasks: Optional[BackgroundTasks],
+        commit_sha:       str | None,
+        branch:           str | None,
+        background_tasks: BackgroundTasks | None,
     ) -> None:
         """
         Enqueue via FastAPI BackgroundTasks.

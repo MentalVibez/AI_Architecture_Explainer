@@ -14,11 +14,10 @@ Uses sync Session (matches the new public routes layer).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session
 
 from app.services.cache.cache_models import CacheHit, CacheWriteResult
 
@@ -55,9 +54,9 @@ def lookup_public_cache(
     repo_owner:  str,
     repo_name:   str,
     commit_sha:  str,
-    db:          Optional[Session] = None,
+    db:          Session | None = None,
     engine_version: str = ENGINE_VERSION,
-) -> Optional[CacheHit]:
+) -> CacheHit | None:
     """Return CacheHit if a non-expired entry exists, else None."""
     if db is None:
         return None
@@ -67,7 +66,7 @@ def lookup_public_cache(
     cache_key = make_public_cache_key(
         provider, repo_owner, repo_name, commit_sha, engine_version
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     entry = (
         db.query(PublicCacheEntry)
@@ -97,14 +96,14 @@ def write_public_cache(
     repo_name:   str,
     commit_sha:  str,
     ttl_seconds: int,
-    db:          Optional[Session] = None,
+    db:          Session | None = None,
     engine_version: str = ENGINE_VERSION,
 ) -> CacheWriteResult:
     """Upsert a cache entry after a public job completes."""
     cache_key  = make_public_cache_key(
         provider, repo_owner, repo_name, commit_sha, engine_version
     )
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+    expires_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
 
     if db is None:
         return CacheWriteResult(
@@ -149,10 +148,10 @@ def find_active_job(
     provider:    str,
     repo_owner:  str,
     repo_name:   str,
-    commit_sha:  Optional[str],
+    commit_sha:  str | None,
     scope:       str,
-    db:          Optional[Session] = None,
-) -> Optional[str]:
+    db:          Session | None = None,
+) -> str | None:
     """Return job_id if a queued or running job exists for this repo+commit."""
     if db is None:
         return None

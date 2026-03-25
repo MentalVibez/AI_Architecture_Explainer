@@ -9,6 +9,7 @@ challenge_claim(sentence_fragment) → list[SentenceTrace]
   source entries that support it. Empty = untraceable = audit flag.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
 

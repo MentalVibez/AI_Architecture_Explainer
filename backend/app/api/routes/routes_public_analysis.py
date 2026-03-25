@@ -16,23 +16,19 @@ Register in main.py:
 
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
+from app.api.deps import RequestContext, check_quota, resolve_account
 from app.db.session import get_db
-from app.api.deps import resolve_account, check_quota, RequestContext
-from app.services.policy.tier_policy import JobScope, JobStatus
 from app.schemas.public.analyze import (
+    AnalysisMetadata,
     ApiErrorResponse,
     CacheLookupResponse,
-    PublicAnalyzeRequest,
-    PublicAnalyzeResponse,
     PublicAnalysisResult,
     PublicAnalysisSummary,
-    AnalysisMetadata,
+    PublicAnalyzeRequest,
+    PublicAnalyzeResponse,
 )
 from app.services.cache.public_cache import lookup_public_cache
 from app.services.pipeline.public_static_pipeline import (
@@ -40,6 +36,7 @@ from app.services.pipeline.public_static_pipeline import (
     SubmitPublicJobRequest,
     assemble_public_result,
 )
+from app.services.policy.tier_policy import JobScope, JobStatus
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
@@ -182,10 +179,10 @@ async def get_public_analysis_summary(
 
     result = db.query(AnalysisResult).filter(AnalysisResult.job_id == job_id).first()
 
-    def _level(section: Optional[dict]) -> Optional[str]:
+    def _level(section: dict | None) -> str | None:
         return section.get("level") if section else None
 
-    def _score(section: Optional[dict]) -> Optional[int]:
+    def _score(section: dict | None) -> int | None:
         return section.get("overall_score") if section else None
 
     return PublicAnalysisSummary(

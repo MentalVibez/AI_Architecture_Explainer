@@ -2,6 +2,7 @@
 Detects tooling presence from the file tree — populates ToolingFacts boolean flags.
 """
 from pathlib import Path
+
 from ..models import RepoFacts
 
 README_NAMES = {"README.md", "README.rst", "README.txt", "README"}

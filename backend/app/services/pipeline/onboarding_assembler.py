@@ -24,10 +24,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.services.contracts.onboarding_models import ScanState
 
@@ -138,7 +137,7 @@ def _write_section_failed(
 # Deserialization helpers — used by the API route and tests
 # ─────────────────────────────────────────────────────────
 
-def deserialize_section(raw: Optional[dict], model_class):
+def deserialize_section(raw: dict | None, model_class):
     """
     Deserialize stored JSONB/dict to a typed model.
       None      → section not yet run
@@ -160,16 +159,16 @@ def deserialize_section(raw: Optional[dict], model_class):
         )
 
 
-def deserialize_setup_risk(raw: Optional[dict]):
+def deserialize_setup_risk(raw: dict | None):
     from app.services.contracts.onboarding_models import SetupRisk
     return deserialize_section(raw, SetupRisk)
 
 
-def deserialize_debug_readiness(raw: Optional[dict]):
+def deserialize_debug_readiness(raw: dict | None):
     from app.services.contracts.onboarding_models import DebugReadiness
     return deserialize_section(raw, DebugReadiness)
 
 
-def deserialize_change_risk(raw: Optional[dict]):
+def deserialize_change_risk(raw: dict | None):
     from app.services.contracts.change_risk_models import ChangeRisk
     return deserialize_section(raw, ChangeRisk)

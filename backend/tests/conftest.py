@@ -16,14 +16,15 @@ SQLite gaps acknowledged:
 """
 
 import os
+
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("ATLAS_JWT_SECRET", "test-secret-do-not-use-in-prod")
 
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Generator
+from collections.abc import Generator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import FastAPI
@@ -32,10 +33,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db.session import get_db
-from app.models.analysis import Base, Account
 from app.api.routes.routes_public_analysis import router as public_router
-
+from app.db.session import get_db
+from app.models.analysis import Account, Base
 
 # ─────────────────────────────────────────────────────────
 # SQLite compatibility patches — applied once at session start
@@ -137,7 +137,8 @@ def _build_app() -> FastAPI:
     # Minimal protected test route — lets us test quota enforcement
     # via HTTP without needing a real /api/public/analyze submission
     from fastapi import Depends
-    from app.api.deps import resolve_account, check_quota
+
+    from app.api.deps import check_quota, resolve_account
     from app.services.policy.tier_policy import JobScope
 
     @app.get("/_test/public-quota")
@@ -231,7 +232,7 @@ def make_account(
 def make_jwt(account_id: str, expired: bool = False) -> str:
     """Generate a signed test JWT."""
     from jose import jwt
-    now   = datetime.now(timezone.utc)
+    now   = datetime.now(UTC)
     delta = timedelta(hours=-2) if expired else timedelta(hours=1)
     return jwt.encode(
         {"sub": account_id, "exp": now + delta},

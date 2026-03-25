@@ -10,9 +10,10 @@ Grouping logic:
 One grouped finding is more honest than a wall of noise.
 """
 from collections import Counter
-from ..base import Rule
-from ...models.finding import Finding
+
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class LintDensityRule(Rule):
@@ -49,7 +50,6 @@ class LintDensityRule(Rule):
         evidence.insert(0, EvidenceItem(kind="metric", value=f"Total ruff issues: {total}"))
 
         # Identify most affected files
-        from pathlib import Path
         from collections import Counter as C2
         file_counts = C2(i.file for i in issues if i.file)
         top_files = [f for f, _ in file_counts.most_common(5)]

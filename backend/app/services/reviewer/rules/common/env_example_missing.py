@@ -5,9 +5,9 @@ Impact raised: -10 operational_readiness (was -8).
 Rationale: missing env documentation is a genuine deployment blocker,
 not a mild inconvenience. A developer cannot run the app without it.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class EnvExampleMissingRule(Rule):

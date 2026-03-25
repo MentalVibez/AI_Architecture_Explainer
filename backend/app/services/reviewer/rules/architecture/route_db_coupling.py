@@ -8,9 +8,10 @@ score lower on maintainability.
 What must NOT change: repos with clean service layers are unaffected.
 """
 from pathlib import Path
-from ..base import Rule
-from ...models.finding import Finding
+
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 DB_IMPORT_PATTERNS = {
     "sqlalchemy", "session", "SessionLocal", "get_db",
@@ -59,7 +60,7 @@ class RouteDbCouplingRule(Rule):
             rule_id=self.rule_id, title=self.title, category=self.category,
             severity="medium", confidence="low",
             layer="heuristic",
-            summary=f"Route files detected without service/repository layer separation.",
+            summary="Route files detected without service/repository layer separation.",
             why_it_matters="Mixing DB access with routing makes handlers untestable in isolation "
                            "and entangles request lifecycle with data access.",
             suggested_fix="Introduce a service layer. Route handlers should call services; "

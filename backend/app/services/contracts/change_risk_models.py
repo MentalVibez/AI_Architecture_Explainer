@@ -20,7 +20,7 @@ It does not answer "will this change break things." That is a runtime claim.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 # Re-use shared primitives from onboarding_models
@@ -31,7 +31,6 @@ from app.services.contracts.onboarding_models import (
     RiskLevel,
     ScanState,
 )
-
 
 # ─────────────────────────────────────────────────────────
 # Hotspot model
@@ -162,8 +161,8 @@ class ChangeRisk(BaseModel):
     """
     scan_state: ScanState
 
-    score:      Optional[int]       = None
-    level:      Optional[RiskLevel] = None
+    score:      int | None       = None
+    level:      RiskLevel | None = None
     confidence: float               = Field(default=0.0, ge=0.0, le=1.0)
 
     ci:             CISignal            = Field(default_factory=CISignal)

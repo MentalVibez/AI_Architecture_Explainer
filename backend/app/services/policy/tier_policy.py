@@ -16,7 +16,7 @@ Design rules:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+
 from pydantic import BaseModel
 
 # ─────────────────────────────────────────────────────────
@@ -339,7 +339,7 @@ def get_plan_limits(plan: BillingPlan) -> PlanLimits:
 def resolve_scope_for_plan(
     plan: BillingPlan,
     requested_scope: JobScope,
-) -> tuple[JobScope, Optional[str]]:
+) -> tuple[JobScope, str | None]:
     """
     Validate that a plan is allowed to request a given scope.
 

@@ -10,10 +10,9 @@ Calibration note from trust audit (2026-03-15):
     relative to source files, even on small repos
   - threshold lowered to catch thin test presence on small repos
 """
-from pathlib import Path
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 MIN_TEST_RATIO = 0.08       # tests should be ≥8% of source files
 MIN_TEST_LINES = 15         # a meaningful test file has ≥15 lines

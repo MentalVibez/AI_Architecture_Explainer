@@ -13,7 +13,8 @@ Handles:
 import json
 import time
 from pathlib import Path
-from .base import ToolAdapter, ToolIssue, AdapterResult, AdapterStatus
+
+from .base import AdapterResult, AdapterStatus, ToolAdapter, ToolIssue
 
 CVE_KEYWORDS_HIGH    = ("remote code", "arbitrary code", "rce", "authentication bypass")
 CVE_KEYWORDS_MEDIUM  = ("injection", "bypass", "escalation", "disclosure", "redirect", "forgery")

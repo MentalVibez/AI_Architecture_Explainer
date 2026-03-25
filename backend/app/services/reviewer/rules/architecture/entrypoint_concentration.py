@@ -7,9 +7,10 @@ What changes: repos with large entrypoints and no service layer should score low
 Note: requires facts.atlas_context.frameworks — skipped when framework unclear.
 """
 from pathlib import Path
-from ..base import Rule
-from ...models.finding import Finding
+
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 ENTRYPOINT_NAMES = {"main.py", "app.py", "server.py", "wsgi.py", "asgi.py",
                     "index.ts", "index.js", "index.tsx"}

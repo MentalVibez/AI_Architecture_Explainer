@@ -1,6 +1,6 @@
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 LARGE_THRESHOLD = 600
 

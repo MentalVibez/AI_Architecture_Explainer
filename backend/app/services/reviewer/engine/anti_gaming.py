@@ -10,8 +10,8 @@ Overall verdicts:
   surface_polish — 1-2 low-confidence gaming signals
   inconclusive   — mixed signals, needs human review
 """
-from ..models.report import AntiGamingBlock, GamingSignal
 from ..models.finding import Finding
+from ..models.report import AntiGamingBlock, GamingSignal
 
 GAMING_RULE_IDS = {
     "GAMING-FACADE-001",

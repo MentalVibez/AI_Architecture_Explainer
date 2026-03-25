@@ -1,6 +1,6 @@
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class PytestMissingRule(Rule):
@@ -30,7 +30,7 @@ class PytestMissingRule(Rule):
             suggested_fix="Add [tool.pytest.ini_options] to pyproject.toml and create a tests/ directory.",
             evidence=[
                 EvidenceItem(kind="config", value="No pytest config in pyproject.toml"),
-                EvidenceItem(kind="metric", value=f"test_file_count: 0"),
+                EvidenceItem(kind="metric", value="test_file_count: 0"),
             ],
             score_impact={"testing": -20},
             tags=self.tags,

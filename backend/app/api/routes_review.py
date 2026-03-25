@@ -6,8 +6,8 @@ Review API routes. Three endpoints:
 
 Beta feature: public GitHub repos only.
 """
-import uuid
 import logging
+import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -16,9 +16,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.middleware.rate_limit import check_review_rate_limit
 from app.models.review import Review
 from app.models.review_job import ReviewJob
-from app.middleware.rate_limit import check_review_rate_limit
 from app.services.review_worker import process_review_job
 from app.services.reviewer.utils.repo_url import normalize_repo_url
 

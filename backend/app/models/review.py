@@ -11,9 +11,9 @@ One Review row per completed job. Failed jobs get a Review row too
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 # JSONB on Postgres, plain JSON on SQLite (dev)
 _JSON = JSONB().with_variant(JSON(), "sqlite")

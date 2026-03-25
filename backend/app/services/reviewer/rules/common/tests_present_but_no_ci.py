@@ -7,9 +7,9 @@ What changes: repos with tests/ but no CI should score lower on testing than
 repos with both. Tests without CI = manual-only validation.
 What must NOT change: repos with both tests and CI are unaffected.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class TestsPresentButNoCIRule(Rule):

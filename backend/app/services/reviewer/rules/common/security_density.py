@@ -3,9 +3,10 @@ Tool-aware rule: detects when Bandit or Ruff-security findings are concentrated
 in entrypoint files, suggesting systemic rather than isolated security gaps.
 """
 from collections import Counter
-from ..base import Rule
-from ...models.finding import Finding
+
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 ENTRYPOINT_NAMES = {"main.py", "app.py", "server.py", "wsgi.py", "asgi.py", "index.ts", "index.js"}
 SECURITY_SEVERITY_THRESHOLD = ("critical", "high")

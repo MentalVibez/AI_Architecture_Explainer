@@ -33,10 +33,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.contracts.onboarding_models import ScanState
 
@@ -169,8 +168,9 @@ async def mark_onboarding_failed_if_needed(
             raise
     """
     try:
-        from app.models.analysis import AnalysisResult
         from sqlalchemy import select
+
+        from app.models.analysis import AnalysisResult
 
         row = await db.scalar(
             select(AnalysisResult).where(AnalysisResult.job_id == job_id)
@@ -205,7 +205,7 @@ async def mark_onboarding_failed_if_needed(
 # Deserialization helpers — used by the API route
 # ─────────────────────────────────────────────────────────
 
-def deserialize_section(raw: Optional[dict], model_class):
+def deserialize_section(raw: dict | None, model_class):
     """
     Deserialize stored JSONB to a typed model.
       None      → section not yet run
@@ -227,16 +227,16 @@ def deserialize_section(raw: Optional[dict], model_class):
         )
 
 
-def deserialize_setup_risk(raw: Optional[dict]):
+def deserialize_setup_risk(raw: dict | None):
     from app.services.contracts.onboarding_models import SetupRisk
     return deserialize_section(raw, SetupRisk)
 
 
-def deserialize_debug_readiness(raw: Optional[dict]):
+def deserialize_debug_readiness(raw: dict | None):
     from app.services.contracts.onboarding_models import DebugReadiness
     return deserialize_section(raw, DebugReadiness)
 
 
-def deserialize_change_risk(raw: Optional[dict]):
+def deserialize_change_risk(raw: dict | None):
     from app.services.contracts.change_risk_models import ChangeRisk
     return deserialize_section(raw, ChangeRisk)

@@ -2,6 +2,7 @@
 Runs applicable rules against facts. One failing rule does not abort the run.
 """
 import logging
+
 from ..facts.models import RepoFacts
 from ..models.finding import Finding
 from .registry import RuleRegistry

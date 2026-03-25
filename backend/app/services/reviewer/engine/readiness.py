@@ -6,8 +6,8 @@ and what would flip the verdict. Derived from structured report data — not LLM
 
 This is the "what would change the verdict" section the PRD called for.
 """
-from ..models.report import ReviewReport, Scorecard
 from ..models.finding import Finding
+from ..models.report import Scorecard
 
 
 def _findings_by_rule(findings: list[Finding]) -> dict[str, Finding]:

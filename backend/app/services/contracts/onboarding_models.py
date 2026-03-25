@@ -16,9 +16,8 @@ Design rules:
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 
 # ─────────────────────────────────────────────────────────
 # Core enums
@@ -54,7 +53,7 @@ class EvidenceSignal(BaseModel):
     """
     source_file: str
     rule: str
-    detail: Optional[str] = None
+    detail: str | None = None
 
 
 # ─────────────────────────────────────────────────────────
@@ -121,8 +120,8 @@ class SetupRisk(BaseModel):
     """
     scan_state: ScanState
 
-    score: Optional[int]        = None      # None only if SCAN_FAILED
-    level: Optional[RiskLevel]  = None      # None only if SCAN_FAILED
+    score: int | None        = None      # None only if SCAN_FAILED
+    level: RiskLevel | None  = None      # None only if SCAN_FAILED
     confidence: float           = Field(default=0.0, ge=0.0, le=1.0)
 
     missing_env_vars: list[str]         = Field(default_factory=list)
@@ -153,7 +152,7 @@ class LoggingSignal(BaseModel):
     print_only_detected is an explicit weak signal, not a positive result.
     """
     scan_state: ScanState                   = ScanState.NOT_FOUND
-    framework: Optional[str]               = None   # "structlog"|"loguru"|"stdlib_logging"|"pino"|"winston"
+    framework: str | None               = None   # "structlog"|"loguru"|"stdlib_logging"|"pino"|"winston"
     signals: list[EvidenceSignal]          = Field(default_factory=list)
     print_only_detected: bool              = False
 
@@ -161,8 +160,8 @@ class LoggingSignal(BaseModel):
 class ErrorHandlingSignal(BaseModel):
     """Result of the exception handler / error middleware detector."""
     scan_state: ScanState                   = ScanState.NOT_FOUND
-    framework: Optional[str]               = None
-    handler_type: Optional[str]            = None   # "exception_handler"|"middleware"|"error_boundary"
+    framework: str | None               = None
+    handler_type: str | None            = None   # "exception_handler"|"middleware"|"error_boundary"
     signals: list[EvidenceSignal]          = Field(default_factory=list)
 
 
@@ -222,8 +221,8 @@ class DebugReadiness(BaseModel):
     """
     scan_state: ScanState
 
-    score: Optional[int]        = None
-    level: Optional[RiskLevel]  = None
+    score: int | None        = None
+    level: RiskLevel | None  = None
     confidence: float           = Field(default=0.0, ge=0.0, le=1.0)
 
     logging:        LoggingSignal        = Field(default_factory=LoggingSignal)

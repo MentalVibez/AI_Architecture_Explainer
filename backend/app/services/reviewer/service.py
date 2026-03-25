@@ -22,28 +22,29 @@ Temp directory contract:
 import asyncio
 import logging
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from .utils.repo_url import normalize_repo_url
-from .facts.builder import build_facts
-from .engine.registry import build_default_registry
-from .engine.executor import execute
-from .engine.dedupe import deduplicate
-from .engine.coverage import build_coverage
-from .engine.confidence import compute_confidence_badge
-from .engine.depth import compute_depth
 from .engine.anti_gaming import build_anti_gaming_block
-from .engine.readiness import why_not_production_suitable, what_would_flip_verdict
-from .scoring.engine import compute_scorecard, compute_overall
-from .scoring.interpretation import interpret_report
+from .engine.confidence import compute_confidence_badge
+from .engine.coverage import build_coverage
+from .engine.dedupe import deduplicate
+from .engine.depth import compute_depth
+from .engine.executor import execute
+from .engine.readiness import what_would_flip_verdict, why_not_production_suitable
+from .engine.registry import build_default_registry
+from .facts.builder import build_facts
 from .llm.contract import build_llm_input
 from .llm.summaries import _deterministic_fallback
 from .models.report import (
-    ReviewReport, RepoMeta, ScoreInterpretation,
-    ReviewMeta, AnalysisDepthInfo,
+    AnalysisDepthInfo,
+    RepoMeta,
+    ReviewMeta,
+    ReviewReport,
+    ScoreInterpretation,
 )
+from .scoring.engine import compute_overall, compute_scorecard
+from .scoring.interpretation import interpret_report
+from .utils.repo_url import normalize_repo_url
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class ReviewError(Exception):
 async def run_review(
     repo_url: str,
     branch: str = "main",
-    commit: Optional[str] = None,
+    commit: str | None = None,
 ) -> ReviewReport:
     """
     Run a complete repo review. Always returns ReviewReport or raises ReviewError.
@@ -97,7 +98,7 @@ async def run_review(
             _run_review_impl(normalized.clone_url, normalized.canonical_url, branch, commit),
             timeout=REVIEW_TIMEOUT_SECS,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise ReviewError(
             "REVIEW_TIMEOUT",
             f"Review exceeded {REVIEW_TIMEOUT_SECS}s total budget",
@@ -116,7 +117,7 @@ async def _run_review_impl(
     clone_url: str,
     canonical_url: str,
     branch: str,
-    commit: Optional[str],
+    commit: str | None,
 ) -> ReviewReport:
     with tempfile.TemporaryDirectory() as tmp:
 
@@ -256,7 +257,7 @@ async def _clone(clone_url: str, branch: str, dest: str) -> str:
             _, stderr_b = await asyncio.wait_for(
                 proc.communicate(), timeout=CLONE_TIMEOUT_SECS
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             await proc.communicate()
             raise ReviewError("CLONE_FAILED",

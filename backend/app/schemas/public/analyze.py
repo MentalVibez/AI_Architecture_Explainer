@@ -14,11 +14,11 @@ Design rules:
 
 from __future__ import annotations
 
-from typing import Optional
-from pydantic import BaseModel, Field, field_validator
 import re
 
-from app.services.policy.tier_policy import JobScope, JobStatus, ErrorCode
+from pydantic import BaseModel, field_validator
+
+from app.services.policy.tier_policy import ErrorCode, JobScope, JobStatus
 
 # ─────────────────────────────────────────────────────────
 # Request
@@ -37,7 +37,7 @@ class PublicAnalyzeRequest(BaseModel):
     force_refresh bypasses the cache for this request (rate-limited).
     """
     repo_url:      str
-    branch:        Optional[str] = None
+    branch:        str | None = None
     force_refresh: bool          = False
 
     @field_validator("repo_url")
@@ -49,7 +49,7 @@ class PublicAnalyzeRequest(BaseModel):
         if parsed.scheme != "https":
             raise ValueError("repo_url must use https")
         if parsed.hostname not in _ALLOWED_HOSTS:
-            raise ValueError(f"repo_url must be a github.com or gitlab.com URL")
+            raise ValueError("repo_url must be a github.com or gitlab.com URL")
         # Must have owner/repo path segments
         parts = [p for p in parsed.path.strip("/").split("/") if p]
         if len(parts) < 2:
@@ -72,7 +72,7 @@ class PublicAnalyzeResponse(BaseModel):
     status:              JobStatus
     is_cache_hit:        bool
     poll_url:            str
-    estimated_seconds:   Optional[int]   = None
+    estimated_seconds:   int | None   = None
 
 # ─────────────────────────────────────────────────────────
 # Response — analysis result sections
@@ -86,13 +86,13 @@ class AnalysisMetadata(BaseModel):
     repo_owner:      str
     repo_name:       str
     repo_url:        str
-    commit_sha:      Optional[str]  = None
-    branch:          Optional[str]  = None
-    engine_version:  Optional[str]  = None
+    commit_sha:      str | None  = None
+    branch:          str | None  = None
+    engine_version:  str | None  = None
     is_cache_hit:    bool           = False
-    cache_key:       Optional[str]  = None
+    cache_key:       str | None  = None
     created_at:      str            # ISO 8601
-    completed_at:    Optional[str]  = None
+    completed_at:    str | None  = None
 
 class PublicAnalysisResult(BaseModel):
     """
@@ -106,16 +106,16 @@ class PublicAnalysisResult(BaseModel):
     """
     metadata:        AnalysisMetadata
     status:          JobStatus
-    error_code:      Optional[ErrorCode]  = None
-    error_message:   Optional[str]        = None
+    error_code:      ErrorCode | None  = None
+    error_message:   str | None        = None
 
     # Analysis sections (all Optional — populated on completion)
-    atlas_result:    Optional[dict]       = None
-    map_result:      Optional[dict]       = None
-    review_result:   Optional[dict]       = None
-    setup_risk:      Optional[dict]       = None
-    debug_readiness: Optional[dict]       = None
-    change_risk:     Optional[dict]       = None
+    atlas_result:    dict | None       = None
+    map_result:      dict | None       = None
+    review_result:   dict | None       = None
+    setup_risk:      dict | None       = None
+    debug_readiness: dict | None       = None
+    change_risk:     dict | None       = None
 
     # Tier disclosure — always present, always "static" for public
     analysis_tier:   str = "static"
@@ -133,11 +133,11 @@ class PublicAnalysisSummary(BaseModel):
     job_id:          str
     repo_url:        str
     status:          JobStatus
-    commit_sha:      Optional[str]  = None
-    setup_risk_level:       Optional[str]  = None   # low|medium|high|null
-    debug_readiness_level:  Optional[str]  = None
-    change_risk_level:      Optional[str]  = None
-    review_score:           Optional[int]  = None
+    commit_sha:      str | None  = None
+    setup_risk_level:       str | None  = None   # low|medium|high|null
+    debug_readiness_level:  str | None  = None
+    change_risk_level:      str | None  = None
+    review_score:           int | None  = None
     created_at:      str
 
 # ─────────────────────────────────────────────────────────
@@ -151,9 +151,9 @@ class CacheLookupResponse(BaseModel):
     hit = False means no cached result exists — submit a new analysis.
     """
     hit:       bool
-    job_id:    Optional[str]  = None
-    result_url: Optional[str] = None
-    expires_at: Optional[str] = None
+    job_id:    str | None  = None
+    result_url: str | None = None
+    expires_at: str | None = None
 
 # ─────────────────────────────────────────────────────────
 # Error response (shared)
@@ -163,5 +163,5 @@ class ApiErrorResponse(BaseModel):
     """Standard error envelope for all API error responses."""
     error_code:    str
     message:       str
-    detail:        Optional[str]  = None
-    retry_after_seconds: Optional[int] = None   # present on 429
+    detail:        str | None  = None
+    retry_after_seconds: int | None = None   # present on 429

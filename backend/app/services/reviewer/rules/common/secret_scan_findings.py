@@ -3,9 +3,9 @@ Tool-aware rule: surfaces high-confidence gitleaks findings as first-class findi
 One gitleaks match = one finding. This is the exception to grouping —
 each credential leak is an independent critical signal.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class SecretScanFindingsRule(Rule):

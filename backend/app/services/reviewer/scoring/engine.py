@@ -2,9 +2,10 @@
 Score engine with category-aware depth weighting.
 """
 from collections import defaultdict
+
+from ..engine.depth import AnalysisDepth
 from ..models.finding import Finding
 from ..models.report import Scorecard
-from ..engine.depth import AnalysisDepth
 from .weights import CATEGORY_WEIGHTS
 
 SEVERITY_WEIGHT = {
@@ -18,7 +19,8 @@ def compute_scorecard(
     findings: list[Finding],
     depth: AnalysisDepth = AnalysisDepth.STRUCTURAL_ONLY,
 ) -> Scorecard:
-    from .depth_weight import apply_depth_caps, findings_by_category as fbc
+    from .depth_weight import apply_depth_caps
+    from .depth_weight import findings_by_category as fbc
 
     domain_rule_penalties: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     for finding in findings:

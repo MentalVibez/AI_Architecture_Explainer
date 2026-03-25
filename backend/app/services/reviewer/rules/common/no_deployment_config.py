@@ -19,9 +19,10 @@ What changes: tutorial repos with no deployment config should score lower on ops
 What must NOT change: library repos or static sites (exempt by framework check).
 """
 from pathlib import Path
-from ..base import Rule
-from ...models.finding import Finding
+
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 DEPLOYMENT_FILE_SIGNALS = {
     "docker-compose.yml", "docker-compose.yaml", "compose.yml",

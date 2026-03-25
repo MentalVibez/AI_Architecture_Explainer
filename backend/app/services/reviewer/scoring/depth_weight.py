@@ -9,6 +9,7 @@ Key principle: a perfect score in a category we didn't measure
 is absence of evidence, not evidence of quality.
 """
 from dataclasses import dataclass
+
 from ..engine.depth import AnalysisDepth
 from ..models.report import Scorecard
 

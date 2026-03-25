@@ -4,7 +4,8 @@ Skips generated/vendor directories.
 """
 import os
 from pathlib import Path
-from ..models import RepoFacts, RepoStructure, FileMetric
+
+from ..models import FileMetric, RepoFacts, RepoStructure
 
 SKIP_DIRS = {
     "node_modules", ".next", "dist", "build", ".venv", "venv",

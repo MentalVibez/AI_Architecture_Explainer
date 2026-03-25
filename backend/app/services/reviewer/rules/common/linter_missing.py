@@ -6,9 +6,9 @@ Category: maintainability, developer_experience
 What changes: tutorial repos with no toolchain should drop DX and maintainability.
 What must NOT change: strong repos already have ruff/eslint configured.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class LinterMissingRule(Rule):

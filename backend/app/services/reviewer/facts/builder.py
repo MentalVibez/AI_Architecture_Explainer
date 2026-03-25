@@ -9,8 +9,8 @@ Pipeline order:
   5. metrics         — file sizes, test/source/router counts
   6. adapters        — ruff, bandit, gitleaks (parallel-safe, optional)
 """
+from .collectors import language_detector, manifests, metrics, repo_structure, tooling
 from .models import RepoFacts
-from .collectors import repo_structure, tooling, manifests, metrics, language_detector
 
 
 def build_facts(
@@ -34,9 +34,10 @@ def build_facts(
     adapter_results: dict = {}
 
     if run_adapters:
-        from ..adapters.registry import build_default_adapter_registry, run_adapters as _run
-        from ..facts.models import ToolIssue as FactsToolIssue
         from ..adapters.base import ToolIssue as AdapterToolIssue
+        from ..adapters.registry import build_default_adapter_registry
+        from ..adapters.registry import run_adapters as _run
+        from ..facts.models import ToolIssue as FactsToolIssue
 
         registry = build_default_adapter_registry()
         all_issues, adapter_results = _run(registry, facts, repo_path)

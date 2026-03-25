@@ -38,9 +38,9 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
-from tests.conftest import make_account, make_jwt
+from datetime import UTC
 
+from tests.conftest import make_account, make_jwt
 
 # ─────────────────────────────────────────────────────────
 # Auth tests
@@ -143,11 +143,11 @@ class TestQuota:
         assert resp.status_code == 200
 
     def test_authenticated_at_limit_returns_429(self, client, db):
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
         limit = 10  # FREE_PLAN_LIMITS.daily_public_analyses
         # quota_reset_at in the future prevents reset_quota_if_needed
         # from zeroing the counter before the limit check runs
-        future = datetime.now(timezone.utc) + timedelta(hours=12)
+        future = datetime.now(UTC) + timedelta(hours=12)
         account, raw_key = make_account(
             db, plan="free", daily_public_count=limit,
             quota_reset_at=future, with_api_key=True
@@ -180,8 +180,8 @@ class TestQuota:
 
     def test_quota_reset_after_window_elapsed(self, client, db):
         """Account at limit but reset window has elapsed → quota resets → 200."""
-        from datetime import datetime, timedelta, timezone
-        past = datetime.now(timezone.utc) - timedelta(hours=1)
+        from datetime import datetime, timedelta
+        past = datetime.now(UTC) - timedelta(hours=1)
         limit = 10
         account, raw_key = make_account(
             db, plan="free",

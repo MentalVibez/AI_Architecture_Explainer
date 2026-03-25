@@ -28,9 +28,8 @@ from __future__ import annotations
 import logging
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ async def run_public_static_analysis(
     job_id:     str,
     repo_url:   str,
     branch:     str        = "main",
-    commit_sha: Optional[str] = None,
+    commit_sha: str | None = None,
 ) -> None:
     """
     Entry point for the public static analysis background task.
@@ -47,9 +46,10 @@ async def run_public_static_analysis(
     This is what BackgroundTasks calls. Owns the full job lifecycle
     for a public analysis job.
     """
+    from sqlalchemy import select
+
     from app.core.database import async_session_factory
     from app.models.analysis import AnalysisJob, AnalysisResult
-    from sqlalchemy import select
 
     log.info("public_worker_started job_id=%s repo=%s", job_id, repo_url)
 
@@ -77,7 +77,7 @@ async def run_public_static_analysis(
 
         # ── Mark running ────────────────────────────────
         job.status     = "running"
-        job.started_at = datetime.now(timezone.utc)
+        job.started_at = datetime.now(UTC)
         await db.commit()
 
         try:
@@ -111,8 +111,8 @@ async def run_public_static_analysis(
 
                 # ── 4. Onboarding analysis (three analyzers) ──
                 from app.services.pipeline.onboarding_assembler_async import (
-                    run_onboarding_analysis,
                     mark_onboarding_failed_if_needed,
+                    run_onboarding_analysis,
                 )
                 await run_onboarding_analysis(
                     job_id    = job_id,
@@ -123,8 +123,6 @@ async def run_public_static_analysis(
 
                 # ── 5. Write cache entry ────────────────
                 if commit_sha:
-                    from app.services.cache.public_cache import write_public_cache
-                    from app.services.policy.tier_policy import PUBLIC_WORKER_POLICY
                     # Cache needs sync session — pass None to skip if no sync db
                     # (cache is best-effort; a miss on next request just re-runs)
                     # TODO: if you need cache writes, pass a sync session here
@@ -132,7 +130,7 @@ async def run_public_static_analysis(
 
             # ── 6. Mark complete ────────────────────────
             job.status       = "complete"
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             await db.commit()
 
             log.info("public_worker_completed job_id=%s", job_id)
@@ -149,7 +147,7 @@ async def run_public_static_analysis(
             job.status        = "failed"
             job.error_code    = "WORKER_ERROR"
             job.error_message = f"{type(exc).__name__}: {str(exc)[:300]}"
-            job.completed_at  = datetime.now(timezone.utc)
+            job.completed_at  = datetime.now(UTC)
             await db.commit()
 
 
@@ -203,7 +201,7 @@ async def _clone_repo(repo_url: str, dest: Path, branch: str) -> None:
         raise RuntimeError(f"Clone timed out (120s): {repo_url}")
 
 
-def _read_head_sha(repo_path: Path) -> Optional[str]:
+def _read_head_sha(repo_path: Path) -> str | None:
     """Read the HEAD commit SHA from the cloned repo."""
     import subprocess
     try:

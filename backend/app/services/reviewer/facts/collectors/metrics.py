@@ -2,6 +2,7 @@
 Derives higher-level metrics (test count, source count, router count) from the fact store.
 """
 from pathlib import Path
+
 from ..models import RepoFacts
 
 

@@ -6,9 +6,9 @@ Category: developer_experience
 What changes: tutorial repos with no toolchain should drop DX further.
 What must NOT change: strong repos with black/prettier already configured.
 """
-from ..base import Rule
-from ...models.finding import Finding
 from ...models.evidence import EvidenceItem
+from ...models.finding import Finding
+from ..base import Rule
 
 
 class FormatterMissingRule(Rule):

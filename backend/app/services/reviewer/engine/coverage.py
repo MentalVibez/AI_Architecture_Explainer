@@ -2,10 +2,9 @@
 Builds the ReviewCoverage block from facts + adapter results.
 This is what makes the report honest about what it could and could not inspect.
 """
-from ..models.report import ReviewCoverage, AdapterCoverage
-from ..facts.models import RepoFacts
 from ..adapters.base import AdapterResult, AdapterStatus
-
+from ..facts.models import RepoFacts
+from ..models.report import AdapterCoverage, ReviewCoverage
 
 SUPPORTED_LANGUAGES = {"python", "typescript", "javascript", "docker"}
 LANGUAGE_RULES_AVAILABLE = {"python", "typescript", "javascript"}
