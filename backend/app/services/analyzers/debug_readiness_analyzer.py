@@ -26,12 +26,10 @@ Design rules:
 
 from __future__ import annotations
 
-import ast
 import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional
 
 from app.services.contracts.onboarding_models import (
     DebugReadiness,
@@ -92,7 +90,7 @@ def _walk_source(repo_path: Path, extensions: set[str]):
         yield path
 
 
-def _read_text_safe(path: Path) -> Optional[str]:
+def _read_text_safe(path: Path) -> str | None:
     try:
         return path.read_text(encoding="utf-8", errors="replace")
     except Exception:
@@ -134,9 +132,8 @@ def detect_logging(repo_path: Path) -> LoggingSignal:
     Plain print() sets print_only_detected=True but NOT scan_state=FOUND.
     """
     signals:           list[EvidenceSignal] = []
-    found_framework:   Optional[str]        = None
+    found_framework:   str | None        = None
     print_only:        bool                 = False
-    scan_errors:       list[str]            = []
 
     # Python — check by priority order
     for py_file in _walk_source(repo_path, _PYTHON_EXT):

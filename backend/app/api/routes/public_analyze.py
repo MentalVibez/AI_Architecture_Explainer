@@ -16,38 +16,26 @@ Every stub has a comment showing the exact implementation needed.
 
 from __future__ import annotations
 
-from typing import Optional
-
+# Imports from tier_spec (adjust paths for your real repo layout)
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-# Imports from tier_spec (adjust paths for your real repo layout)
-import os
+from app.api.deps import check_quota, resolve_account
 from app.schemas.public.analyze import (
     ApiErrorResponse,
     CacheLookupResponse,
-    PublicAnalyzeRequest,
-    PublicAnalyzeResponse,
     PublicAnalysisResult,
     PublicAnalysisSummary,
-    AnalysisMetadata,
+    PublicAnalyzeRequest,
+    PublicAnalyzeResponse,
 )
-from app.services.policy.tier_policy import JobStatus, JobScope
-
-from app.api.deps import resolve_account, check_quota
 from app.services.cache.public_cache import (
     lookup_public_cache,
-    make_public_cache_key,
-    ENGINE_VERSION,
 )
 from app.services.pipeline.public_static_pipeline import (
     PublicStaticPipeline,
     SubmitPublicJobRequest,
-    parse_repo_url,
 )
-from app.services.pipeline.claim_enforcer import (
-    ClaimEnforcer,
-    build_public_static_disclosure,
-)
+from app.services.policy.tier_policy import JobScope
 
 router = APIRouter(prefix="/api/public", tags=["public"])
 
@@ -150,9 +138,7 @@ async def get_public_analysis(
             **enforcer.as_response_fields(),
         )
     """
-    # STUB — return a placeholder that proves the claim fields are always present
-    from app.services.policy.tier_policy import AnalysisTier
-    enforcer = ClaimEnforcer(AnalysisTier.STATIC)
+    # STUB — return 404 until DB is wired
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail={"error_code": "job_not_found", "message": f"Job {job_id} not found"},

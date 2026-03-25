@@ -28,7 +28,6 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -84,8 +83,8 @@ def _walk(repo_path: Path, extensions: set[str]):
         if not p.is_file() or p.suffix not in extensions:
             continue
         parts = p.relative_to(repo_path).parts
-        if any(x in (node_modules := {"node_modules", "__pycache__", ".venv", "venv", ".git"})
-               for x in parts[:-1]):
+        _skip = {"node_modules", "__pycache__", ".venv", "venv", ".git"}
+        if any(x in _skip for x in parts[:-1]):
             continue
         yield p
 

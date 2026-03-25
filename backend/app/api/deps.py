@@ -24,30 +24,29 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Optional
+import os
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, Header, HTTPException, Request, status
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-
-log = logging.getLogger(__name__)
-
-import os
-
 from app.services.policy.tier_policy import (
-    BillingPlan,
     FREE_PLAN_LIMITS,
+    BillingPlan,
     JobScope,
     PlanLimits,
     get_plan_limits,
 )
 
+log = logging.getLogger(__name__)
+
 try:
-    from jose import JWTError, jwt as jose_jwt
+    from jose import JWTError
+    from jose import jwt as jose_jwt
     _JWT_AVAILABLE = True
 except ImportError:
     _JWT_AVAILABLE = False
@@ -64,21 +63,21 @@ _BEARER_PREFIX  = "Bearer "
 
 @dataclass
 class RequestContext:
-    account_id:    Optional[str]
+    account_id:    str | None
     plan:          BillingPlan
     limits:        PlanLimits
     is_anonymous:  bool
-    scope_allowed: Optional[JobScope] = None
+    scope_allowed: JobScope | None = None
 
     @classmethod
-    def anonymous(cls) -> "RequestContext":
+    def anonymous(cls) -> RequestContext:
         return cls(
             account_id=None, plan=BillingPlan.FREE,
             limits=FREE_PLAN_LIMITS, is_anonymous=True,
         )
 
     @classmethod
-    def from_account(cls, account) -> "RequestContext":
+    def from_account(cls, account) -> RequestContext:
         plan = BillingPlan(account.plan)
         return cls(
             account_id=str(account.id), plan=plan,
@@ -91,8 +90,8 @@ class RequestContext:
 
 def resolve_account(
     request: Request,
-    authorization: Optional[str]   = Header(None),
-    x_atlas_api_key: Optional[str] = Header(None, alias=_API_KEY_HEADER),
+    authorization: str | None   = Header(None),
+    x_atlas_api_key: str | None = Header(None, alias=_API_KEY_HEADER),
     db: Session                    = Depends(get_db),
 ) -> RequestContext:
 
@@ -109,7 +108,7 @@ def resolve_account(
 
     return RequestContext.anonymous()
 
-def _resolve_by_api_key(key: str, db: Optional[Session]) -> Optional[RequestContext]:
+def _resolve_by_api_key(key: str, db: Session | None) -> RequestContext | None:
     """
     Hash the raw key with SHA-256 and look up accounts.api_key_hash.
 
@@ -132,7 +131,7 @@ def _resolve_by_api_key(key: str, db: Optional[Session]) -> Optional[RequestCont
             return None
         account = (
             db.query(Account)
-            .filter(Account.api_key_hash == hashed, Account.is_active == True)
+            .filter(Account.api_key_hash == hashed, Account.is_active)
             .first()
         )
         return RequestContext.from_account(account) if account else None
@@ -140,7 +139,7 @@ def _resolve_by_api_key(key: str, db: Optional[Session]) -> Optional[RequestCont
         log.warning("api_key_lookup_failed: %s", exc)
         return None
 
-def _resolve_by_jwt(token: str, db: Optional[Session]) -> Optional[RequestContext]:
+def _resolve_by_jwt(token: str, db: Session | None) -> RequestContext | None:
     """
     Decode HS256 JWT. The `sub` claim must be the account UUID.
 
@@ -167,7 +166,7 @@ def _resolve_by_jwt(token: str, db: Optional[Session]) -> Optional[RequestContex
 
         account = (
             db.query(Account)
-            .filter(Account.id == account_id, Account.is_active == True)
+            .filter(Account.id == account_id, Account.is_active)
             .first()
         )
         return RequestContext.from_account(account) if account else None
@@ -312,7 +311,7 @@ def check_quota(scope: JobScope) -> Callable:
 def increment_quota(
     ctx:   RequestContext,
     scope: JobScope,
-    db:    Optional[Session] = None,
+    db:    Session | None = None,
 ) -> None:
     """
     Increment the daily usage counter for an authenticated account.
@@ -360,12 +359,12 @@ def reset_quota_if_needed(account, db: Session) -> None:
     Timezone note: SQLite returns naive datetimes; Postgres returns aware ones.
     We normalise quota_reset_at to UTC-aware before comparing.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     reset_at = account.quota_reset_at
     if reset_at is not None:
         # Normalise: if the stored value is naive, assume it was stored as UTC
         if reset_at.tzinfo is None:
-            reset_at = reset_at.replace(tzinfo=timezone.utc)
+            reset_at = reset_at.replace(tzinfo=UTC)
         if reset_at > now:
             return  # not due
 
@@ -384,6 +383,6 @@ def reset_quota_if_needed(account, db: Session) -> None:
         # Do not re-raise — a failed reset must not block the request.
 
 def _seconds_until_midnight_utc() -> int:
-    now      = datetime.now(timezone.utc)
+    now      = datetime.now(UTC)
     midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return int((midnight - now).total_seconds())

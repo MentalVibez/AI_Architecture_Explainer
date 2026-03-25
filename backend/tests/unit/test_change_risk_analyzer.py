@@ -20,11 +20,19 @@ Design rules:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
+from app.services.analyzers.change_risk_analyzer import (
+    analyze_change_risk,
+    detect_ci_signals,
+    detect_config_risk,
+    detect_hotspots,
+    detect_migration_risk,
+    detect_test_gates,
+    score_change_risk,
+)
 from app.services.contracts.change_risk_models import (
     BlastRadiusHotspot,
     ChangeRisk,
@@ -37,16 +45,6 @@ from app.services.contracts.change_risk_models import (
     TestGateSignal,
 )
 from app.services.contracts.onboarding_models import RiskLevel, ScanState
-from app.services.analyzers.change_risk_analyzer import (
-    analyze_change_risk,
-    detect_ci_signals,
-    detect_config_risk,
-    detect_hotspots,
-    detect_migration_risk,
-    detect_test_gates,
-    score_change_risk,
-)
-
 
 # ─────────────────────────────────────────────────────────
 # Fixtures
@@ -344,7 +342,7 @@ class TestDetectHotspots:
     def test_every_hotspot_has_path(self, repo_with_auth_middleware):
         result = detect_hotspots(repo_with_auth_middleware)
         for hotspot in result.hotspots:
-            assert hotspot.path, f"Hotspot missing path"
+            assert hotspot.path, "Hotspot missing path"
 
     def test_every_hotspot_has_evidence(self, repo_with_auth_middleware):
         result = detect_hotspots(repo_with_auth_middleware)
@@ -365,8 +363,7 @@ class TestDetectHotspots:
             "import os\nSECRET = os.getenv('SECRET')\n"
         )
         result = detect_hotspots(tmp_path)
-        categories = [h.category for h in result.hotspots]
-        paths      = [h.path for h in result.hotspots]
+        paths = [h.path for h in result.hotspots]
         # Paths within same category should be sorted
         assert paths == sorted(paths)
 
@@ -438,9 +435,9 @@ class TestScoreChangeRisk:
         evidence = ChangeRiskEvidence()
         result = score_change_risk(evidence)
         for risk in result.risks:
-            assert risk.category, f"RiskItem missing category"
-            assert risk.rule,     f"RiskItem missing rule"
-            assert risk.reason,   f"RiskItem missing reason"
+            assert risk.category, "RiskItem missing category"
+            assert risk.rule,     "RiskItem missing rule"
+            assert risk.reason,   "RiskItem missing reason"
 
     def test_every_risk_has_evidence(self):
         evidence = ChangeRiskEvidence()
