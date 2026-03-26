@@ -8,6 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import update
 
+from app.api.routes.intelligence import router as intelligence_router
 from app.api.routes.routes_public_analysis import router as public_analyze_router
 from app.api.routes_analysis import router as analysis_router
 from app.api.routes_health import router as health_router
@@ -17,6 +18,8 @@ from app.api.routes_review import router as review_router
 from app.api.scout import router as scout_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, Base, engine
+from app.models.analysis import AnalysisJob as PublicAnalysisJob
+from app.models.analysis import Base as AnalysisBase
 from app.models.analysis_job import AnalysisJob
 from app.models.review_job import ReviewJob
 
@@ -36,6 +39,11 @@ async def _recover_stale_jobs() -> None:
             .values(status="failed", error_message="Server restarted during analysis")
         )
         await db.execute(
+            update(PublicAnalysisJob)
+            .where(PublicAnalysisJob.status == "running")
+            .values(status="failed", error_message="Server restarted during analysis")
+        )
+        await db.execute(
             update(ReviewJob)
             .where(ReviewJob.status == "running")
             .values(status="failed", error_message="Server restarted during review")
@@ -47,6 +55,7 @@ async def _recover_stale_jobs() -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(AnalysisBase.metadata.create_all)
     await _recover_stale_jobs()
     yield
 
@@ -76,3 +85,4 @@ app.include_router(scout_router)
 app.include_router(map_router)
 app.include_router(review_router)
 app.include_router(public_analyze_router)
+app.include_router(intelligence_router, prefix="/api")

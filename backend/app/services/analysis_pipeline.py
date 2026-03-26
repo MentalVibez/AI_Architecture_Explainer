@@ -1,7 +1,11 @@
 """Orchestrates the full repo analysis pipeline."""
+import logging
 from typing import Any
 
+from app.core.config import settings
 from app.services import framework_detector, github_service, manifest_parser
+
+logger = logging.getLogger(__name__)
 
 # Filenames to always attempt to fetch (matched by basename, not full path)
 PRIORITY_FILENAMES = {
@@ -26,12 +30,37 @@ PRIORITY_FILENAMES = {
 _MAX_PRIORITY_DEPTH = 2
 
 
-async def run_analysis(owner: str, repo: str) -> dict[str, Any]:
-    """Run full analysis pipeline and return structured evidence."""
+async def run_analysis(owner: str, repo: str) -> tuple[dict[str, Any], Any]:
+    """
+    Run full analysis pipeline.
+    Returns (evidence_dict, intel_result|None).
+    intel_result is a PipelineResult from intelligence_pipeline.py — caller
+    is responsible for persisting it to the DB.
+    """
     metadata = await github_service.get_repo_metadata(owner, repo)
     default_branch = metadata.get("default_branch", "HEAD")
 
     tree = await github_service.get_repo_tree(owner, repo, default_branch)
+
+    # Run the deep intelligence pipeline (non-blocking — errors logged, not raised)
+    intel_result = None
+    try:
+        from app.services.intelligence_pipeline import IntelligencePipeline, PipelineConfig
+        _config = PipelineConfig(
+            github_token=getattr(settings, "github_token", None),
+            anthropic_api_key=settings.anthropic_api_key,
+        )
+        intel_result = await IntelligencePipeline(_config).run(
+            f"https://github.com/{owner}/{repo}", tree, ref=default_branch
+        )
+        if not intel_result.succeeded:
+            logger.warning(
+                "Intelligence pipeline incomplete for %s/%s: %s",
+                owner, repo, intel_result.stage_errors,
+            )
+    except Exception:
+        logger.exception("Intelligence pipeline failed for %s/%s — continuing without it", owner, repo)
+
     tree_paths = [item["path"] for item in tree if item["type"] == "blob"]
 
     # Collect priority file paths: match by basename at depth <= _MAX_PRIORITY_DEPTH
@@ -72,7 +101,7 @@ async def run_analysis(owner: str, repo: str) -> dict[str, Any]:
         default=None,
     )
 
-    return {
+    evidence = {
         "repo": {"owner": owner, "name": repo, "default_branch": default_branch},
         "detected_stack": detected_stack,
         "npm_dependencies": npm_deps,
@@ -81,3 +110,4 @@ async def run_analysis(owner: str, repo: str) -> dict[str, Any]:
         "fetched_files": list(file_contents.keys()),
         "readme": file_contents.get(readme_path, "") if readme_path else "",
     }
+    return evidence, intel_result
