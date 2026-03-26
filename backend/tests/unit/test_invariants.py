@@ -18,16 +18,8 @@ Every change here needs a reason in SEMANTICS.md.
 
 from __future__ import annotations
 
-
 import pytest
-from typing import List
 
-from app.services.deep_scanner import (
-    build_code_contexts,
-    build_file_intelligence,
-    is_generated,
-    should_skip,
-)
 from app.schemas.intelligence import (
     SCHEMA_VERSION,
     CodeFinding,
@@ -36,7 +28,12 @@ from app.schemas.intelligence import (
     FileIntelligence,
     RepoIntelligence,
 )
-
+from app.services.deep_scanner import (
+    build_code_contexts,
+    build_file_intelligence,
+    is_generated,
+    should_skip,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -46,7 +43,7 @@ def fi(path: str, content: str = "") -> FileIntelligence:
     return build_file_intelligence(path, content or f"# {path}\n")
 
 
-def chain(*paths: str) -> List[FileIntelligence]:
+def chain(*paths: str) -> list[FileIntelligence]:
     """
     Build a linear import chain: paths[0] imports paths[1], which imports paths[2], etc.
     The first file is always named main.py (or uses the given path) so it is
@@ -74,7 +71,7 @@ def chain(*paths: str) -> List[FileIntelligence]:
     return files
 
 
-def entrypoint_chain(depth: int) -> List[FileIntelligence]:
+def entrypoint_chain(depth: int) -> list[FileIntelligence]:
     """
     Build a linear chain of `depth+1` files starting from main.py.
     main.py → mod1.py → mod2.py → ... → mod{depth}.py

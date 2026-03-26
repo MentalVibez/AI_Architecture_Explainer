@@ -26,7 +26,6 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 from app.schemas.intelligence import (
     CRITICAL_PATH_ALGORITHM,
@@ -34,8 +33,6 @@ from app.schemas.intelligence import (
     SCHEMA_VERSION,
     ConfidenceBreakdown,
     RepoIntelligence,
-    ScanMetadata,
-    TruthLabels,
     UITruthLabel,
 )
 
@@ -51,9 +48,9 @@ SCORECARD_TIMEOUT_SECONDS = 30
 class PipelineConfig:
     """Runtime configuration for a single pipeline execution."""
     # GitHub access
-    github_token: Optional[str] = None
+    github_token: str | None = None
     # Anthropic access — required for ContextReviewer LLM stage
-    anthropic_api_key: Optional[str] = None
+    anthropic_api_key: str | None = None
     # LLM model to use for reviews
     llm_model: str = "claude-sonnet-4-6"
     # Whether to run LLM review at all
@@ -64,7 +61,7 @@ class PipelineConfig:
     scan_timeout: float = DEEP_SCAN_TIMEOUT_SECONDS
     review_timeout: float = REVIEW_TIMEOUT_SECONDS
     # TypeScript path aliases (if known ahead of time)
-    ts_aliases: Optional[Dict[str, str]] = None
+    ts_aliases: dict[str, str] | None = None
 
 
 @dataclass
@@ -74,9 +71,9 @@ class PipelineResult:
     Always returned — even if stages fail, partial results are included.
     """
     intelligence: RepoIntelligence
-    scorecard: Optional[object] = None  # ProductionScore from scorecard.py
-    stage_timings: Dict[str, float] = field(default_factory=dict)
-    stage_errors: Dict[str, str] = field(default_factory=dict)
+    scorecard: object | None = None  # ProductionScore from scorecard.py
+    stage_timings: dict[str, float] = field(default_factory=dict)
+    stage_errors: dict[str, str] = field(default_factory=dict)
     total_duration_seconds: float = 0.0
 
     @property
@@ -112,8 +109,8 @@ class IntelligencePipeline:
 
     def _init_services(self) -> None:
         """Lazy import services to avoid circular deps and allow testing."""
-        from app.services.deep_scanner import DeepScanner
         from app.services.context_reviewer import ContextReviewer
+        from app.services.deep_scanner import DeepScanner
         from app.services.scorecard import build_scorecard
 
         self._scanner = DeepScanner(github_token=self.config.github_token)
@@ -127,7 +124,7 @@ class IntelligencePipeline:
     async def run(
         self,
         repo_url: str,
-        file_tree: List[Dict],
+        file_tree: list[dict],
         ref: str = "HEAD",
     ) -> PipelineResult:
         """
@@ -139,8 +136,8 @@ class IntelligencePipeline:
           3. scorecard   — evidence-backed scoring
         """
         start = time.monotonic()
-        timings: Dict[str, float] = {}
-        errors: Dict[str, str] = {}
+        timings: dict[str, float] = {}
+        errors: dict[str, str] = {}
 
         # Parse repo URL into owner/name
         owner, name = _parse_repo_url(repo_url)
@@ -166,7 +163,7 @@ class IntelligencePipeline:
                 f"DeepScan complete: {scan_result.scan_metadata.files_scanned} files, "
                 f"gc={scan_result.graph_confidence:.3f}"
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             timings["deep_scan"] = round(time.monotonic() - t0, 2)
             errors["deep_scan"] = f"Timeout after {self.config.scan_timeout}s"
             logger.error(f"DeepScan timed out for {repo_url}")
@@ -197,10 +194,10 @@ class IntelligencePipeline:
             )
             timings["review"] = round(time.monotonic() - t0, 2)
             logger.info(f"Review complete: {len(findings)} findings")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             timings["review"] = round(time.monotonic() - t0, 2)
             errors["review"] = f"Timeout after {self.config.review_timeout}s"
-            logger.warning(f"Review timed out — proceeding with empty findings")
+            logger.warning("Review timed out — proceeding with empty findings")
         except Exception as e:
             timings["review"] = round(time.monotonic() - t0, 2)
             errors["review"] = f"{type(e).__name__}: {e}"
@@ -280,8 +277,8 @@ class IntelligencePipeline:
         repo_url: str,
         owner: str,
         name: str,
-        timings: Dict[str, float],
-        errors: Dict[str, str],
+        timings: dict[str, float],
+        errors: dict[str, str],
         start: float,
     ) -> PipelineResult:
         """Minimal result when the scan stage itself fails."""
@@ -321,7 +318,7 @@ def _parse_repo_url(repo_url: str) -> tuple[str, str]:
     return parts[0], parts[1]
 
 
-def _build_repo_summary(scan_result) -> Dict:
+def _build_repo_summary(scan_result) -> dict:
     """
     Build the structured summary passed to ContextReviewer.
     This is what the LLM sees about the repo — it must be facts, not guesses.

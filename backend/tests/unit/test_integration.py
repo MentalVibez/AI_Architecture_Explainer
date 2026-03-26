@@ -21,14 +21,8 @@ What these tests prove:
 
 from __future__ import annotations
 
-
-import asyncio
 import pytest
-from typing import Dict, List
 
-from app.services.deep_scanner import build_file_intelligence, build_code_contexts, DeepScanResult
-from app.services.scorecard import build_scorecard
-from app.services.report_builder import ReportBuilder
 from app.schemas.intelligence import (
     GRAPH_SEMANTICS_VERSION,
     SCHEMA_VERSION,
@@ -38,13 +32,15 @@ from app.schemas.intelligence import (
     ScanMetadata,
     TruthLabels,
 )
-
+from app.services.deep_scanner import DeepScanResult, build_code_contexts, build_file_intelligence
+from app.services.report_builder import ReportBuilder
+from app.services.scorecard import build_scorecard
 
 # ---------------------------------------------------------------------------
 # Synthetic repo content
 # ---------------------------------------------------------------------------
 
-SYNTHETIC_REPO: Dict[str, str] = {
+SYNTHETIC_REPO: dict[str, str] = {
     "app/main.py": """\
 from fastapi import FastAPI
 from app.api.routes.analyze import router
@@ -128,7 +124,7 @@ jobs:
 }
 
 
-def build_synthetic_files() -> List[FileIntelligence]:
+def build_synthetic_files() -> list[FileIntelligence]:
     return [
         build_file_intelligence(path, content, size_bytes=len(content))
         for path, content in SYNTHETIC_REPO.items()

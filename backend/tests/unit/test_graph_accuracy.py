@@ -17,36 +17,32 @@ Test philosophy:
 
 from __future__ import annotations
 
-
 import pytest
-from typing import Dict, List, Set, Tuple
 
+from app.schemas.intelligence import DependencyEdge, FileIntelligence
 from app.services.deep_scanner import (
     build_code_contexts,
     build_file_intelligence,
-    should_skip,
     is_generated,
+    should_skip,
 )
-from app.schemas.intelligence import DependencyEdge, FileIntelligence
 from tests.fixtures.golden_repos import (
     ALL_GOLDEN_REPOS,
-    GoldenRepo,
-    ExpectedEdge,
-    SMALL_PYTHON_SERVICE,
-    NEXTJS_WITH_ALIASES,
-    MONOREPO_PACKAGES,
     BARREL_EXPORTS,
+    MONOREPO_PACKAGES,
+    NEXTJS_WITH_ALIASES,
     PARSE_FAILURES,
+    SMALL_PYTHON_SERVICE,
     STALE_README,
+    GoldenRepo,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test harness
 # Builds FileIntelligence objects from fixture content and runs the graph.
 # ---------------------------------------------------------------------------
 
-def build_fixture_files(repo: GoldenRepo) -> List[FileIntelligence]:
+def build_fixture_files(repo: GoldenRepo) -> list[FileIntelligence]:
     """
     Convert a GoldenRepo's file dict into FileIntelligence objects.
     Uses the real build_file_intelligence() — no mocking.
@@ -58,20 +54,20 @@ def build_fixture_files(repo: GoldenRepo) -> List[FileIntelligence]:
     return files
 
 
-def run_fixture(repo: GoldenRepo) -> Tuple[
-    Dict,           # contexts
-    List[DependencyEdge],  # edges
+def run_fixture(repo: GoldenRepo) -> tuple[
+    dict,           # contexts
+    list[DependencyEdge],  # edges
     float,          # graph_confidence
 ]:
     files = build_fixture_files(repo)
     return build_code_contexts(files, ts_aliases=repo.ts_aliases)
 
 
-def edge_key(e: DependencyEdge) -> Tuple[str, str, str]:
+def edge_key(e: DependencyEdge) -> tuple[str, str, str]:
     return (e.source_path, e.target_path or "", e.confidence)
 
 
-def confirmed_edge_pairs(edges: List[DependencyEdge]) -> Set[Tuple[str, str]]:
+def confirmed_edge_pairs(edges: list[DependencyEdge]) -> set[tuple[str, str]]:
     """Return set of (source, target) for confirmed edges only."""
     return {
         (e.source_path, e.target_path)
@@ -729,7 +725,7 @@ def test_all_expected_edges_confirmed(repo: GoldenRepo):
     assert not missing, (
         f"\nGolden repo '{repo.name}' has missing expected edges:\n"
         + "\n".join(missing)
-        + f"\n\nActual confirmed edges:\n"
+        + "\n\nActual confirmed edges:\n"
         + "\n".join(f"  {s} → {t}" for s, t in sorted(confirmed))
     )
 

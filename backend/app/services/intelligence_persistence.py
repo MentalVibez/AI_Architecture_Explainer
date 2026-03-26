@@ -11,7 +11,7 @@ from those rows — used by the intelligence API endpoints.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -179,7 +179,7 @@ async def persist_intelligence(
 async def load_intelligence(
     result_id: int,
     db: AsyncSession,
-) -> Tuple[Any, Any]:
+) -> tuple[Any, Any]:
     """
     Load RepoIntelligence + ProductionScore from the five intelligence tables.
 
@@ -189,7 +189,6 @@ async def load_intelligence(
     from app.models.intelligence import (
         CodeFindingORM,
         DependencyEdgeORM,
-        DimensionScoreORM,
         FileIntelligenceORM,
         ProductionScoreORM,
     )
@@ -207,7 +206,7 @@ async def load_intelligence(
     )
 
     # --- Load file intelligence rows ---
-    file_rows: List[FileIntelligenceORM] = (
+    file_rows: list[FileIntelligenceORM] = (
         await db.execute(
             select(FileIntelligenceORM).where(FileIntelligenceORM.result_id == result_id)
         )
@@ -217,21 +216,21 @@ async def load_intelligence(
         raise ValueError(f"No intelligence data for result_id={result_id}")
 
     # --- Load dependency edge rows ---
-    edge_rows: List[DependencyEdgeORM] = (
+    edge_rows: list[DependencyEdgeORM] = (
         await db.execute(
             select(DependencyEdgeORM).where(DependencyEdgeORM.result_id == result_id)
         )
     ).scalars().all()
 
     # --- Load finding rows ---
-    finding_rows: List[CodeFindingORM] = (
+    finding_rows: list[CodeFindingORM] = (
         await db.execute(
             select(CodeFindingORM).where(CodeFindingORM.result_id == result_id)
         )
     ).scalars().all()
 
     # --- Load scorecard (eager-loads dimension_scores via selectin) ---
-    score_row: Optional[ProductionScoreORM] = (
+    score_row: ProductionScoreORM | None = (
         await db.execute(
             select(ProductionScoreORM).where(ProductionScoreORM.result_id == result_id)
         )
@@ -239,7 +238,7 @@ async def load_intelligence(
 
     # --- Reconstruct FileIntelligence objects ---
     files = []
-    contexts: Dict[str, CodeContext] = {}
+    contexts: dict[str, CodeContext] = {}
 
     for row in file_rows:
         fi = FileIntelligence(
@@ -350,7 +349,7 @@ async def load_intelligence(
     if score_row is not None:
         from app.services.scorecard import DimensionScore, ProductionScore
 
-        dimension_scores: Dict[str, DimensionScore] = {}
+        dimension_scores: dict[str, DimensionScore] = {}
         for dim_row in score_row.dimension_scores:
             deductions = (
                 [d for d in dim_row.deductions_text.split("\n") if d]

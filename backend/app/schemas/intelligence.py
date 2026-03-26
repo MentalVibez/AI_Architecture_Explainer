@@ -11,9 +11,10 @@ Rule: Every downstream system consumes these. Never bypass them.
 
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional, Tuple
-from pydantic import BaseModel, Field, field_validator, model_validator
 import uuid
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Schema version — bump on any breaking change to these contracts.
 # Downstream consumers (DB, API, frontend) check this before deserializing.
@@ -70,9 +71,9 @@ class FileIntelligence(BaseModel):
     role: FileRole
 
     # Structural facts — extracted deterministically
-    imports: List[str] = Field(default_factory=list)
-    exports: List[str] = Field(default_factory=list)
-    dependencies: List[str] = Field(
+    imports: list[str] = Field(default_factory=list)
+    exports: list[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(
         default_factory=list,
         description="External packages/modules this file depends on",
     )
@@ -89,17 +90,17 @@ class FileIntelligence(BaseModel):
     class_count: int = Field(default=0, ge=0)
 
     # Risk signals — patterns found, not inferred
-    external_calls: List[str] = Field(
+    external_calls: list[str] = Field(
         default_factory=list,
         description="Outbound HTTP calls, DB queries, subprocess calls, etc.",
     )
-    sensitive_operations: List[str] = Field(
+    sensitive_operations: list[str] = Field(
         default_factory=list,
         description="Patterns like: exec(), eval(), os.system(), raw SQL, hardcoded secrets",
     )
 
     # Framework fingerprints
-    framework_signals: List[str] = Field(
+    framework_signals: list[str] = Field(
         default_factory=list,
         description="e.g. ['fastapi', 'sqlalchemy', 'pytest']",
     )
@@ -119,7 +120,7 @@ class FileIntelligence(BaseModel):
         le=1.0,
         description="How reliably was this file parsed? 1.0=fully parsed, <0.5=partial/failed",
     )
-    parse_errors: List[str] = Field(
+    parse_errors: list[str] = Field(
         default_factory=list,
         description="Any parsing errors encountered — never silently dropped",
     )
@@ -141,25 +142,25 @@ class CodeContext(BaseModel):
     file_path: str
 
     # Relationship graph
-    upstream_callers: List[str] = Field(
+    upstream_callers: list[str] = Field(
         default_factory=list,
         description="Files that import or call this file",
     )
-    downstream_dependencies: List[str] = Field(
+    downstream_dependencies: list[str] = Field(
         default_factory=list,
         description="Files this file imports or calls",
     )
-    related_files: List[str] = Field(
+    related_files: list[str] = Field(
         default_factory=list,
         description="Sibling files with high coupling (same module, same domain)",
     )
 
     # Architectural positioning
-    service_boundary: Optional[str] = Field(
+    service_boundary: str | None = Field(
         default=None,
         description="Which service or module owns this file, e.g. 'auth', 'payments'",
     )
-    entrypoint_chain: List[str] = Field(
+    entrypoint_chain: list[str] = Field(
         default_factory=list,
         description="Execution path from the nearest entrypoint to this file",
     )
@@ -209,7 +210,7 @@ class DependencyEdge(BaseModel):
     as a path through confirmed edges.
     """
     source_path: str = Field(..., description="Repo-relative path of the importing file")
-    target_path: Optional[str] = Field(
+    target_path: str | None = Field(
         default=None,
         description="Repo-relative path of the imported file. None if unresolved.",
     )
@@ -256,7 +257,7 @@ class DependencyEdge(BaseModel):
     ]] = None
 
     @model_validator(mode="after")
-    def target_required_if_confirmed(self) -> "DependencyEdge":
+    def target_required_if_confirmed(self) -> DependencyEdge:
         if self.confidence == "confirmed" and not self.target_path:
             raise ValueError("target_path is required when confidence is 'confirmed'")
         return self
@@ -334,7 +335,7 @@ class ConfidenceBreakdown(BaseModel):
         extraction: float,
         graph: float,
         finding: float,
-    ) -> "ConfidenceBreakdown":
+    ) -> ConfidenceBreakdown:
         score = min(
             0.97,
             round(
@@ -395,7 +396,7 @@ class CodeFinding(BaseModel):
         ...,
         description="Why this is a problem. Must reference the specific code pattern.",
     )
-    remediation: Optional[str] = Field(
+    remediation: str | None = Field(
         default=None,
         description="Concrete fix suggestion. Optional but strongly preferred.",
     )
@@ -411,7 +412,7 @@ class CodeFinding(BaseModel):
 
     # Suppression
     is_suppressed: bool = False
-    suppression_reason: Optional[str] = None
+    suppression_reason: str | None = None
 
     @field_validator("line_end")
     @classmethod
@@ -470,7 +471,7 @@ class OptimizationCandidate(BaseModel):
     after_snippet: str = Field(..., description="Exact replacement code")
 
     # Impact prediction — honest estimates, not guarantees
-    expected_score_impact: Dict[str, int] = Field(
+    expected_score_impact: dict[str, int] = Field(
         default_factory=dict,
         description="e.g. {'security': +20, 'maintainability': +5}",
     )
@@ -490,7 +491,7 @@ class OptimizationCandidate(BaseModel):
         default=False,
         description="True if this change modifies a public API or exported function signature",
     )
-    affected_files: List[str] = Field(
+    affected_files: list[str] = Field(
         default_factory=list,
         description="Other files that may need updates if this change is applied",
     )
@@ -508,7 +509,7 @@ class ScanMetadata(BaseModel):
     files_skipped: int
     files_failed: int
     parse_success_rate: float = Field(ge=0.0, le=1.0)
-    languages_detected: Dict[str, int] = Field(
+    languages_detected: dict[str, int] = Field(
         default_factory=dict,
         description="Language → file count",
     )
@@ -573,7 +574,7 @@ class UITruthLabel(BaseModel):
         ...,
         description="Full explanation shown on hover/expand.",
     )
-    limitation_ref: Optional[str] = Field(
+    limitation_ref: str | None = Field(
         default=None,
         description=(
             "Reference to LIMITATIONS.md entry if this label indicates a known gap. "
@@ -740,7 +741,7 @@ class TruthLabels:
         )
 
     @staticmethod
-    def from_unresolved_reason(reason: Optional[str]) -> UITruthLabel:
+    def from_unresolved_reason(reason: str | None) -> UITruthLabel:
         """Map an UnresolvedReason code to the correct UITruthLabel."""
         dispatch = {
             "ambiguous_package_import": TruthLabels.unresolved_package_import,
@@ -753,7 +754,7 @@ class TruthLabels:
         return factory()
 
     @staticmethod
-    def from_confidence_breakdown(cb: "ConfidenceBreakdown", unresolved_count: int = 0) -> UITruthLabel:
+    def from_confidence_breakdown(cb: ConfidenceBreakdown, unresolved_count: int = 0) -> UITruthLabel:
         """Map a ConfidenceBreakdown to the appropriate confidence label."""
         if cb.score_label == "HIGH":
             return TruthLabels.confidence_high()
@@ -775,35 +776,35 @@ class RepoIntelligence(BaseModel):
     critical_path_algorithm: str = CRITICAL_PATH_ALGORITHM
 
     # Core outputs
-    files: List[FileIntelligence] = Field(default_factory=list)
-    contexts: Dict[str, CodeContext] = Field(
+    files: list[FileIntelligence] = Field(default_factory=list)
+    contexts: dict[str, CodeContext] = Field(
         default_factory=dict,
         description="file_path → CodeContext",
     )
-    edges: List[DependencyEdge] = Field(
+    edges: list[DependencyEdge] = Field(
         default_factory=list,
         description="All dependency edges. Includes confirmed, inferred, and unresolved.",
     )
-    findings: List[CodeFinding] = Field(default_factory=list)
-    candidates: List[OptimizationCandidate] = Field(default_factory=list)
+    findings: list[CodeFinding] = Field(default_factory=list)
+    candidates: list[OptimizationCandidate] = Field(default_factory=list)
 
     # Scan quality
-    scan_metadata: Optional[ScanMetadata] = None
-    confidence: Optional[ConfidenceBreakdown] = None
+    scan_metadata: ScanMetadata | None = None
+    confidence: ConfidenceBreakdown | None = None
 
     # Convenience accessors
     @property
-    def confirmed_edges(self) -> List[DependencyEdge]:
+    def confirmed_edges(self) -> list[DependencyEdge]:
         return [e for e in self.edges if e.confidence == "confirmed"]
 
     @property
-    def unresolved_edges(self) -> List[DependencyEdge]:
+    def unresolved_edges(self) -> list[DependencyEdge]:
         return [e for e in self.edges if e.confidence == "unresolved"]
 
     @property
-    def unresolved_by_reason(self) -> Dict[str, List[DependencyEdge]]:
+    def unresolved_by_reason(self) -> dict[str, list[DependencyEdge]]:
         """Group unresolved edges by their reason code for reporting."""
-        result: Dict[str, List[DependencyEdge]] = {}
+        result: dict[str, list[DependencyEdge]] = {}
         for edge in self.unresolved_edges:
             key = edge.unresolved_reason or "unknown"
             result.setdefault(key, []).append(edge)

@@ -17,16 +17,14 @@ they require real subprocess environments.
 
 from __future__ import annotations
 
-
 import pytest
-from typing import List
 
 from app.services.repair_engine import (
     AUTO_APPLY_ELIGIBLE_CLASSES,
     CONFIDENCE_BRANCH_PATCH,
     CONFIDENCE_SUGGESTION,
-    NEVER_AUTO_PATCH,
     MAX_FILES_PER_REPAIR,
+    NEVER_AUTO_PATCH,
     FailureClassifier,
     FailureEvent,
     RepairProposal,
@@ -34,7 +32,6 @@ from app.services.repair_engine import (
     ValidationResult,
     _title_for_class,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -58,7 +55,7 @@ def make_proposal(
     failure_class: str = "broken_import",
     confidence: float = 0.92,
     patch: str = "--- a/app/main.py\n+++ b/app/main.py\n@@ -1 +1 @@\n-from app.old import X\n+from app.new import X",
-    files: List[str] = None,
+    files: list[str] = None,
     risk: str = "low",
     auto_eligible: bool = False,
 ) -> RepairProposal:

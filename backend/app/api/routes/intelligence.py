@@ -20,9 +20,9 @@ Integration with existing routes:
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +40,7 @@ class TruthLabelOut(BaseModel):
     variant: str
     short: str
     detail: str
-    limitation_ref: Optional[str] = None
+    limitation_ref: str | None = None
 
 
 class ConfidenceBreakdownOut(BaseModel):
@@ -53,8 +53,8 @@ class ConfidenceBreakdownOut(BaseModel):
 class GraphSummaryOut(BaseModel):
     total_files: int
     files_scanned: int
-    entrypoints: List[str]
-    critical_path_files: List[str]
+    entrypoints: list[str]
+    critical_path_files: list[str]
     critical_path_algorithm: str
     graph_semantics_version: int
     graph_confidence: float
@@ -68,14 +68,14 @@ class DimensionScoreOut(BaseModel):
     dimension: str
     score: int
     label: str
-    deductions: List[str]
+    deductions: list[str]
     finding_count: int
 
 
 class ScorecardOut(BaseModel):
     composite_score: int
     composite_label: str
-    dimensions: List[DimensionScoreOut]
+    dimensions: list[DimensionScoreOut]
     total_findings: int
     findings_by_severity: dict
     confidence: float
@@ -94,7 +94,7 @@ class FindingOut(BaseModel):
     evidence_snippet: str
     title: str
     explanation: str
-    remediation: Optional[str] = None
+    remediation: str | None = None
     score_impact: int
     confidence: float
 
@@ -108,7 +108,7 @@ class FileOut(BaseModel):
     loc: int
     complexity_score: float
     caller_count: int
-    sensitive_operations: List[str]
+    sensitive_operations: list[str]
     confidence: float
     was_truncated: bool
     truth_label: TruthLabelOut
@@ -116,11 +116,11 @@ class FileOut(BaseModel):
 
 class EdgeOut(BaseModel):
     source_path: str
-    target_path: Optional[str]
+    target_path: str | None
     raw_import: str
     kind: str
     confidence: str
-    unresolved_reason: Optional[str] = None
+    unresolved_reason: str | None = None
     truth_label: TruthLabelOut
 
 
@@ -131,7 +131,7 @@ class IntelligenceReportOut(BaseModel):
     schema_version: str
     graph_semantics_version: int
     graph: GraphSummaryOut
-    scorecard: Optional[ScorecardOut]
+    scorecard: ScorecardOut | None
     overall_confidence: float
     confidence_breakdown: ConfidenceBreakdownOut
     confidence_truth_label: TruthLabelOut
@@ -183,7 +183,7 @@ async def get_intelligence_report(
 async def get_scorecard(
     result_id: str,
     db: AsyncSession = Depends(_get_db),
-) -> Optional[ScorecardOut]:
+) -> ScorecardOut | None:
     ri, scorecard = await _load_result(result_id, db)
     if scorecard is None:
         raise HTTPException(404, detail="Scorecard not available for this result")
@@ -195,7 +195,7 @@ async def get_scorecard(
 
 @router.get(
     "/results/{result_id}/findings",
-    response_model=List[FindingOut],
+    response_model=list[FindingOut],
     summary="Code findings",
     description=(
         "Returns all non-suppressed findings for this analysis, "
@@ -205,13 +205,13 @@ async def get_scorecard(
 )
 async def get_findings(
     result_id: str,
-    severity: Optional[str] = Query(None, description="Filter by severity: critical|high|medium|low"),
-    category: Optional[str] = Query(None, description="Filter by category"),
-    file_path: Optional[str] = Query(None, description="Filter by file path prefix"),
+    severity: str | None = Query(None, description="Filter by severity: critical|high|medium|low"),
+    category: str | None = Query(None, description="Filter by category"),
+    file_path: str | None = Query(None, description="Filter by file path prefix"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(_get_db),
-) -> List[FindingOut]:
+) -> list[FindingOut]:
     ri, scorecard = await _load_result(result_id, db)
     from app.services.report_builder import ReportBuilder
     builder = ReportBuilder()
@@ -252,7 +252,7 @@ async def get_graph_summary(
 
 @router.get(
     "/results/{result_id}/files",
-    response_model=List[FileOut],
+    response_model=list[FileOut],
     summary="Scanned files with truth labels",
     description=(
         "Returns all scanned files sorted by importance (entrypoints first, "
@@ -263,11 +263,11 @@ async def get_graph_summary(
 async def get_files(
     result_id: str,
     critical_only: bool = Query(False, description="Return only critical path files"),
-    role: Optional[str] = Query(None, description="Filter by role: entrypoint|service|module|test|..."),
+    role: str | None = Query(None, description="Filter by role: entrypoint|service|module|test|..."),
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(_get_db),
-) -> List[FileOut]:
+) -> list[FileOut]:
     ri, scorecard = await _load_result(result_id, db)
     from app.services.report_builder import ReportBuilder
     builder = ReportBuilder()
@@ -285,7 +285,7 @@ async def get_files(
 
 @router.get(
     "/results/{result_id}/edges",
-    response_model=List[EdgeOut],
+    response_model=list[EdgeOut],
     summary="Dependency edges",
     description=(
         "Returns all dependency edges (confirmed and unresolved). "
@@ -295,12 +295,12 @@ async def get_files(
 )
 async def get_edges(
     result_id: str,
-    confidence: Optional[str] = Query(None, description="Filter by confidence: confirmed|unresolved"),
-    reason: Optional[str] = Query(None, description="Filter unresolved by reason code"),
+    confidence: str | None = Query(None, description="Filter by confidence: confirmed|unresolved"),
+    reason: str | None = Query(None, description="Filter unresolved by reason code"),
     limit: int = Query(500, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(_get_db),
-) -> List[EdgeOut]:
+) -> list[EdgeOut]:
     ri, scorecard = await _load_result(result_id, db)
     from app.services.report_builder import ReportBuilder
     builder = ReportBuilder()
@@ -362,7 +362,7 @@ def _graph_to_out(graph) -> GraphSummaryOut:
     )
 
 
-def _scorecard_to_out(scorecard) -> Optional[ScorecardOut]:
+def _scorecard_to_out(scorecard) -> ScorecardOut | None:
     if scorecard is None:
         return None
     return ScorecardOut(

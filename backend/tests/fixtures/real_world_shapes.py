@@ -24,18 +24,18 @@ Repo shapes covered:
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+
+from dataclasses import dataclass
 
 
 @dataclass
 class RealWorldExpectation:
     """What we expect from a real-world shaped repo."""
-    entrypoint_paths: List[str]         # Must be detected as entrypoints
-    critical_paths: List[str]           # Must be on critical path
-    not_critical_paths: List[str]       # Must NOT be on critical path
-    confirmed_edges: List[tuple]        # (source, target) pairs that must be confirmed
-    external_imports_absent: List[str]  # These must never appear as edge targets
+    entrypoint_paths: list[str]         # Must be detected as entrypoints
+    critical_paths: list[str]           # Must be on critical path
+    not_critical_paths: list[str]       # Must NOT be on critical path
+    confirmed_edges: list[tuple]        # (source, target) pairs that must be confirmed
+    external_imports_absent: list[str]  # These must never appear as edge targets
     min_graph_confidence: float
 
 
@@ -45,9 +45,9 @@ class RealWorldFixture:
     real_repo: str
     observed_at: str
     description: str
-    files: Dict[str, str]
+    files: dict[str, str]
     expectations: RealWorldExpectation
-    ts_aliases: Optional[Dict[str, str]] = None
+    ts_aliases: dict[str, str] | None = None
 
 
 # ---------------------------------------------------------------------------

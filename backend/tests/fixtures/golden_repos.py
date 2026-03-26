@@ -18,8 +18,8 @@ No network. No LLM. Pure deterministic regression.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+
+from dataclasses import dataclass
 
 
 @dataclass
@@ -39,12 +39,12 @@ class ExpectedEdge:
 class GoldenRepo:
     name: str
     description: str
-    files: Dict[str, str]          # path → content
-    expected_edges: List[ExpectedEdge]
-    expected_critical: List[str]   # paths that MUST be critical
-    expected_not_critical: List[str]  # paths that MUST NOT be critical
+    files: dict[str, str]          # path → content
+    expected_edges: list[ExpectedEdge]
+    expected_critical: list[str]   # paths that MUST be critical
+    expected_not_critical: list[str]  # paths that MUST NOT be critical
     expected_graph_confidence_min: float  # graph_confidence must be >= this
-    ts_aliases: Optional[Dict[str, str]] = None
+    ts_aliases: dict[str, str] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -549,7 +549,7 @@ def create_app():
 # All fixtures — used by test runner
 # ---------------------------------------------------------------------------
 
-ALL_GOLDEN_REPOS: List[GoldenRepo] = [
+ALL_GOLDEN_REPOS: list[GoldenRepo] = [
     SMALL_PYTHON_SERVICE,
     NEXTJS_WITH_ALIASES,
     MONOREPO_PACKAGES,

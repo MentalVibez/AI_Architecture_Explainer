@@ -22,14 +22,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from app.schemas.intelligence import (
     CodeContext,
     CodeFinding,
     FileIntelligence,
-    FindingCategory,
-    FindingSeverity,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Tied directly to finding categories + severities.
 # ---------------------------------------------------------------------------
 
-SCORE_DEDUCTIONS: Dict[str, Dict[str, int]] = {
+SCORE_DEDUCTIONS: dict[str, dict[str, int]] = {
     "security": {
         "critical": -25,
         "high": -15,
@@ -87,7 +85,7 @@ SCORE_DEDUCTIONS: Dict[str, Dict[str, int]] = {
 }
 
 # Specific pattern overrides (deterministic findings bypass LLM entirely)
-DETERMINISTIC_DEDUCTIONS: Dict[str, int] = {
+DETERMINISTIC_DEDUCTIONS: dict[str, int] = {
     "hardcoded_secret": -20,
     "eval_exec": -15,
     "subprocess_shell": -12,
@@ -109,17 +107,16 @@ DETERMINISTIC_DEDUCTIONS: Dict[str, int] = {
 def generate_deterministic_findings(
     fi: FileIntelligence,
     file_content: str,
-) -> List[CodeFinding]:
+) -> list[CodeFinding]:
     """
     Generates findings from known patterns without any LLM involvement.
     These are the highest-confidence findings.
     """
-    import re
 
-    findings: List[CodeFinding] = []
+    findings: list[CodeFinding] = []
     lines = file_content.splitlines()
 
-    PATTERN_META: Dict[str, tuple] = {
+    PATTERN_META: dict[str, tuple] = {
         "hardcoded_secret": (
             "security", "critical",
             "Hardcoded credential detected",
@@ -222,8 +219,8 @@ def build_review_prompt(
     fi: FileIntelligence,
     ctx: CodeContext,
     file_content: str,
-    repo_summary: Dict[str, Any],
-    existing_findings: List[CodeFinding],
+    repo_summary: dict[str, Any],
+    existing_findings: list[CodeFinding],
 ) -> str:
     """
     Builds a tightly scoped prompt for the LLM reviewer.
@@ -333,7 +330,7 @@ Return ONLY the JSON array. No markdown, no explanation, no preamble.
 def validate_llm_findings(
     raw_json: str,
     file_path: str,
-) -> List[CodeFinding]:
+) -> list[CodeFinding]:
     """
     Parses and validates LLM output.
     Discards any finding that doesn't meet the CodeFinding schema.
@@ -418,7 +415,7 @@ class ContextReviewer:
         # Provider is instantiated once per reviewer instance
         if enable_llm and anthropic_api_key:
             from app.llm.anthropic_provider import AnthropicProvider
-            self._provider: Optional[Any] = AnthropicProvider(api_key=anthropic_api_key)
+            self._provider: Any | None = AnthropicProvider(api_key=anthropic_api_key)
         else:
             self._provider = None
 
@@ -454,8 +451,8 @@ class ContextReviewer:
         fi: FileIntelligence,
         ctx: CodeContext,
         file_content: str,
-        repo_summary: Dict[str, Any],
-    ) -> List[CodeFinding]:
+        repo_summary: dict[str, Any],
+    ) -> list[CodeFinding]:
         """
         Returns all findings for a single file.
         Deterministic findings always run. LLM is conditional.
@@ -478,9 +475,9 @@ class ContextReviewer:
         fi: FileIntelligence,
         ctx: CodeContext,
         file_content: str,
-        repo_summary: Dict[str, Any],
-        existing_findings: List[CodeFinding],
-    ) -> List[CodeFinding]:
+        repo_summary: dict[str, Any],
+        existing_findings: list[CodeFinding],
+    ) -> list[CodeFinding]:
         if self._provider is None:
             return []
 
@@ -495,9 +492,9 @@ class ContextReviewer:
 
     @staticmethod
     def _deduplicate(
-        existing: List[CodeFinding],
-        new_findings: List[CodeFinding],
-    ) -> List[CodeFinding]:
+        existing: list[CodeFinding],
+        new_findings: list[CodeFinding],
+    ) -> list[CodeFinding]:
         """Remove new findings that overlap with existing ones by line range."""
         existing_ranges = {
             (f.file_path, f.line_start, f.line_end)
@@ -513,19 +510,19 @@ class ContextReviewer:
 
     async def review_repo(
         self,
-        files: List[FileIntelligence],
-        contexts: Dict[str, CodeContext],
-        file_contents: Dict[str, str],
-        repo_summary: Dict[str, Any],
+        files: list[FileIntelligence],
+        contexts: dict[str, CodeContext],
+        file_contents: dict[str, str],
+        repo_summary: dict[str, Any],
         max_concurrent: int = 5,
-    ) -> List[CodeFinding]:
+    ) -> list[CodeFinding]:
         """
         Reviews all files concurrently (bounded by semaphore).
         Returns the full findings list for the repository.
         """
         semaphore = __import__("asyncio").Semaphore(max_concurrent)
 
-        async def review_with_semaphore(fi: FileIntelligence) -> List[CodeFinding]:
+        async def review_with_semaphore(fi: FileIntelligence) -> list[CodeFinding]:
             async with semaphore:
                 ctx = contexts.get(fi.path)
                 content = file_contents.get(fi.path, "")
@@ -537,7 +534,7 @@ class ContextReviewer:
         tasks = [review_with_semaphore(fi) for fi in files]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        all_findings: List[CodeFinding] = []
+        all_findings: list[CodeFinding] = []
         for r in results:
             if isinstance(r, list):
                 all_findings.extend(r)

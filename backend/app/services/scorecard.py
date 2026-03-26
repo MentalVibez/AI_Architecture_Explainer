@@ -14,15 +14,12 @@ Design rules:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 from app.schemas.intelligence import (
     CodeFinding,
     FileIntelligence,
-    RepoIntelligence,
     ScanMetadata,
 )
-
 
 # ---------------------------------------------------------------------------
 # Scoring dimensions
@@ -41,7 +38,7 @@ DIMENSIONS = [
 BASE_SCORE = 100
 
 # Dimension weights for composite score
-DIMENSION_WEIGHTS: Dict[str, float] = {
+DIMENSION_WEIGHTS: dict[str, float] = {
     "security": 0.30,
     "performance": 0.15,
     "reliability": 0.20,
@@ -58,7 +55,7 @@ DIMENSION_FLOOR = 0
 # Test coverage scorer (deterministic from file scan)
 # ---------------------------------------------------------------------------
 
-def score_test_coverage(files: List[FileIntelligence]) -> tuple[int, str]:
+def score_test_coverage(files: list[FileIntelligence]) -> tuple[int, str]:
     """Returns (score, explanation)"""
     total = [f for f in files if f.language in ("python", "typescript", "javascript") and f.role != "config"]
     tests = [f for f in files if f.is_test]
@@ -84,7 +81,7 @@ def score_test_coverage(files: List[FileIntelligence]) -> tuple[int, str]:
 # Documentation scorer (deterministic from file scan)
 # ---------------------------------------------------------------------------
 
-def score_documentation(files: List[FileIntelligence]) -> tuple[int, str]:
+def score_documentation(files: list[FileIntelligence]) -> tuple[int, str]:
     source_files = [f for f in files if f.role not in ("test", "config", "migration", "infra", "unknown")]
     if not source_files:
         return (50, "No source files to evaluate")
@@ -116,8 +113,8 @@ class DimensionScore:
     raw_score: int              # Before confidence adjustment
     adjusted_score: int         # After confidence adjustment
     base: int = BASE_SCORE
-    deductions: List[str] = field(default_factory=list)   # Human-readable evidence
-    finding_ids: List[str] = field(default_factory=list)  # Traceable to findings
+    deductions: list[str] = field(default_factory=list)   # Human-readable evidence
+    finding_ids: list[str] = field(default_factory=list)  # Traceable to findings
     explanation: str = ""
 
     @property
@@ -136,19 +133,19 @@ class DimensionScore:
 
 @dataclass
 class ProductionScore:
-    dimension_scores: Dict[str, DimensionScore]
+    dimension_scores: dict[str, DimensionScore]
     composite_score: int
     composite_label: str
     confidence: float           # 0-1: how complete the scan was
     confidence_explanation: str
     total_findings: int
-    findings_by_severity: Dict[str, int]
-    before_optimization: Optional["ProductionScore"] = None  # Set when comparing
+    findings_by_severity: dict[str, int]
+    before_optimization: ProductionScore | None = None  # Set when comparing
 
 
 def build_scorecard(
-    findings: List[CodeFinding],
-    files: List[FileIntelligence],
+    findings: list[CodeFinding],
+    files: list[FileIntelligence],
     scan_metadata: ScanMetadata,
 ) -> ProductionScore:
     """
@@ -157,7 +154,7 @@ def build_scorecard(
     """
 
     # --- 1. Group findings by dimension ---
-    dimension_findings: Dict[str, List[CodeFinding]] = {d: [] for d in DIMENSIONS}
+    dimension_findings: dict[str, list[CodeFinding]] = {d: [] for d in DIMENSIONS}
     for f in findings:
         if not f.is_suppressed:
             cat = f.category
@@ -170,7 +167,7 @@ def build_scorecard(
                 dimension_findings["maintainability"].append(f)
 
     # --- 2. Score each dimension ---
-    dimension_scores: Dict[str, DimensionScore] = {}
+    dimension_scores: dict[str, DimensionScore] = {}
 
     for dim in DIMENSIONS:
         if dim == "test_coverage":
@@ -253,7 +250,7 @@ def build_scorecard(
     composite_label = _score_label(composite_score)
 
     # --- 6. Severity summary ---
-    severity_counts: Dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    severity_counts: dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for f in findings:
         if not f.is_suppressed:
             severity_counts[f.severity] = severity_counts.get(f.severity, 0) + 1
@@ -271,7 +268,7 @@ def build_scorecard(
 
 def _compute_confidence(
     scan_metadata: ScanMetadata,
-    files: List[FileIntelligence],
+    files: list[FileIntelligence],
 ) -> float:
     """
     Honest confidence calculation with two separated concerns:
@@ -371,7 +368,7 @@ def _score_label(score: int) -> str:
 def compare_scores(
     before: ProductionScore,
     after: ProductionScore,
-) -> Dict:
+) -> dict:
     """
     Produces a structured diff between pre- and post-optimization scores.
     Used by the Report layer to explain what changed and why.
@@ -414,7 +411,7 @@ def compare_scores(
 
 def _comparison_summary(
     composite_delta: int,
-    dimension_deltas: Dict,
+    dimension_deltas: dict,
     findings_resolved: int,
 ) -> str:
     if composite_delta <= 0:

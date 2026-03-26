@@ -19,22 +19,17 @@ The response shape produced here maps directly to the existing Atlas API contrac
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+from typing import Any
 
 from app.schemas.intelligence import (
-    CRITICAL_PATH_ALGORITHM,
-    GRAPH_SEMANTICS_VERSION,
-    SCHEMA_VERSION,
     CodeFinding,
     ConfidenceBreakdown,
     DependencyEdge,
-    FileIntelligence,
     RepoIntelligence,
     TruthLabels,
     UITruthLabel,
 )
-
 
 # ---------------------------------------------------------------------------
 # Response shape types
@@ -46,12 +41,12 @@ from app.schemas.intelligence import (
 @dataclass
 class EdgeResponse:
     source_path: str
-    target_path: Optional[str]
+    target_path: str | None
     raw_import: str
     kind: str
     confidence: str
-    unresolved_reason: Optional[str]
-    truth_label: Dict  # serialized UITruthLabel
+    unresolved_reason: str | None
+    truth_label: dict  # serialized UITruthLabel
 
 
 @dataclass
@@ -64,10 +59,10 @@ class FileResponse:
     loc: int
     complexity_score: float
     caller_count: int
-    sensitive_operations: List[str]
+    sensitive_operations: list[str]
     confidence: float
     was_truncated: bool
-    truth_label: Dict
+    truth_label: dict
 
 
 @dataclass
@@ -82,7 +77,7 @@ class FindingResponse:
     evidence_snippet: str
     title: str
     explanation: str
-    remediation: Optional[str]
+    remediation: str | None
     score_impact: int
     confidence: float
 
@@ -92,7 +87,7 @@ class DimensionScoreResponse:
     dimension: str
     score: int
     label: str
-    deductions: List[str]
+    deductions: list[str]
     finding_count: int
 
 
@@ -100,27 +95,27 @@ class DimensionScoreResponse:
 class ScorecardResponse:
     composite_score: int
     composite_label: str
-    dimensions: List[DimensionScoreResponse]
+    dimensions: list[DimensionScoreResponse]
     total_findings: int
-    findings_by_severity: Dict[str, int]
+    findings_by_severity: dict[str, int]
     confidence: float
     confidence_label: str
-    truth_label: Dict
+    truth_label: dict
 
 
 @dataclass
 class GraphSummaryResponse:
     total_files: int
     files_scanned: int
-    entrypoints: List[str]
-    critical_path_files: List[str]
+    entrypoints: list[str]
+    critical_path_files: list[str]
     critical_path_algorithm: str
     graph_semantics_version: int
     graph_confidence: float
     confirmed_edge_count: int
     unresolved_edge_count: int
-    unresolved_by_reason: Dict[str, int]
-    languages: Dict[str, int]
+    unresolved_by_reason: dict[str, int]
+    languages: dict[str, int]
 
 
 @dataclass
@@ -137,23 +132,23 @@ class AnalysisReportResponse:
 
     # Summary section — what the frontend shows first
     graph: GraphSummaryResponse
-    scorecard: Optional[ScorecardResponse]
+    scorecard: ScorecardResponse | None
 
     # Detailed data — loaded on demand by the frontend
-    files: List[FileResponse]
-    findings: List[FindingResponse]
-    edges: List[EdgeResponse]
+    files: list[FileResponse]
+    findings: list[FindingResponse]
+    edges: list[EdgeResponse]
 
     # Overall confidence — shown prominently in the UI
     overall_confidence: float
-    confidence_breakdown: Dict[str, float]
-    confidence_truth_label: Dict
+    confidence_breakdown: dict[str, float]
+    confidence_truth_label: dict
 
     # Scan metadata
     scan_duration_seconds: float
     total_files_in_repo: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dict for JSON response."""
         import dataclasses
         return dataclasses.asdict(self)
@@ -209,7 +204,7 @@ class ReportBuilder:
             total_files_in_repo=total_files,
         )
 
-    def _build_files(self, ri: RepoIntelligence) -> List[FileResponse]:
+    def _build_files(self, ri: RepoIntelligence) -> list[FileResponse]:
         ctx_map = ri.contexts
         responses = []
         for fi in ri.files:
@@ -224,8 +219,8 @@ class ReportBuilder:
                 label = UITruthLabel(
                     variant="degraded",
                     short="Partially scanned",
-                    detail=f"File exceeded size limit and was truncated. "
-                           f"Analysis covers the first portion only.",
+                    detail="File exceeded size limit and was truncated. "
+                           "Analysis covers the first portion only.",
                 )
             elif is_critical:
                 label = TruthLabels.critical_path_bfs()
@@ -255,7 +250,7 @@ class ReportBuilder:
         ))
         return responses
 
-    def _build_findings(self, findings: List[CodeFinding]) -> List[FindingResponse]:
+    def _build_findings(self, findings: list[CodeFinding]) -> list[FindingResponse]:
         responses = []
         for f in findings:
             if f.is_suppressed:
@@ -285,7 +280,7 @@ class ReportBuilder:
         ))
         return responses
 
-    def _build_edges(self, edges: List[DependencyEdge]) -> List[EdgeResponse]:
+    def _build_edges(self, edges: list[DependencyEdge]) -> list[EdgeResponse]:
         responses = []
         for e in edges:
             if e.confidence == "confirmed":
@@ -315,7 +310,7 @@ class ReportBuilder:
 
         confirmed_count = len(ri.confirmed_edges)
         unresolved_edges = ri.unresolved_edges
-        unresolved_by_reason: Dict[str, int] = {}
+        unresolved_by_reason: dict[str, int] = {}
         for e in unresolved_edges:
             key = e.unresolved_reason or "unknown"
             unresolved_by_reason[key] = unresolved_by_reason.get(key, 0) + 1
@@ -341,7 +336,7 @@ class ReportBuilder:
             languages=langs,
         )
 
-    def _build_scorecard(self, scorecard, confidence: Optional[ConfidenceBreakdown]) -> ScorecardResponse:
+    def _build_scorecard(self, scorecard, confidence: ConfidenceBreakdown | None) -> ScorecardResponse:
         dimensions = []
         for dim_name, dim_score in scorecard.dimension_scores.items():
             dimensions.append(DimensionScoreResponse(
@@ -380,8 +375,8 @@ class ReportBuilder:
         )
 
     def _build_confidence_breakdown(
-        self, cb: Optional[ConfidenceBreakdown]
-    ) -> Dict[str, float]:
+        self, cb: ConfidenceBreakdown | None
+    ) -> dict[str, float]:
         if not cb:
             return {
                 "extraction": 0.0,

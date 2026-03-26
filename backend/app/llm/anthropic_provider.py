@@ -1,5 +1,4 @@
 
-from typing import Optional
 
 import anthropic
 
@@ -9,7 +8,7 @@ MODEL = "claude-sonnet-4-6"
 
 
 class AnthropicProvider:
-    def __init__(self, api_key: Optional[str] = None) -> None:
+    def __init__(self, api_key: str | None = None) -> None:
         self._client = anthropic.AsyncAnthropic(
             api_key=api_key or settings.anthropic_api_key
         )
@@ -36,7 +35,7 @@ class AnthropicProvider:
 
         raise ValueError("Anthropic response did not include structured tool output")
 
-    async def generate_text(self, prompt: str, system: Optional[str] = None) -> str:
+    async def generate_text(self, prompt: str, system: str | None = None) -> str:
         kwargs: dict = {
             "model": MODEL,
             "max_tokens": 4096,

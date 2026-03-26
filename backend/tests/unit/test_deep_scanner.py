@@ -9,8 +9,9 @@ This is the test suite style Atlas already uses in Tool 04.
 """
 
 import pytest
+
+from app.schemas.intelligence import CodeFinding, OptimizationCandidate
 from app.services.deep_scanner import (
-    FileIntelligence,
     build_code_contexts,
     build_file_intelligence,
     classify_role,
@@ -18,8 +19,6 @@ from app.services.deep_scanner import (
     prioritize_files,
     should_skip,
 )
-from app.schemas.intelligence import CodeFinding, OptimizationCandidate
-
 
 # ---------------------------------------------------------------------------
 # Language detection
@@ -504,16 +503,16 @@ def process(data):
 
 class TestDeepScanResultContents:
     def test_result_has_contents_field(self):
-        from app.services.deep_scanner import DeepScanResult
-        from app.schemas.intelligence import ScanMetadata
         import dataclasses
+
+        from app.services.deep_scanner import DeepScanResult
 
         fields = {f.name for f in dataclasses.fields(DeepScanResult)}
         assert "contents" in fields
 
     def test_contents_field_defaults_to_empty_dict(self):
-        from app.services.deep_scanner import DeepScanResult
         from app.schemas.intelligence import ScanMetadata
+        from app.services.deep_scanner import DeepScanResult
 
         result = DeepScanResult(
             files=[],
@@ -700,7 +699,6 @@ class TestScorecardConfidence:
 
     def test_parse_errors_lower_confidence(self):
         from app.services.scorecard import _compute_confidence
-        from app.schemas.intelligence import FileIntelligence
 
         # Files with parse errors have low confidence scores
         bad_files = []

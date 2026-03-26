@@ -23,7 +23,6 @@ Table hierarchy:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import (
     Boolean,

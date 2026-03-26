@@ -20,22 +20,18 @@ Every expectation change needs a reason.
 
 from __future__ import annotations
 
-
 import pytest
-from typing import Dict, List, Set, Tuple
 
-from app.services.deep_scanner import build_file_intelligence, build_code_contexts
-from app.schemas.intelligence import DependencyEdge, FileIntelligence
+from app.services.deep_scanner import build_code_contexts, build_file_intelligence
 from tests.fixtures.real_world_shapes import (
     ALL_REAL_WORLD_FIXTURES,
-    RealWorldFixture,
     RW1_FASTAPI_SERVICE,
     RW2_NEXTJS_APP_ROUTER,
     RW3_MIXED_INFRA,
     RW4_STALE_README,
     RW5_POLYGLOT,
+    RealWorldFixture,
 )
-
 
 # ---------------------------------------------------------------------------
 # Harness
@@ -362,7 +358,7 @@ def test_all_confirmed_edges_present(fixture: RealWorldFixture):
     assert not missing, (
         f"Fixture '{fixture.name}': missing confirmed edges:\n"
         + "\n".join(f"  {s} → {t}" for s, t in missing)
-        + f"\n\nActual confirmed edges:\n"
+        + "\n\nActual confirmed edges:\n"
         + "\n".join(f"  {s} → {t}" for s, t in sorted(confirmed))
     )
 
