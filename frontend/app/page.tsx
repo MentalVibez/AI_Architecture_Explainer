@@ -2,6 +2,7 @@
 
 import RepoUrlForm from "@/components/RepoUrlForm";
 import SampleRepos from "@/components/SampleRepos";
+import PipelineBadge from "@/components/atlas/PipelineBadge";
 
 export default function HomePage() {
   return (
@@ -61,6 +62,11 @@ export default function HomePage() {
               >
                 Scout repos
               </a>
+            </div>
+
+            {/* Pipeline trust signal */}
+            <div className="mt-6">
+              <PipelineBadge variant="compact" />
             </div>
           </div>
 

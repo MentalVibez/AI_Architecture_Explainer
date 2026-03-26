@@ -17,7 +17,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Override the sqlalchemy.url from our settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", settings.resolved_database_url)
 
 # Merge both metadata objects so autogenerate sees all tables.
 # CoreBase: existing models (analysis_job, analysis_result, repo, review, etc.)

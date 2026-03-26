@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # JSONB on Postgres, plain JSON on SQLite (dev)
-_JSON = _JSON().with_variant(sa.JSON(), "sqlite")
+_JSON = postgresql.JSONB().with_variant(sa.JSON(), "sqlite")
 
 revision: str = "0002"
 down_revision: str = "046b2f30983d"

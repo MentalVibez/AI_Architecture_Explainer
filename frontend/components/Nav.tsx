@@ -38,6 +38,7 @@ export default function Nav() {
             <NavLink key={href} href={href} label={label} active={pathname === href} />
           ))}
           <NavLink href="/pricing" label="Pricing" active={pathname === "/pricing"} />
+          <NavLink href="/how-it-works" label="Docs" active={pathname === "/how-it-works"} />
           <a
             href="https://github.com/MentalVibez/AI_Architecture_Explainer"
             target="_blank"
@@ -69,7 +70,7 @@ export default function Nav() {
       {open && (
         <div className="sm:hidden border-t border-[#1a1a1a] bg-[#0f0f0f]">
           <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col gap-1">
-            {[...links, { href: "/pricing", label: "Pricing" }].map(({ href, label }) => (
+            {[...links, { href: "/pricing", label: "Pricing" }, { href: "/how-it-works", label: "Docs" }].map(({ href, label }) => (
               <a
                 key={href}
                 href={href}
