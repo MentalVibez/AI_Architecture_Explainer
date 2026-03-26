@@ -27,13 +27,15 @@ import logging
 import re
 import time
 from collections import defaultdict
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-from typing import AsyncIterator, Dict, List, Optional, Tuple
 
 import httpx
 
 from app.schemas.intelligence import (
+    CodeContext,
+    DependencyEdge,
     FileIntelligence,
     FileRole,
     LanguageTag,
@@ -91,7 +93,7 @@ def is_generated(path: str) -> bool:
     return any(p in ("generated", "gen", "proto", "dist", "out") for p in parts)
 
 # Priority scores — lower number = fetch earlier
-FILE_PRIORITY: Dict[str, int] = {
+FILE_PRIORITY: dict[str, int] = {
     "entrypoint": 1,
     "service": 2,
     "schema": 3,
@@ -105,7 +107,7 @@ FILE_PRIORITY: Dict[str, int] = {
 }
 
 # Extension → language mapping (deterministic)
-EXTENSION_MAP: Dict[str, LanguageTag] = {
+EXTENSION_MAP: dict[str, LanguageTag] = {
     ".py": "python",
     ".ts": "typescript", ".tsx": "typescript",
     ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript",
@@ -127,7 +129,7 @@ EXTENSION_MAP: Dict[str, LanguageTag] = {
 }
 
 # Shebang → language
-SHEBANG_MAP: Dict[str, LanguageTag] = {
+SHEBANG_MAP: dict[str, LanguageTag] = {
     "python": "python",
     "python3": "python",
     "node": "javascript",
@@ -143,7 +145,7 @@ SHEBANG_MAP: Dict[str, LanguageTag] = {
 # Deterministic — no LLM involved
 # ---------------------------------------------------------------------------
 
-SENSITIVE_PATTERNS: List[Tuple[str, re.Pattern]] = [
+SENSITIVE_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("hardcoded_secret", re.compile(
         r'(?i)(password|secret|api_key|token|auth)\s*=\s*["\'][^"\']{6,}["\']'
     )),
@@ -158,7 +160,7 @@ SENSITIVE_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("debug_mode_enabled", re.compile(r'(?i)debug\s*=\s*True')),
 ]
 
-EXTERNAL_CALL_PATTERNS: List[Tuple[str, re.Pattern]] = [
+EXTERNAL_CALL_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("http_request", re.compile(r'\b(requests\.|httpx\.|aiohttp\.|fetch\s*\(|axios\.)')),
     ("db_query", re.compile(r'\b(\.execute\s*\(|\.query\s*\(|session\.|db\.)')),
     ("file_io", re.compile(r'\b(open\s*\(|Path\(.*\)\.read|os\.path\.)')),
@@ -175,21 +177,21 @@ EXTERNAL_CALL_PATTERNS: List[Tuple[str, re.Pattern]] = [
 
 @dataclass
 class ParseResult:
-    imports: List[str] = field(default_factory=list)
-    exports: List[str] = field(default_factory=list)
-    function_names: List[str] = field(default_factory=list)
-    class_names: List[str] = field(default_factory=list)
-    framework_signals: List[str] = field(default_factory=list)
-    route_patterns: List[str] = field(default_factory=list)
-    external_calls: List[str] = field(default_factory=list)
-    sensitive_ops: List[str] = field(default_factory=list)
+    imports: list[str] = field(default_factory=list)
+    exports: list[str] = field(default_factory=list)
+    function_names: list[str] = field(default_factory=list)
+    class_names: list[str] = field(default_factory=list)
+    framework_signals: list[str] = field(default_factory=list)
+    route_patterns: list[str] = field(default_factory=list)
+    external_calls: list[str] = field(default_factory=list)
+    sensitive_ops: list[str] = field(default_factory=list)
     has_type_annotations: bool = False
     has_docstrings: bool = False
     has_error_handling: bool = False
     loc: int = 0
     nesting_depth_max: int = 0
     complexity_score: float = 0.0
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 def _parse_python(content: str) -> ParseResult:
@@ -409,7 +411,7 @@ def _strip_ts_strings_and_comments(content: str) -> str:
     return content
 
 
-def _compute_python_complexity(content: str, function_names: List[str]) -> float:
+def _compute_python_complexity(content: str, function_names: list[str]) -> float:
     """
     Per-function cyclomatic complexity estimate.
 
@@ -426,8 +428,8 @@ def _compute_python_complexity(content: str, function_names: List[str]) -> float
 
     # Split content into function blocks heuristically
     # Each block starts at a `def ` line and ends at the next `def ` or EOF
-    func_blocks: List[str] = []
-    current_block: List[str] = []
+    func_blocks: list[str] = []
+    current_block: list[str] = []
     in_func = False
 
     for line in clean.splitlines():
@@ -479,7 +481,7 @@ LANGUAGE_PARSERS = {
 # Deterministic. Uses path + filename signals.
 # ---------------------------------------------------------------------------
 
-def classify_role(path: str, parse_result: Optional[ParseResult] = None) -> FileRole:
+def classify_role(path: str, parse_result: ParseResult | None = None) -> FileRole:
     p = PurePosixPath(path)
     name = p.name.lower()
     parts = [part.lower() for part in p.parts]
@@ -593,12 +595,12 @@ def detect_language(path: str, content: str = "") -> LanguageTag:
 # Returns files sorted by scan priority (entrypoints first, tests last)
 # ---------------------------------------------------------------------------
 
-def prioritize_files(file_tree: List[Dict]) -> List[Dict]:
+def prioritize_files(file_tree: list[dict]) -> list[dict]:
     """
     Input: List of GitHub tree items with 'path', 'type', 'size' keys.
     Output: Same list, sorted by scan priority.
     """
-    def score(item: Dict) -> Tuple[int, int]:
+    def score(item: dict) -> tuple[int, int]:
         path = item.get("path", "")
         size = item.get("size", 0) or 0
 
@@ -652,7 +654,7 @@ def should_skip(path: str) -> bool:
 # ---------------------------------------------------------------------------
 
 class GitHubContentFetcher:
-    def __init__(self, github_token: Optional[str] = None):
+    def __init__(self, github_token: str | None = None):
         headers = {"Accept": "application/vnd.github.raw"}
         if github_token:
             headers["Authorization"] = f"Bearer {github_token}"
@@ -666,7 +668,7 @@ class GitHubContentFetcher:
         repo: str,
         path: str,
         ref: str = "HEAD",
-    ) -> Tuple[str, Optional[str], Optional[str]]:
+    ) -> tuple[str, str | None, str | None]:
         """
         Returns (path, content_or_None, error_or_None)
         """
@@ -690,9 +692,9 @@ class GitHubContentFetcher:
         self,
         owner: str,
         repo: str,
-        paths: List[str],
+        paths: list[str],
         ref: str = "HEAD",
-    ) -> AsyncIterator[Tuple[str, Optional[str], Optional[str]]]:
+    ) -> AsyncIterator[tuple[str, str | None, str | None]]:
         async with httpx.AsyncClient() as client:
             tasks = [
                 self.fetch_file(client, owner, repo, path, ref)
@@ -783,7 +785,7 @@ def build_file_intelligence(
 # This is what makes CodeContext actually useful.
 # ---------------------------------------------------------------------------
 
-def _build_file_index(files: List[FileIntelligence]) -> Dict[str, str]:
+def _build_file_index(files: list[FileIntelligence]) -> dict[str, str]:
     """
     Build a lookup: canonical module key → repo-relative file path.
 
@@ -792,7 +794,7 @@ def _build_file_index(files: List[FileIntelligence]) -> Dict[str, str]:
 
     This is the index that import_to_path() queries.
     """
-    index: Dict[str, str] = {}
+    index: dict[str, str] = {}
     for fi in files:
         p = PurePosixPath(fi.path)
 
@@ -831,8 +833,8 @@ def _build_file_index(files: List[FileIntelligence]) -> Dict[str, str]:
 def _resolve_python_import(
     import_str: str,
     importer_path: str,
-    file_index: Dict[str, str],
-) -> Optional[str]:
+    file_index: dict[str, str],
+) -> str | None:
     """
     Resolve a Python import string to a repo file path.
 
@@ -888,9 +890,9 @@ def _resolve_python_import(
 def _resolve_ts_import(
     import_str: str,
     importer_path: str,
-    file_index: Dict[str, str],
-    ts_aliases: Dict[str, str],
-) -> Optional[str]:
+    file_index: dict[str, str],
+    ts_aliases: dict[str, str],
+) -> str | None:
     """
     Resolve a TypeScript/JavaScript import to a repo file path.
 
@@ -964,7 +966,7 @@ def _resolve_ts_import(
     return None
 
 
-def _extract_ts_aliases(files: List[FileIntelligence]) -> Dict[str, str]:
+def _extract_ts_aliases(files: list[FileIntelligence]) -> dict[str, str]:
     """
     Extract path aliases from tsconfig.json if present in the scanned files.
     Returns a dict of alias_prefix → resolved_prefix.
@@ -987,7 +989,7 @@ def _extract_ts_aliases(files: List[FileIntelligence]) -> Dict[str, str]:
 def _classify_unresolved_reason(
     import_str: str,
     language: str,
-    ts_aliases: Dict[str, str],
+    ts_aliases: dict[str, str],
 ) -> str:
     """
     Classify why an import string could not be resolved to a file path.
@@ -1061,9 +1063,9 @@ def _classify_unresolved_reason(
 
 
 def build_code_contexts(
-    files: List[FileIntelligence],
-    ts_aliases: Optional[Dict[str, str]] = None,
-) -> Tuple[Dict[str, "CodeContext"], List["DependencyEdge"], float]:
+    files: list[FileIntelligence],
+    ts_aliases: dict[str, str] | None = None,
+) -> tuple[dict[str, CodeContext], list[DependencyEdge], float]:
     """
     Build CodeContext for every file and emit explicit DependencyEdge objects.
 
@@ -1085,8 +1087,8 @@ def build_code_contexts(
     file_index = _build_file_index(files)
     known_paths = {fi.path for fi in files}
 
-    contexts: Dict[str, "CodeContext"] = {}
-    edges: List["DependencyEdge"] = []
+    contexts: dict[str, CodeContext] = {}
+    edges: list[DependencyEdge] = []
 
     # Known external package prefixes — unresolved against these are tagged
     # external_package, not counted against graph_confidence.
@@ -1148,7 +1150,7 @@ def build_code_contexts(
 
     # Pass 1: Resolve all imports → edges + downstream deps
     for fi in files:
-        downstream: List[str] = []
+        downstream: list[str] = []
 
         for imp in fi.imports:
             # Detect line number (best effort — imports are early in file)
@@ -1246,7 +1248,7 @@ def build_code_contexts(
     return contexts, edges, graph_confidence
 
 
-def _infer_service_boundary(path: str) -> Optional[str]:
+def _infer_service_boundary(path: str) -> str | None:
     """Infer which service domain owns a file from its path."""
     parts = PurePosixPath(path).parts
     boundary_dirs = ("auth", "payments", "users", "api", "services",
@@ -1259,7 +1261,7 @@ def _infer_service_boundary(path: str) -> Optional[str]:
 
 def _mark_critical_path_bfs(
     entrypoint_path: str,
-    contexts: Dict[str, "CodeContext"],
+    contexts: dict[str, CodeContext],
 ) -> None:
     """
     Mark files reachable from an entrypoint using BFS (breadth-first search).
@@ -1326,17 +1328,17 @@ class DeepScanner:
         )
     """
 
-    def __init__(self, github_token: Optional[str] = None):
+    def __init__(self, github_token: str | None = None):
         self.fetcher = GitHubContentFetcher(github_token)
 
     async def scan(
         self,
         owner: str,
         repo: str,
-        file_tree: List[Dict],
+        file_tree: list[dict],
         ref: str = "HEAD",
         max_files: int = HARD_MAX_FILES,
-    ) -> "DeepScanResult":
+    ) -> DeepScanResult:
         from app.schemas.intelligence import ScanMetadata
 
         # Enforce hard ceiling — caller cannot exceed it
@@ -1362,13 +1364,13 @@ class DeepScanner:
         files_attempted = len(prioritized)
         files_skipped = (total_files - len(scannable)) + (len(scannable) - files_attempted)
         files_failed = 0
-        language_counts: Dict[str, int] = defaultdict(int)
+        language_counts: dict[str, int] = defaultdict(int)
         bytes_fetched = 0
 
         # Step 2: Fetch and parse in priority order, batched
         BATCH_SIZE = 30
-        file_intelligence_list: List[FileIntelligence] = []
-        file_contents: Dict[str, str] = {}  # path → raw content, retained for ContextReviewer
+        file_intelligence_list: list[FileIntelligence] = []
+        file_contents: dict[str, str] = {}  # path → raw content, retained for ContextReviewer
 
         for batch_start in range(0, files_attempted, BATCH_SIZE):
             batch = prioritized[batch_start: batch_start + BATCH_SIZE]
@@ -1447,28 +1449,28 @@ class DeepScanner:
 
 @dataclass
 class DeepScanResult:
-    files: List[FileIntelligence]
-    contexts: Dict[str, "CodeContext"]
+    files: list[FileIntelligence]
+    contexts: dict[str, CodeContext]
     scan_metadata: ScanMetadata
     # Raw file contents keyed by path — required by ContextReviewer.
     # Stored here so we never fetch files twice.
     # Contents are capped at MAX_FILE_BYTES at fetch time.
-    contents: Dict[str, str] = field(default_factory=dict)
+    contents: dict[str, str] = field(default_factory=dict)
     # Explicit dependency edges — every architecture claim traces here
-    edges: List["DependencyEdge"] = field(default_factory=list)
+    edges: list[DependencyEdge] = field(default_factory=list)
     # Graph confidence: fraction of internal imports that resolved to confirmed paths
     graph_confidence: float = 0.0
 
-    def get_by_role(self, role: FileRole) -> List[FileIntelligence]:
+    def get_by_role(self, role: FileRole) -> list[FileIntelligence]:
         return [f for f in self.files if f.role == role]
 
-    def get_entrypoints(self) -> List[FileIntelligence]:
+    def get_entrypoints(self) -> list[FileIntelligence]:
         return [f for f in self.files if f.is_entrypoint]
 
-    def get_high_risk_files(self) -> List[FileIntelligence]:
+    def get_high_risk_files(self) -> list[FileIntelligence]:
         return [f for f in self.files if f.sensitive_operations]
 
-    def get_critical_path_files(self) -> List[FileIntelligence]:
+    def get_critical_path_files(self) -> list[FileIntelligence]:
         return [
             f for f in self.files
             if self.contexts.get(f.path, None) and

@@ -32,7 +32,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -129,18 +129,18 @@ class RepairProposal(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
     # What broke and where
-    affected_files: List[str] = Field(
+    affected_files: list[str] = Field(
         ...,
         description="Files the patch will modify. Hard limit: MAX_FILES_PER_REPAIR.",
     )
-    evidence: List[str] = Field(
+    evidence: list[str] = Field(
         ...,
         description="Human-readable list of facts proving this failure exists.",
         min_length=1,
     )
 
     # The actual fix — unified diff format
-    proposed_patch: Optional[str] = Field(
+    proposed_patch: str | None = Field(
         default=None,
         description=(
             "Unified diff. None if confidence < CONFIDENCE_SUGGESTION "
@@ -149,7 +149,7 @@ class RepairProposal(BaseModel):
     )
 
     # Validation results — computed before the human sees this
-    validation_results: "ValidationResult" = Field(
+    validation_results: ValidationResult = Field(
         default=None,  # populated by ValidationRunner
     )
 
@@ -161,16 +161,16 @@ class RepairProposal(BaseModel):
     # Human decision (set after presentation)
     is_approved: bool = False
     is_rejected: bool = False
-    human_note: Optional[str] = None
+    human_note: str | None = None
 
     # Application state
     is_applied: bool = False
-    applied_to_branch: Optional[str] = None
-    post_apply_score_delta: Optional[int] = None
+    applied_to_branch: str | None = None
+    post_apply_score_delta: int | None = None
 
     @field_validator("affected_files")
     @classmethod
-    def files_within_limit(cls, v: List[str]) -> List[str]:
+    def files_within_limit(cls, v: list[str]) -> list[str]:
         if len(v) > MAX_FILES_PER_REPAIR:
             raise ValueError(
                 f"A single repair may not touch more than {MAX_FILES_PER_REPAIR} files. "
@@ -207,9 +207,9 @@ class ValidationResult(BaseModel):
     patch_applies_cleanly: bool = False
     lint_passed: bool = False
     tests_passed: bool = False
-    new_failures_introduced: List[str] = Field(default_factory=list)
-    score_delta: Optional[int] = None    # positive = improvement
-    graph_confidence_delta: Optional[float] = None
+    new_failures_introduced: list[str] = Field(default_factory=list)
+    score_delta: int | None = None    # positive = improvement
+    graph_confidence_delta: float | None = None
 
     # Summary for the UI
     @property
@@ -260,13 +260,13 @@ FailureSource = Literal[
 class FailureEvent(BaseModel):
     """A single detected failure before classification."""
     source: FailureSource
-    file_path: Optional[str] = None
-    line_number: Optional[int] = None
+    file_path: str | None = None
+    line_number: int | None = None
     raw_message: str
-    stack_trace: Optional[str] = None
+    stack_trace: str | None = None
 
     # Set by FailureClassifier
-    classified_as: Optional[FailureClass] = None
+    classified_as: FailureClass | None = None
     classification_confidence: float = 0.0
 
 
@@ -277,9 +277,10 @@ class FailureEvent(BaseModel):
 # ---------------------------------------------------------------------------
 
 import re as _re
+from datetime import UTC
 
 # Deterministic classification rules: (pattern, FailureClass, confidence)
-_CLASSIFICATION_RULES: List[tuple] = [
+_CLASSIFICATION_RULES: list[tuple] = [
     # Import failures
     (_re.compile(r'ImportError|ModuleNotFoundError', _re.I), "broken_import", 0.95),
     (_re.compile(r'cannot import name', _re.I), "broken_import", 0.92),
@@ -327,7 +328,7 @@ class FailureClassifier:
         event.classification_confidence = best_confidence
         return event
 
-    def classify_batch(self, events: List[FailureEvent]) -> List[FailureEvent]:
+    def classify_batch(self, events: list[FailureEvent]) -> list[FailureEvent]:
         return [self.classify(e) for e in events]
 
 
@@ -339,7 +340,7 @@ class FailureClassifier:
 # ---------------------------------------------------------------------------
 
 # Per-class maximum edit scope (lines that can change in a single patch)
-_MAX_EDIT_LINES: Dict[str, int] = {
+_MAX_EDIT_LINES: dict[str, int] = {
     "broken_import": 10,
     "missing_dependency": 5,       # pyproject.toml / requirements.txt only
     "config_mismatch": 15,         # .env.example sync
@@ -380,9 +381,9 @@ class PatchGenerator:
     async def generate(
         self,
         event: FailureEvent,
-        file_contents: Dict[str, str],  # path → content (bounded set only)
-        context_hint: Optional[str] = None,
-    ) -> Optional[str]:
+        file_contents: dict[str, str],  # path → content (bounded set only)
+        context_hint: str | None = None,
+    ) -> str | None:
         """
         Returns a unified diff string, or None if no patch can be generated.
         """
@@ -438,9 +439,9 @@ class PatchGenerator:
     def _build_prompt(
         self,
         event: FailureEvent,
-        file_contents: Dict[str, str],
+        file_contents: dict[str, str],
         max_lines: int,
-        context_hint: Optional[str],
+        context_hint: str | None,
     ) -> str:
         files_block = "\n\n".join(
             f"### {path}\n```\n{content[:3000]}\n```"
@@ -461,7 +462,7 @@ Maximum {max_lines} lines changed.
 Do not touch logic, auth, payments, or security.
 If you cannot fix this safely, output: NO_PATCH"""
 
-    def _validate_diff_scope(self, diff: str, max_lines: int) -> Optional[str]:
+    def _validate_diff_scope(self, diff: str, max_lines: int) -> str | None:
         """Reject diffs that exceed the line change limit."""
         added = sum(1 for line in diff.splitlines() if line.startswith("+") and not line.startswith("+++"))
         removed = sum(1 for line in diff.splitlines() if line.startswith("-") and not line.startswith("---"))
@@ -496,14 +497,16 @@ class ValidationRunner:
     async def validate(
         self,
         patch: str,
-        affected_files: List[str],
-        file_contents: Dict[str, str],
+        affected_files: list[str],
+        file_contents: dict[str, str],
         run_tests: bool = True,
     ) -> ValidationResult:
-        import tempfile, subprocess, os
-        from datetime import datetime, timezone
+        import os
+        import subprocess
+        import tempfile
+        from datetime import datetime
 
-        result = ValidationResult(ran_at=datetime.now(timezone.utc).isoformat())
+        result = ValidationResult(ran_at=datetime.now(UTC).isoformat())
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Write affected files to tmpdir
@@ -605,9 +608,9 @@ class RepairEngine:
 
     async def analyze(
         self,
-        events: List[FailureEvent],
-        file_contents: Dict[str, str],
-    ) -> List[RepairProposal]:
+        events: list[FailureEvent],
+        file_contents: dict[str, str],
+    ) -> list[RepairProposal]:
         """
         Process failure events into validated repair proposals.
         Returns proposals sorted by confidence (highest first).
@@ -616,8 +619,7 @@ class RepairEngine:
         classified = self.classifier.classify_batch(events)
 
         # Step 2: Group by file to avoid duplicate proposals
-        seen_files: Dict[str, int] = {}
-        proposals: List[RepairProposal] = []
+        proposals: list[RepairProposal] = []
 
         for event in classified[:self.config.max_proposals_per_run]:
             if not event.classified_as or event.classified_as == "ambiguous":
@@ -668,8 +670,8 @@ class RepairEngine:
     def _build_proposal(
         self,
         event: FailureEvent,
-        patch: Optional[str],
-        validation: Optional[ValidationResult],
+        patch: str | None,
+        validation: ValidationResult | None,
     ) -> RepairProposal:
         confidence = event.classification_confidence
 
@@ -732,7 +734,7 @@ class RepairEngine:
     async def apply(
         self,
         proposal: RepairProposal,
-        branch_name: Optional[str] = None,
+        branch_name: str | None = None,
     ) -> bool:
         """
         Apply an approved proposal.
@@ -779,7 +781,7 @@ class RepairEngine:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _title_for_class(failure_class: Optional[FailureClass], file_path: Optional[str]) -> str:
+def _title_for_class(failure_class: FailureClass | None, file_path: str | None) -> str:
     titles = {
         "broken_import": "Fix broken import",
         "missing_dependency": "Add missing dependency",
@@ -827,22 +829,22 @@ class UIRepairSummary(BaseModel):
     confidence_label: str  # "HIGH" | "MODERATE" | "LOW"
 
     # Before
-    affected_files: List[str]
-    evidence: List[str]
+    affected_files: list[str]
+    evidence: list[str]
 
     # Proposed
     has_patch: bool
-    proposed_patch: Optional[str]  # null if advisory only
-    validation_passed: Optional[bool]
-    validation_summary: Optional[str]
-    predicted_score_delta: Optional[int]
+    proposed_patch: str | None  # null if advisory only
+    validation_passed: bool | None
+    validation_summary: str | None
+    predicted_score_delta: int | None
 
     # Controls
     auto_apply_eligible: bool
     is_advisory_only: bool
 
     @classmethod
-    def from_proposal(cls, proposal: RepairProposal) -> "UIRepairSummary":
+    def from_proposal(cls, proposal: RepairProposal) -> UIRepairSummary:
         conf = proposal.confidence
         if conf >= 0.90:
             conf_label = "HIGH"
