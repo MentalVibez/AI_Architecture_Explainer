@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="Codebase Atlas API",
     description="AI-powered architecture analysis for public GitHub repositories",
-    version="0.1.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 

@@ -1,7 +1,7 @@
 """add_intelligence_tables
 
 Revision ID: 0011
-Revises: 0010
+Revises: 0002
 Create Date: 2026-03-25
 
 Adds five tables for the deep intelligence engine:
@@ -21,7 +21,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0011"
-down_revision: Union[str, Sequence[str], None] = "0010"
+down_revision: Union[str, Sequence[str], None] = "0002"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
