@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     anthropic_api_key: str = ""
+    anthropic_base_url: str = ""
+    anthropic_custom_headers: str = ""
     github_token: str = ""
 
     # Full URL takes precedence. Individual components are used when set,
