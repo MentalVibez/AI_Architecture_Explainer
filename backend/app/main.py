@@ -19,7 +19,6 @@ from app.api.scout import router as scout_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.analysis import AnalysisJob as PublicAnalysisJob
-from app.models.analysis import Base as AnalysisBase
 from app.models.analysis_job import AnalysisJob
 from app.models.review_job import ReviewJob
 
@@ -55,7 +54,6 @@ async def _recover_stale_jobs() -> None:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        await conn.run_sync(AnalysisBase.metadata.create_all)
     await _recover_stale_jobs()
     yield
 

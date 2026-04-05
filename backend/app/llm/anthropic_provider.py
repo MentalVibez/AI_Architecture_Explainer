@@ -7,11 +7,25 @@ from app.core.config import settings
 MODEL = "claude-sonnet-4-6"
 
 
+def _parse_custom_headers(raw: str) -> dict[str, str]:
+    """Parse 'Key: Value, Key2: Value2' into a dict."""
+    headers = {}
+    for part in raw.split(","):
+        part = part.strip()
+        if ":" in part:
+            k, _, v = part.partition(":")
+            headers[k.strip()] = v.strip()
+    return headers
+
+
 class AnthropicProvider:
     def __init__(self, api_key: str | None = None) -> None:
-        self._client = anthropic.AsyncAnthropic(
-            api_key=api_key or settings.anthropic_api_key
-        )
+        kwargs: dict = {"api_key": api_key or settings.anthropic_api_key}
+        if settings.anthropic_base_url:
+            kwargs["base_url"] = settings.anthropic_base_url
+        if settings.anthropic_custom_headers:
+            kwargs["default_headers"] = _parse_custom_headers(settings.anthropic_custom_headers)
+        self._client = anthropic.AsyncAnthropic(**kwargs)
 
     async def generate_json(self, prompt: str, schema: dict) -> dict:
         """Use tool-use to enforce structured JSON output matching the given schema."""

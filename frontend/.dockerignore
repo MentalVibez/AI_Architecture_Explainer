@@ -1,0 +1,16 @@
+node_modules
+.next
+.turbo
+out
+
+# Secrets — never bake into the image
+.env
+.env.*
+.env.local
+.env.*.local
+
+# Dev/test artifacts
+coverage
+playwright-report
+test-results
+*.log
