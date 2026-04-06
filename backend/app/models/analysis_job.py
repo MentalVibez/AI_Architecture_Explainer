@@ -7,7 +7,7 @@ from app.core.database import Base
 
 
 class AnalysisJob(Base):
-    __tablename__ = "analysis_jobs"
+    __tablename__ = "atlas_jobs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     repo_id: Mapped[int] = mapped_column(ForeignKey("repos.id"))

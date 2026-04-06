@@ -7,10 +7,10 @@ from app.core.database import Base
 
 
 class AnalysisResult(Base):
-    __tablename__ = "analysis_results"
+    __tablename__ = "atlas_results"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    job_id: Mapped[int] = mapped_column(ForeignKey("analysis_jobs.id"), unique=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("atlas_jobs.id"), unique=True)
     repo_snapshot_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
     detected_stack: Mapped[dict] = mapped_column(JSON, default=dict)
     dependencies: Mapped[dict] = mapped_column(JSON, default=dict)
