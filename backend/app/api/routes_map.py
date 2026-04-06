@@ -101,7 +101,7 @@ async def map_endpoints(
 
     # Step 1: deterministic stack analysis (reuse Atlas pipeline, no LLM)
     try:
-        evidence = await run_analysis(owner, repo)
+        evidence, _ = await run_analysis(owner, repo)
     except Exception:
         logger.exception("Stack analysis failed for %s/%s", owner, repo)
         raise HTTPException(status_code=502, detail="Could not fetch repository data.")
