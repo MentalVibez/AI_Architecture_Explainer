@@ -75,12 +75,12 @@ async def run_analysis_job(job_id: int, owner: str, repo: str) -> None:
             await db.commit()
 
         except Exception as exc:
-            logger.exception("Analysis pipeline failed for job %d", job_id)
+            logger.exception("Analysis pipeline failed for job %d: %s", job_id, exc)
             job.status = "failed"
             from app.services.github_service import GitHubError
             job.error_message = (
-                str(exc) if isinstance(exc, GitHubError)
-                else "Analysis failed. Please try again."
+                str(exc) if isinstance(exc, (GitHubError, ValueError))
+                else f"{type(exc).__name__}: {exc}"
             )
             job.completed_at = datetime.now(UTC)
             await db.commit()
