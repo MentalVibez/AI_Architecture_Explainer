@@ -22,6 +22,9 @@ from app.api.scout import router as scout_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.core.logging_config import configure_logging
+from app.models.analysis import AnalysisJob as PublicAnalysisJob
+from app.models.analysis_job import AnalysisJob
+from app.models.review_job import ReviewJob
 
 configure_logging(settings.environment)
 
@@ -33,9 +36,6 @@ if settings.sentry_dsn:
         traces_sample_rate=0.1,
         send_default_pii=False,
     )
-from app.models.analysis import AnalysisJob as PublicAnalysisJob
-from app.models.analysis_job import AnalysisJob
-from app.models.review_job import ReviewJob
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])
 
