@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
-class AnalysisResult(Base):
+class AtlasResult(Base):
     __tablename__ = "atlas_results"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -24,4 +24,8 @@ class AnalysisResult(Base):
     raw_evidence: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    job = relationship("AnalysisJob", back_populates="result")
+    job = relationship("AtlasJob", back_populates="result")
+
+
+# Backward-compat alias used by routes_analysis.py imports
+AnalysisResult = AtlasResult
