@@ -136,7 +136,7 @@ function RepoCard({ repo, rank }: { repo: Repo; rank: number }) {
     setAnalyzing(true); setAnalyzeErr("");
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/analyze`,
+        `/api/analyze`,
         { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ repo_url: repo.url }) }
       );
@@ -306,7 +306,7 @@ export default function ScoutPage() {
       setStatus("Scanning repositories…"); setProgress(30);
       const tick = setInterval(() => setProgress((p) => Math.min(p + 4, 75)), 700);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/scout/search`,
+        `/api/scout/search`,
         { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query, platforms, sort_by: sortBy, ...(token ? { github_token: token } : {}) }) }
       );
