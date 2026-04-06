@@ -10,6 +10,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.47.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "mermaid": "^11.13.0",

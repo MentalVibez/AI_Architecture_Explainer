@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     db_password: str = ""
     db_name: str = "postgres"
 
+    sentry_dsn: str = ""
+
     environment: str = "development"
     cors_origins: str = "http://localhost:3000"
 

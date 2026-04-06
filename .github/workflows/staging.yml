@@ -19,3 +19,17 @@ jobs:
             git pull origin main
             docker compose up --build -d
             docker image prune -f
+
+      - name: Smoke test
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -sf "http://${STAGING_HOST}:8000/health" > /dev/null; then
+              echo "Backend healthy after attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i: not ready, retrying in 5s..."
+            sleep 5
+          done
+          echo "Backend failed to become healthy after 60s" && exit 1
