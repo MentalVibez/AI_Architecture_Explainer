@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.services.analysis_pipeline import run_analysis
+from app.services.analysis_pipeline import run_stack_analysis
 from app.services.endpoint_enricher import enrich_endpoint_map
 from app.services.route_extractor import extract_endpoints
 
@@ -101,7 +101,7 @@ async def map_endpoints(
 
     # Step 1: deterministic stack analysis (reuse Atlas pipeline, no LLM)
     try:
-        evidence, _ = await run_analysis(owner, repo)
+        evidence = await run_stack_analysis(owner, repo)
     except Exception:
         logger.exception("Stack analysis failed for %s/%s", owner, repo)
         raise HTTPException(status_code=502, detail="Could not fetch repository data.")
