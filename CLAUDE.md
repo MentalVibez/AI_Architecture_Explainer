@@ -2,7 +2,11 @@
 
 ## Project Overview
 
-AI-powered GitHub repository architecture analyzer. Users submit a repo URL and receive a Mermaid diagram, dependency breakdown, and dual summaries (developer + hiring manager).
+AI-powered developer intelligence platform for public GitHub repositories. The product now has four tools:
+- `RepoScout` — search and rank GitHub/GitLab repos
+- `Atlas` — architecture analysis and Mermaid diagrams
+- `Map` — API surface extraction and grouping
+- `Review` — deep evidence-backed repo quality assessment
 
 **Stack:** FastAPI (Python 3.11+) + Next.js 14 (TypeScript) + Anthropic Claude Sonnet 4.6 + SQLite (dev) / Supabase Postgres (prod) + Railway (backend) + Vercel (frontend) + Docker (staging/local).
 
@@ -35,6 +39,7 @@ These decisions were made deliberately — do not revert them.
 - **Healthchecks on every container** — backend probes `/health`, frontend probes `/`. Required for `depends_on: service_healthy` in compose and any future orchestration.
 - **Migrations before server start** — `backend/docker-entrypoint.sh` runs `alembic upgrade head` then `exec "$@"`. Never remove this or bake migrations into the image build.
 - **Secrets never in images** — env vars come from `.env.staging` on the server at runtime, never `COPY`-ed into the image. `.dockerignore` enforces this.
+- **Job execution is in-process today** — Atlas/Review/public jobs use FastAPI `BackgroundTasks`, so production should run a single backend web process unless/until a real queue/worker tier is added.
 
 ---
 
@@ -65,7 +70,7 @@ docker compose up --build
 ## Testing
 
 ```bash
-# Backend (32 deterministic tests — no real API calls)
+# Backend (full pytest suite — legacy + unit + integration, no real API calls)
 cd backend && pytest
 
 # Frontend
@@ -82,6 +87,7 @@ cd frontend && npm run lint && npm run build
 - **Staging:** SQLite (`staging.db`) — defined in `.env.staging`
 - **Prod:** Postgres via `postgresql+asyncpg://` (Supabase)
 - **Migrations:** Always use Alembic — never modify schema directly
+- **Startup behavior:** The app no longer calls `Base.metadata.create_all()` on boot. Schema changes must come from Alembic migrations.
 
 ```bash
 alembic revision --autogenerate -m "description"
@@ -100,6 +106,7 @@ alembic upgrade head
 | Database (prod) | Supabase | Manual: `alembic upgrade head` against prod DB URL |
 
 Environment variables are set through Railway/Vercel/Supabase UIs for production — never committed to the repo. Staging vars live in `.env.staging` on the home server only.
+Keep the backend as a single web process in production while jobs still run via `BackgroundTasks`.
 
 ---
 
@@ -144,10 +151,12 @@ After that, every push to `main` auto-deploys via `.github/workflows/staging.yml
 
 ---
 
-## LLM Integration (`summary_service.py`)
+## LLM Integration
 
-- Model: `claude-sonnet-4-6`
-- Uses Claude tool-use for structured output (summaries + Mermaid diagrams)
+- Atlas: `summary_service.py` uses `claude-sonnet-4-6` for Mermaid + summary generation
+- Map: endpoint grouping/descriptions use Claude after deterministic route extraction
+- Review: `ContextReviewer` uses conditional LLM review only for evidence-gated files
+- Scout: relevance scoring uses Claude after deterministic quality scoring
 - Confidence scores in output reflect how much file evidence supports each inference
 - When modifying prompts or tool schemas, test with a real repo end-to-end — unit tests won't catch regressions here
 
@@ -158,14 +167,17 @@ After that, every push to `main` auto-deploys via `.github/workflows/staging.yml
 | File | Purpose |
 |------|---------|
 | `backend/app/services/analysis_pipeline.py` | Orchestrates GitHub fetch → parse → LLM analyze |
+| `backend/app/services/intelligence_pipeline.py` | Deep deterministic scan + conditional LLM review + scoring |
 | `backend/app/services/github_service.py` | GitHub API client, fetches repo tree + priority files |
 | `backend/app/services/manifest_parser.py` | Deterministic dependency extraction (no LLM) |
 | `backend/app/services/framework_detector.py` | Heuristic framework detection (no LLM) |
 | `backend/app/services/summary_service.py` | All LLM calls live here |
+| `backend/app/api/routes_review.py` | Review submission, polling, and report retrieval |
+| `backend/app/api/routes_map.py` | API surface mapping endpoint |
 | `backend/app/core/config.py` | Pydantic Settings — all env vars defined here |
 | `backend/docker-entrypoint.sh` | Runs migrations then starts uvicorn |
 | `docker-compose.yml` | Staging stack — wires backend + frontend |
-| `frontend/components/DiagramPanel.tsx` | Mermaid diagram renderer |
+| `frontend/app/review/page.tsx` | Review UI and report rendering |
 | `frontend/lib/` | API client + shared TypeScript types |
 
 ---

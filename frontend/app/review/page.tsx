@@ -1,39 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-const API_URL = "";
+import { getReviewResult, getReviewStatus, submitReview } from "@/lib/api";
+import type { ReviewFinding, ReviewResult } from "@/lib/types";
 
 type JobStatus = "idle" | "queued" | "running" | "completed" | "failed";
-
-interface ReviewResult {
-  result_id: string;
-  repo_url: string;
-  commit: string | null;
-  branch: string;
-  overall_score: number | null;
-  verdict_label: string | null;
-  production_suitable: boolean;
-  confidence_label: string | null;
-  depth_level: string | null;
-  anti_gaming_verdict: string | null;
-  scores: Record<string, number | null>;
-  findings: Finding[];
-  summary: { developer: string; manager: string; hiring: string } | null;
-  error_code: string | null;
-  error_message: string | null;
-}
-
-interface Finding {
-  id: string;
-  rule_id: string;
-  title: string;
-  category: string;
-  severity: string;
-  summary: string;
-  why_it_matters: string;
-  suggested_fix: string;
-}
+const POLL_INTERVAL_MS = 5000;
+const MAX_POLLS = 120;
 
 const SEVERITY_COLOR: Record<string, string> = {
   critical: "#c84b4b",
@@ -49,74 +23,67 @@ export default function ReviewPage() {
   const [status, setStatus] = useState<JobStatus>("idle");
   const [result, setResult] = useState<ReviewResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const activeJobId = useRef<string | null>(null);
+  const pollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimeout.current) clearTimeout(pollTimeout.current);
+    };
+  }, []);
+
+  async function pollStatus(jobId: string, polls = 0) {
+    if (polls >= MAX_POLLS) {
+      setError("Review timed out waiting for result.");
+      setStatus("failed");
+      activeJobId.current = null;
+      return;
+    }
+
+    try {
+      const data = await getReviewStatus(jobId);
+      if (activeJobId.current !== jobId) return;
+
+      setStatus(data.status);
+
+      if (data.status === "completed" && data.result_id) {
+        setResult(await getReviewResult(data.result_id));
+        activeJobId.current = null;
+        return;
+      }
+
+      if (data.status === "failed") {
+        setError(data.error_message ?? "Review failed.");
+        activeJobId.current = null;
+        return;
+      }
+    } catch {
+      if (activeJobId.current !== jobId) return;
+      // transient network error — keep polling
+    }
+
+    pollTimeout.current = setTimeout(() => {
+      void pollStatus(jobId, polls + 1);
+    }, POLL_INTERVAL_MS);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (pollTimeout.current) clearTimeout(pollTimeout.current);
+    activeJobId.current = null;
     setError(null);
     setResult(null);
     setStatus("queued");
 
     try {
-      const res = await fetch(`${API_URL}/api/review/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo_url: url, branch: branch || null }),
-      });
-
-      if (res.status === 429) {
-        const data = await res.json();
-        setError(data.detail?.message ?? "Rate limited. Please try again later.");
-        setStatus("idle");
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.detail?.message ?? "Failed to submit review.");
-        setStatus("idle");
-        return;
-      }
-
-      const data = await res.json();
-      setStatus("queued");
-      pollStatus(data.job_id);
-    } catch {
-      setError("Network error. Is the backend running?");
+      const data = await submitReview(url, branch);
+      activeJobId.current = data.job_id;
+      void pollStatus(data.job_id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to submit review.";
+      setError(message.includes("429") ? "Rate limited. Please try again later." : message);
       setStatus("idle");
     }
-  }
-
-  async function pollStatus(id: string) {
-    const MAX_POLLS = 120; // 10 minutes at 5s intervals
-    let polls = 0;
-
-    const interval = setInterval(async () => {
-      polls++;
-      if (polls > MAX_POLLS) {
-        clearInterval(interval);
-        setError("Review timed out waiting for result.");
-        setStatus("failed");
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/api/review/${id}`);
-        if (!res.ok) return;
-        const data = await res.json();
-
-        setStatus(data.status);
-
-        if (data.status === "completed" && data.result_id) {
-          clearInterval(interval);
-          const rRes = await fetch(`${API_URL}/api/review/results/${data.result_id}`);
-          if (rRes.ok) setResult(await rRes.json());
-        } else if (data.status === "failed") {
-          clearInterval(interval);
-          setError(data.error_message ?? "Review failed.");
-        }
-      } catch {
-        // transient network error — keep polling
-      }
-    }, 5000);
   }
 
   return (
@@ -203,7 +170,7 @@ export default function ReviewPage() {
       )}
 
       {/* Result */}
-      {result && <ReviewResult result={result} />}
+      {result && <ReviewResultPanel result={result} />}
     </div>
   );
 }
@@ -246,7 +213,7 @@ function ScoreBar({ label, value }: { label: string; value: number | null }) {
 
 /* ── Full result ─────────────────────────────────────────────────────────── */
 
-function ReviewResult({ result }: { result: ReviewResult }) {
+function ReviewResultPanel({ result }: { result: ReviewResult }) {
   const overallColor =
     (result.overall_score ?? 0) >= 70
       ? "#8ab58a"
@@ -318,8 +285,8 @@ function ReviewResult({ result }: { result: ReviewResult }) {
             Findings ({result.findings.length})
           </h2>
           <div className="space-y-3">
-            {result.findings.map((f) => (
-              <FindingCard key={f.id} finding={f} />
+            {result.findings.map((finding) => (
+              <FindingCard key={finding.id} finding={finding} />
             ))}
           </div>
         </div>
@@ -339,7 +306,7 @@ function SummaryCard({ title, body, accent }: { title: string; body: string; acc
   );
 }
 
-function FindingCard({ finding }: { finding: Finding }) {
+function FindingCard({ finding }: { finding: ReviewFinding }) {
   const [open, setOpen] = useState(false);
   const color = SEVERITY_COLOR[finding.severity] ?? "#3a3a3a";
   return (

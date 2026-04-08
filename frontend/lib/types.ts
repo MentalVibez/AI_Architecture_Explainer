@@ -10,6 +10,55 @@ export interface JobStatusResponse {
   error_message: string | null;
 }
 
+export interface ReviewJobSubmissionResponse {
+  job_id: string;
+  status: string;
+  message: string;
+}
+
+export interface ReviewStatusResponse {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  result_id: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface ReviewFinding {
+  id: string;
+  rule_id: string;
+  title: string;
+  category: string;
+  severity: string;
+  summary: string;
+  why_it_matters: string;
+  suggested_fix: string;
+}
+
+export interface ReviewResult {
+  result_id: string;
+  job_id: string;
+  repo_url: string;
+  commit: string | null;
+  branch: string;
+  created_at: string;
+  completed_at: string | null;
+  ruleset_version: string | null;
+  depth_level: string | null;
+  confidence_label: string | null;
+  overall_score: number | null;
+  verdict_label: string | null;
+  production_suitable: boolean;
+  anti_gaming_verdict: string | null;
+  scores: Record<string, number | null>;
+  findings: ReviewFinding[];
+  summary: { developer: string; manager: string; hiring: string } | null;
+  error_code: string | null;
+  error_message: string | null;
+}
+
 export interface StackItem {
   name: string;
   evidence: string[];

@@ -20,7 +20,7 @@ Codebase Atlas deploys across three services:
    - The URI looks like: `postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres`
 5. Replace `postgresql://` with `postgresql+asyncpg://` — this is your `DATABASE_URL`
 
-> The app runs `CREATE TABLE IF NOT EXISTS` on startup via SQLAlchemy, so no manual migration is needed for a fresh database.
+> The backend runs `alembic upgrade head` on startup in Railway and Docker. For a fresh database, the schema comes from Alembic migrations, not `create_all()`.
 
 ---
 
@@ -32,6 +32,7 @@ Codebase Atlas deploys across three services:
 2. Select the `AI_Architecture_Explainer` repo
 3. Railway auto-detects the `backend/` directory — set the **Root Directory** to `backend`
 4. Railway uses `railway.toml` and `Procfile` already in the repo — no extra config needed
+5. Keep the backend at a single web instance for now. Atlas/Review/public jobs still run via in-process `BackgroundTasks`, not an external queue.
 
 ### Environment variables
 
@@ -51,6 +52,8 @@ In Railway → your service → **Variables**, add:
 
 - Visit `https://your-railway-app.up.railway.app/health` — should return `{"status": "ok"}`
 - Check the Railway deploy logs for any startup errors
+- Confirm the deploy log includes `alembic upgrade head` before `uvicorn`
+- Confirm `/health` reports `"execution_mode": "in_process_background_tasks"`
 
 ---
 
@@ -105,6 +108,7 @@ CORS_ORIGINS=https://your-app.vercel.app,https://yourdomain.com
 cd backend
 cp .env.example .env          # fill in ANTHROPIC_API_KEY and optionally GITHUB_TOKEN
 pip install -e ".[dev]"
+alembic upgrade head
 uvicorn app.main:app --reload
 
 # Frontend (separate terminal)

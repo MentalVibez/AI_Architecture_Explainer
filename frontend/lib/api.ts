@@ -1,10 +1,17 @@
-import type { AnalyzeResponse, AnalysisResult, JobStatusResponse } from "./types";
+import type {
+  AnalyzeResponse,
+  AnalysisResult,
+  JobStatusResponse,
+  ReviewJobSubmissionResponse,
+  ReviewResult,
+  ReviewStatusResponse,
+} from "./types";
 
 // API_URL resolution:
 // - Server components: use API_URL (private, set to internal service address in prod)
 // - Client components: use NEXT_PUBLIC_API_URL (exposed to browser)
 // Fallback to localhost for local dev in both cases.
-function getApiUrl(): string {
+export function getApiUrl(): string {
   if (typeof window === "undefined") {
     // Server-side: prefer the private API_URL env var
     return process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -38,4 +45,19 @@ export async function getJobStatus(jobId: number): Promise<JobStatusResponse> {
 
 export async function getResult(resultId: number): Promise<AnalysisResult> {
   return apiFetch<AnalysisResult>(`/api/results/${resultId}`);
+}
+
+export async function submitReview(repoUrl: string, branch?: string): Promise<ReviewJobSubmissionResponse> {
+  return apiFetch<ReviewJobSubmissionResponse>("/api/review/", {
+    method: "POST",
+    body: JSON.stringify({ repo_url: repoUrl, branch: branch || null }),
+  });
+}
+
+export async function getReviewStatus(jobId: string): Promise<ReviewStatusResponse> {
+  return apiFetch<ReviewStatusResponse>(`/api/review/${jobId}`);
+}
+
+export async function getReviewResult(resultId: string): Promise<ReviewResult> {
+  return apiFetch<ReviewResult>(`/api/review/results/${resultId}`);
 }

@@ -1,4 +1,5 @@
 """Orchestrates the full repo analysis pipeline."""
+import asyncio
 import logging
 from typing import Any
 
@@ -30,6 +31,65 @@ PRIORITY_FILENAMES = {
 _MAX_PRIORITY_DEPTH = 2
 
 
+async def _load_analysis_inputs(owner: str, repo: str) -> dict[str, Any]:
+    """Fetch deterministic analysis inputs once for Atlas and Map."""
+    metadata = await github_service.get_repo_metadata(owner, repo)
+    default_branch = metadata.get("default_branch", "HEAD")
+    tree = await github_service.get_repo_tree(owner, repo, default_branch)
+    tree_paths = [item["path"] for item in tree if item["type"] == "blob"]
+    file_contents = await _fetch_priority_files(owner, repo, tree_paths)
+    npm_deps, python_deps = _parse_dependencies(file_contents)
+
+    return {
+        "default_branch": default_branch,
+        "tree": tree,
+        "tree_paths": tree_paths,
+        "file_contents": file_contents,
+        "npm_dependencies": npm_deps,
+        "python_dependencies": python_deps,
+        "detected_stack": framework_detector.detect_stack(tree_paths, npm_deps, python_deps),
+    }
+
+
+async def _fetch_priority_files(
+    owner: str,
+    repo: str,
+    tree_paths: list[str],
+) -> dict[str, str]:
+    priority_paths = [
+        path
+        for path in tree_paths
+        if path.split("/")[-1] in PRIORITY_FILENAMES and path.count("/") <= _MAX_PRIORITY_DEPTH
+    ]
+    contents = await asyncio.gather(
+        *(github_service.get_file_content(owner, repo, path) for path in priority_paths)
+    )
+    return {
+        path: content
+        for path, content in zip(priority_paths, contents, strict=False)
+        if content
+    }
+
+
+def _parse_dependencies(file_contents: dict[str, str]) -> tuple[list[str], list[str]]:
+    npm_deps: list[str] = []
+    python_deps: list[str] = []
+
+    for path, content in file_contents.items():
+        filename = path.split("/")[-1]
+        if filename == "package.json":
+            pkg = manifest_parser.parse_package_json(content)
+            npm_deps = list(dict.fromkeys(npm_deps + pkg.get("dependencies", [])))
+        elif filename == "requirements.txt":
+            new_deps = manifest_parser.parse_requirements_txt(content)
+            python_deps = list(dict.fromkeys(python_deps + new_deps))
+        elif filename == "pyproject.toml":
+            pyproj = manifest_parser.parse_pyproject_toml(content)
+            python_deps = list(dict.fromkeys(python_deps + pyproj.get("dependencies", [])))
+
+    return npm_deps, python_deps
+
+
 async def run_analysis(owner: str, repo: str) -> tuple[dict[str, Any], Any]:
     """
     Run full analysis pipeline.
@@ -37,10 +97,11 @@ async def run_analysis(owner: str, repo: str) -> tuple[dict[str, Any], Any]:
     intel_result is a PipelineResult from intelligence_pipeline.py — caller
     is responsible for persisting it to the DB.
     """
-    metadata = await github_service.get_repo_metadata(owner, repo)
-    default_branch = metadata.get("default_branch", "HEAD")
-
-    tree = await github_service.get_repo_tree(owner, repo, default_branch)
+    inputs = await _load_analysis_inputs(owner, repo)
+    default_branch = inputs["default_branch"]
+    tree = inputs["tree"]
+    tree_paths = inputs["tree_paths"]
+    file_contents = inputs["file_contents"]
 
     # Run the deep intelligence pipeline (non-blocking — errors logged, not raised)
     intel_result = None
@@ -61,39 +122,6 @@ async def run_analysis(owner: str, repo: str) -> tuple[dict[str, Any], Any]:
     except Exception:
         logger.exception("Intelligence pipeline failed for %s/%s — continuing without it", owner, repo)
 
-    tree_paths = [item["path"] for item in tree if item["type"] == "blob"]
-
-    # Collect priority file paths: match by basename at depth <= _MAX_PRIORITY_DEPTH
-    # This handles monorepos where manifests live in subdirectories (e.g. frontend/package.json)
-    priority_paths = [
-        p for p in tree_paths
-        if p.split("/")[-1] in PRIORITY_FILENAMES and p.count("/") <= _MAX_PRIORITY_DEPTH
-    ]
-
-    file_contents: dict[str, str] = {}
-    for path in priority_paths:
-        content = await github_service.get_file_content(owner, repo, path)
-        if content:
-            file_contents[path] = content
-
-    # Parse manifests — accumulate across all found instances (monorepo support)
-    npm_deps: list[str] = []
-    python_deps: list[str] = []
-
-    for path, content in file_contents.items():
-        filename = path.split("/")[-1]
-        if filename == "package.json":
-            pkg = manifest_parser.parse_package_json(content)
-            npm_deps = list(dict.fromkeys(npm_deps + pkg.get("dependencies", [])))
-        elif filename == "requirements.txt":
-            new_deps = manifest_parser.parse_requirements_txt(content)
-            python_deps = list(dict.fromkeys(python_deps + new_deps))
-        elif filename == "pyproject.toml":
-            pyproj = manifest_parser.parse_pyproject_toml(content)
-            python_deps = list(dict.fromkeys(python_deps + pyproj.get("dependencies", [])))
-
-    detected_stack = framework_detector.detect_stack(tree_paths, npm_deps, python_deps)
-
     # Use the shallowest README found (most likely the root one)
     readme_path = min(
         (p for p in file_contents if p.split("/")[-1] == "README.md"),
@@ -103,9 +131,9 @@ async def run_analysis(owner: str, repo: str) -> tuple[dict[str, Any], Any]:
 
     evidence = {
         "repo": {"owner": owner, "name": repo, "default_branch": default_branch},
-        "detected_stack": detected_stack,
-        "npm_dependencies": npm_deps,
-        "python_dependencies": python_deps,
+        "detected_stack": inputs["detected_stack"],
+        "npm_dependencies": inputs["npm_dependencies"],
+        "python_dependencies": inputs["python_dependencies"],
         "tree_paths": tree_paths[:200],  # cap for context safety
         "fetched_files": list(file_contents.keys()),
         "readme": file_contents.get(readme_path, "") if readme_path else "",
@@ -119,43 +147,13 @@ async def run_stack_analysis(owner: str, repo: str) -> dict[str, Any]:
     Use this for endpoints that need stack/framework info but not full analysis
     (e.g. /api/map). Completes in ~5s vs 60-120s for run_analysis.
     """
-    metadata = await github_service.get_repo_metadata(owner, repo)
-    default_branch = metadata.get("default_branch", "HEAD")
-    tree = await github_service.get_repo_tree(owner, repo, default_branch)
-    tree_paths = [item["path"] for item in tree if item["type"] == "blob"]
-
-    priority_paths = [
-        p for p in tree_paths
-        if p.split("/")[-1] in PRIORITY_FILENAMES and p.count("/") <= _MAX_PRIORITY_DEPTH
-    ]
-
-    file_contents: dict[str, str] = {}
-    for path in priority_paths:
-        content = await github_service.get_file_content(owner, repo, path)
-        if content:
-            file_contents[path] = content
-
-    npm_deps: list[str] = []
-    python_deps: list[str] = []
-    for path, content in file_contents.items():
-        filename = path.split("/")[-1]
-        if filename == "package.json":
-            pkg = manifest_parser.parse_package_json(content)
-            npm_deps = list(dict.fromkeys(npm_deps + pkg.get("dependencies", [])))
-        elif filename == "requirements.txt":
-            new_deps = manifest_parser.parse_requirements_txt(content)
-            python_deps = list(dict.fromkeys(python_deps + new_deps))
-        elif filename == "pyproject.toml":
-            pyproj = manifest_parser.parse_pyproject_toml(content)
-            python_deps = list(dict.fromkeys(python_deps + pyproj.get("dependencies", [])))
-
-    detected_stack = framework_detector.detect_stack(tree_paths, npm_deps, python_deps)
+    inputs = await _load_analysis_inputs(owner, repo)
 
     return {
-        "repo": {"owner": owner, "name": repo, "default_branch": default_branch},
-        "detected_stack": detected_stack,
-        "npm_dependencies": npm_deps,
-        "python_dependencies": python_deps,
-        "tree_paths": tree_paths[:200],
-        "fetched_files": list(file_contents.keys()),
+        "repo": {"owner": owner, "name": repo, "default_branch": inputs["default_branch"]},
+        "detected_stack": inputs["detected_stack"],
+        "npm_dependencies": inputs["npm_dependencies"],
+        "python_dependencies": inputs["python_dependencies"],
+        "tree_paths": inputs["tree_paths"][:200],
+        "fetched_files": list(inputs["file_contents"].keys()),
     }

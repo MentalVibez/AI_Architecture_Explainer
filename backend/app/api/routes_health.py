@@ -16,6 +16,14 @@ from app.services.intelligence_pipeline import (
 router = APIRouter()
 
 
+async def _check_database(db: AsyncSession) -> str:
+    try:
+        await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=2.0)
+        return "ok"
+    except Exception:
+        return "unreachable"
+
+
 async def _check_anthropic() -> str:
     """Probe the Anthropic API with a lightweight models list request.
 
@@ -39,20 +47,21 @@ async def _check_anthropic() -> str:
 
 @router.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
-    # Run DB and Anthropic probes concurrently — 2s cap on DB, 3s on Anthropic
-    db_status = "ok"
-    try:
-        await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=2.0)
-    except Exception:
-        db_status = "unreachable"
-
-    llm_status = await _check_anthropic()
+    db_status, llm_status = await asyncio.gather(
+        _check_database(db),
+        _check_anthropic(),
+    )
 
     return {
         "status": "ok",
         "service": "codebase-atlas-backend",
         "llm": llm_status,
         "database": db_status,
+        "jobs": {
+            "execution_mode": "in_process_background_tasks",
+            "topology": "single_web_process_recommended",
+            "restart_recovery": True,
+        },
         "intelligence": {
             "scan_timeout_s": DEEP_SCAN_TIMEOUT_SECONDS,
             "review_timeout_s": REVIEW_TIMEOUT_SECONDS,

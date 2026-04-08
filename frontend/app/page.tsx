@@ -18,17 +18,6 @@ export default function HomePage() {
                 Developer Toolkit
               </span>
               <span className="h-px bg-[#1e1e1e] w-10" />
-              <a
-                href="https://github.com/MentalVibez/AI_Architecture_Explainer"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-2.5 py-1 border border-[#1e1e1e] rounded-full
-                           font-mono text-[10px] text-[#3a3a3a] hover:text-[#5a5a5a]
-                           hover:border-[#2a2a2a] transition-colors"
-              >
-                <span>★</span>
-                <span>Star on GitHub</span>
-              </a>
             </div>
 
             {/* Headline */}

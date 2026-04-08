@@ -4,6 +4,10 @@ FROM python:3.11-slim AS builder
 WORKDIR /app
 
 COPY pyproject.toml .
+COPY app/ ./app/
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+
 # Install into an explicit prefix so we can copy the layer cleanly
 RUN pip install --no-cache-dir --prefix=/install .
 
@@ -12,6 +16,9 @@ RUN pip install --no-cache-dir --prefix=/install .
 FROM python:3.11-slim
 
 WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 # Non-root user — a compromised process shouldn't own the filesystem
 RUN adduser --disabled-password --gecos '' appuser
@@ -33,9 +40,9 @@ USER appuser
 
 EXPOSE 8000
 
-# Liveness probe — curl must be available (python:3.11-slim includes it)
+# Liveness probe without extra OS packages
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3)"
 
 # Entrypoint runs migrations then hands off to uvicorn (exec form = proper signal handling)
 ENTRYPOINT ["./docker-entrypoint.sh"]

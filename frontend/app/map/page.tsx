@@ -12,6 +12,8 @@
 
 import { useState, useEffect, useRef } from "react";
 
+import { getApiUrl } from "@/lib/api";
+
 /* ── Accent colour ────────────────────────────────────────────────────────── */
 const ACCENT = "#8ab58a";
 
@@ -73,10 +75,6 @@ function parseRepoInput(raw: string): { owner: string; repo: string } | null {
   const shortMatch = trimmed.match(/^([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/);
   if (shortMatch) return { owner: shortMatch[1], repo: shortMatch[2] };
   return null;
-}
-
-function getApiUrl(): string {
-  return "";
 }
 
 /* ── PHASES ───────────────────────────────────────────────────────────────── */
@@ -228,7 +226,7 @@ export default function MapPage() {
       if (!result) setPhase(-1);
     }
     return () => { if (phaseRef.current) clearInterval(phaseRef.current); };
-  }, [loading]);
+  }, [loading, result]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

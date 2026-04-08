@@ -1,11 +1,9 @@
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -20,15 +18,25 @@ from app.api.routes_results import router as results_router
 from app.api.routes_review import router as review_router
 from app.api.scout import router as scout_router
 from app.core.config import settings
-from app.core.database import AsyncSessionLocal, Base, engine
+from app.core.database import AsyncSessionLocal
 from app.core.logging_config import configure_logging
 from app.models.analysis import AnalysisJob as PublicAnalysisJob
 from app.models.analysis_job import AnalysisJob
 from app.models.review_job import ReviewJob
 
-configure_logging(settings.environment)
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+except ImportError:
+    sentry_sdk = None
+    FastApiIntegration = None
+    SqlalchemyIntegration = None
 
-if settings.sentry_dsn:
+configure_logging(settings.environment)
+logger = logging.getLogger(__name__)
+
+if settings.sentry_dsn and sentry_sdk:
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
         environment=settings.environment,
@@ -36,6 +44,8 @@ if settings.sentry_dsn:
         traces_sample_rate=0.1,
         send_default_pii=False,
     )
+elif settings.sentry_dsn:
+    logger.warning("SENTRY_DSN is set but sentry_sdk is not installed; continuing without Sentry")
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])
 
@@ -43,8 +53,10 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])
 async def _recover_stale_jobs() -> None:
     """On startup, reset any jobs stuck in 'running' to 'failed'.
 
-    BackgroundTasks run inside the uvicorn process — if the server
-    restarts mid-analysis the job stays 'running' forever without this.
+    BackgroundTasks run inside the web process. If the server restarts
+    mid-analysis the job stays 'running' forever without this recovery pass.
+    This makes the in-process execution model explicit until a real worker
+    queue is introduced.
     """
     async with AsyncSessionLocal() as db:
         await db.execute(
@@ -67,8 +79,6 @@ async def _recover_stale_jobs() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     await _recover_stale_jobs()
     yield
 

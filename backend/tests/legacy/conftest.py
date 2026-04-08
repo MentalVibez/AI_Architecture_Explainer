@@ -1,3 +1,8 @@
+import os
+
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("SENTRY_DSN", "")
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine

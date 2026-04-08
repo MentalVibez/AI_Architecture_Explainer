@@ -19,6 +19,8 @@ import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("ATLAS_JWT_SECRET", "test-secret-do-not-use-in-prod")
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("SENTRY_DSN", "")
 
 import hashlib
 import secrets

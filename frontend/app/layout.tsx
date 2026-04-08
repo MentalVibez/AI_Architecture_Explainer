@@ -6,6 +6,7 @@
 
 import type { Metadata } from "next";
 import "./globals.css";
+import { dmMono, dmSans, dmSerif } from "@/app/fonts";
 import Nav from "@/components/Nav";
 import Logo from "@/components/Logo";
 
@@ -22,12 +23,21 @@ export const metadata: Metadata = {
     url: "https://www.codebaseatlas.com",
     siteName: "CodebaseAtlas",
     type: "website",
+    images: [
+      {
+        url: "/og-preview.svg",
+        width: 1200,
+        height: 630,
+        alt: "CodebaseAtlas developer toolkit preview",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "CodebaseAtlas — Developer Toolkit",
     description:
       "Understand any GitHub repository in seconds. Architecture diagrams, framework detection, API surface mapping.",
+    images: ["/og-preview.svg"],
   },
 };
 
@@ -37,19 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`dark ${dmSans.variable} ${dmMono.variable} ${dmSerif.variable}`}>
       <body className="bg-[#0f0f0f] text-[#e8e0d4] font-sans antialiased min-h-screen">
         {/* ── JSON-LD structured data ───────────────────────────────────── */}
         <script
@@ -133,7 +131,7 @@ export default function RootLayout({
                 <li>
                   <FooterLink
                     href="https://github.com/MentalVibez/AI_Architecture_Explainer"
-                    label="GitHub Repository"
+                    label="Open source"
                     external
                   />
                 </li>
