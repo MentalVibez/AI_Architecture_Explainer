@@ -46,4 +46,4 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 # Entrypoint runs migrations then hands off to uvicorn (exec form = proper signal handling)
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
