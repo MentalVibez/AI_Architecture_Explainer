@@ -712,5 +712,5 @@ function ReviewProgressPanel({ jobMeta }: { jobMeta: ReviewStatusResponse }) {
 }
 
 function dedupeStrings(items: string[]): string[] {
-  return [...new Set(items)];
+  return Array.from(new Set(items));
 }
