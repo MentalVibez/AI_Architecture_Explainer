@@ -111,12 +111,13 @@ export default function ReviewPage() {
     if (requestedResultId === null || result) {
       return;
     }
+    const resultId: string = requestedResultId;
 
     let cancelled = false;
 
     async function loadResult() {
       try {
-        const data = await getReviewResult(requestedResultId);
+        const data = await getReviewResult(resultId);
         if (cancelled) {
           return;
         }
