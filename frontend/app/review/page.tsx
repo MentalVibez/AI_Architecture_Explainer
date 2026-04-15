@@ -107,8 +107,8 @@ export default function ReviewPage() {
   }, [activeRepo, searchParams, url]);
 
   useEffect(() => {
-    const resultId = searchParams.get("result_id");
-    if (!resultId || result) {
+    const requestedResultId = searchParams.get("result_id");
+    if (requestedResultId === null || result) {
       return;
     }
 
@@ -116,7 +116,7 @@ export default function ReviewPage() {
 
     async function loadResult() {
       try {
-        const data = await getReviewResult(resultId);
+        const data = await getReviewResult(requestedResultId);
         if (cancelled) {
           return;
         }
