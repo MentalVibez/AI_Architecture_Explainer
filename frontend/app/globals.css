@@ -3,25 +3,177 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #08111f;
+  --foreground: #edf4ff;
+  --surface: rgba(11, 20, 35, 0.88);
+  --surface-strong: #0e1729;
+  --border: rgba(137, 172, 255, 0.15);
+  --muted: #8ea3c7;
+  --accent: #5b8cff;
+  --accent-2: #8b5cf6;
+  --success: #35c58b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f0f0f;
-    --foreground: #ededed;
+    --background: #08111f;
+    --foreground: #edf4ff;
   }
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+  background-image:
+    radial-gradient(circle at top, rgba(91, 140, 255, 0.22), transparent 32%),
+    radial-gradient(circle at 85% 18%, rgba(139, 92, 246, 0.16), transparent 22%),
+    linear-gradient(180deg, #0a1220 0%, #08111f 42%, #07101c 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(142, 163, 199, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(142, 163, 199, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 85%);
+}
+
+a,
+button,
+input {
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+::selection {
+  background: rgba(91, 140, 255, 0.32);
+  color: #f8fbff;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .page-shell {
+    width: min(100%, 80rem);
+    margin-inline: auto;
+    padding-inline: 1rem;
+    padding-bottom: 5rem;
+  }
+
+  .page-hero {
+    padding-block: 2.5rem 3rem;
+  }
+
+  .hero-grid {
+    display: grid;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .hero-kicker {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.625rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #6d7f9f;
+  }
+
+  .hero-title {
+    font-size: clamp(2.85rem, 13vw, 4.5rem);
+    line-height: 0.94;
+    letter-spacing: -0.04em;
+    font-weight: 600;
+    color: #f4f8ff;
+  }
+
+  .hero-copy {
+    max-width: 42rem;
+    font-size: 1rem;
+    line-height: 1.75;
+    color: #98abd0;
+  }
+
+  .surface-note {
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1rem;
+  }
+
+  .surface-note-title {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.625rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #6d7f9f;
+  }
+
+  .surface-note-copy {
+    margin-top: 0.5rem;
+    font-size: 0.925rem;
+    line-height: 1.7;
+    color: #dce8ff;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow:
+      0 18px 60px rgba(3, 8, 18, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(18px);
+  }
+
+  .panel-strong {
+    background: linear-gradient(180deg, rgba(17, 27, 47, 0.96), rgba(10, 17, 31, 0.96));
+    border: 1px solid rgba(137, 172, 255, 0.18);
+    box-shadow:
+      0 24px 80px rgba(3, 8, 18, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+}
+
+@media (min-width: 640px) {
+  @layer utilities {
+    .page-shell {
+      padding-inline: 1.5rem;
+    }
+
+    .page-hero {
+      padding-block: 3.25rem 3.75rem;
+    }
+
+    .hero-title {
+      max-width: 13ch;
+      line-height: 0.95;
+    }
+
+    .hero-copy {
+      font-size: 1.05rem;
+      line-height: 1.8;
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  @layer utilities {
+    .hero-grid {
+      grid-template-columns: 1.05fr 0.95fr;
+    }
   }
 }
 

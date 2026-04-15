@@ -6,8 +6,53 @@ export interface AnalyzeResponse {
 export interface JobStatusResponse {
   job_id: number;
   status: "queued" | "running" | "completed" | "failed";
+  phase: "queue" | "analysis" | "complete" | "failed" | "unknown";
+  status_detail: string;
   result_id: number | null;
   error_message: string | null;
+  duration_seconds: number;
+  next_poll_seconds: number | null;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export interface RecentRunItem {
+  id: string;
+  kind: "atlas" | "review";
+  repo: string;
+  href: string;
+  title: string;
+  completed_at: string;
+}
+
+export interface RecentRunsResponse {
+  items: RecentRunItem[];
+}
+
+export interface QueueMetrics {
+  queued: number;
+  running: number;
+  completed_last_24h: number;
+  failed_last_24h: number;
+  average_duration_seconds: number | null;
+  oldest_queued_seconds: number | null;
+  oldest_running_seconds: number | null;
+}
+
+export interface RecentFailureItem {
+  kind: "atlas" | "review";
+  repo: string;
+  error_message: string | null;
+  completed_at: string | null;
+}
+
+export interface OpsSnapshotResponse {
+  status: "steady" | "active" | "watch";
+  attention_message: string | null;
+  atlas: QueueMetrics;
+  review: QueueMetrics;
+  recent_failures: RecentFailureItem[];
+  generated_at: string;
 }
 
 export interface ReviewJobSubmissionResponse {
@@ -19,9 +64,15 @@ export interface ReviewJobSubmissionResponse {
 export interface ReviewStatusResponse {
   job_id: string;
   status: "queued" | "running" | "completed" | "failed";
+  phase: "queue" | "analysis" | "complete" | "failed" | "unknown";
+  status_detail: string;
   result_id: string | null;
   error_code: string | null;
   error_message: string | null;
+  duration_seconds: number;
+  next_poll_seconds: number | null;
+  retryable: boolean | null;
+  suggested_action: string | null;
   created_at: string;
   completed_at: string | null;
 }
@@ -45,6 +96,7 @@ export interface ReviewResult {
   branch: string;
   created_at: string;
   completed_at: string | null;
+  duration_seconds?: number | null;
   ruleset_version: string | null;
   depth_level: string | null;
   confidence_label: string | null;

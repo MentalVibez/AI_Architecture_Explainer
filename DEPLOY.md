@@ -1,11 +1,15 @@
 # Deployment Guide
 
+For the exact live rollout order and smoke-test commands, use
+[docs/PRODUCTION_ROLLOUT.md](docs/PRODUCTION_ROLLOUT.md).
+
 Codebase Atlas deploys across three services:
 
 | Service | Platform | Purpose |
 |---------|----------|---------|
 | Database | [Supabase](https://supabase.com) | Postgres (free tier) |
-| Backend API | [Railway](https://railway.app) | FastAPI + background tasks |
+| Backend web | [Railway](https://railway.app) | FastAPI API service |
+| Backend worker | [Railway](https://railway.app) | Queue worker for Atlas / Review / public jobs |
 | Frontend | [Vercel](https://vercel.com) | Next.js App Router |
 
 ---
@@ -24,19 +28,24 @@ Codebase Atlas deploys across three services:
 
 ---
 
-## 2. Railway — Backend API
+## 2. Railway — Backend web + worker
 
 ### Initial deploy
 
 1. Go to [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo**
 2. Select the `AI_Architecture_Explainer` repo
-3. Railway auto-detects the `backend/` directory — set the **Root Directory** to `backend`
-4. Railway uses `railway.toml` and `Procfile` already in the repo — no extra config needed
-5. Keep the backend at a single web instance for now. Atlas/Review/public jobs still run via in-process `BackgroundTasks`, not an external queue.
+3. Create the first service as the **web** service:
+   - set **Root Directory** to `backend`
+   - use the repo `Procfile` or set the start command to `sh ./docker-entrypoint.sh`
+4. Duplicate that service or create a second backend service from the same repo for the **worker**:
+   - set **Root Directory** to `backend`
+   - set the start command to `sh ./docker-entrypoint.sh python -m app.worker`
+5. Point both backend services at the same environment variables and database
+6. Deploy the web and worker together. The shared entrypoint runs `alembic upgrade head` before either process starts.
 
 ### Environment variables
 
-In Railway → your service → **Variables**, add:
+In Railway → both backend services → **Variables**, add:
 
 | Variable | Value |
 |----------|-------|
@@ -45,17 +54,23 @@ In Railway → your service → **Variables**, add:
 | `DATABASE_URL` | The `postgresql+asyncpg://...` URI from Supabase |
 | `ENVIRONMENT` | `production` |
 | `CORS_ORIGINS` | Your Vercel frontend URL, e.g. `https://codebase-atlas.vercel.app` |
+| `WORKER_POLL_INTERVAL_SECONDS` | Optional — default `2.0` |
+| `WORKER_STALE_JOB_SECONDS` | Optional — default `1800` |
+| `WORKER_QUEUE_ORDER` | Optional — default `atlas,review` |
+| `OPS_WORKER_QUEUE_ALERT_SECONDS` | Optional — default `120` |
 
 > After adding variables, Railway will redeploy automatically.
 
 ### Verify
 
-- Visit `https://your-railway-app.up.railway.app/health` — should return `{"status": "ok"}`
-- Check the Railway deploy logs for any startup errors
-- Confirm the deploy log includes `alembic upgrade head` before `uvicorn`
-- Confirm `/health` reports `"execution_mode": "in_process_background_tasks"`
+- Visit `https://your-railway-web.up.railway.app/health` — should return `{"status": "ok"}`
+- Check both Railway deploy logs for startup errors
+- Confirm both services log `alembic upgrade head` before starting
+- Confirm `/health` reports `"execution_mode": "database_worker_queue"`
+- Confirm `/api/ops/summary` becomes `active` during jobs and does not show an attention message during normal processing
+- Stop the worker temporarily and confirm `/api/ops/summary` flips to `watch` with a worker backlog message
 
----
+--- 
 
 ## 3. Vercel — Frontend
 
@@ -72,8 +87,8 @@ In Vercel → your project → **Settings → Environment Variables**, add:
 
 | Variable | Value | Environment |
 |----------|-------|-------------|
-| `NEXT_PUBLIC_API_URL` | `https://your-railway-app.up.railway.app` | Production, Preview, Development |
-| `API_URL` | `https://your-railway-app.up.railway.app` | Production, Preview |
+| `NEXT_PUBLIC_API_URL` | `https://your-railway-web.up.railway.app` | Production, Preview, Development |
+| `API_URL` | `https://your-railway-web.up.railway.app` | Production, Preview |
 
 > `NEXT_PUBLIC_API_URL` is exposed to the browser (client components).
 > `API_URL` is used only by Next.js server components and can point to an internal URL if needed.
@@ -81,13 +96,14 @@ In Vercel → your project → **Settings → Environment Variables**, add:
 ### Verify
 
 - Visit your Vercel URL → homepage should load
-- Submit a public GitHub repo URL → job should transition `queued → running → completed`
+- Submit a public GitHub repo URL → Atlas job should transition `queued → running → completed`
+- Submit a Review job and confirm it also drains through the worker
 
----
+--- 
 
 ## 4. Updating CORS after deploy
 
-Once you have the Vercel URL, update the Railway env var:
+Once you have the Vercel URL, update the Railway env var on both backend services:
 
 ```
 CORS_ORIGINS=https://your-app.vercel.app
@@ -110,6 +126,9 @@ cp .env.example .env          # fill in ANTHROPIC_API_KEY and optionally GITHUB_
 pip install -e ".[dev]"
 alembic upgrade head
 uvicorn app.main:app --reload
+
+# Backend worker (separate terminal)
+python -m app.worker
 
 # Frontend (separate terminal)
 cd frontend

@@ -119,7 +119,7 @@ graph TD
 | Backend | FastAPI, Python 3.11+, SQLAlchemy (async), Alembic |
 | LLM | Anthropic `claude-sonnet-4-6` — tool-use for Atlas/Review, text for Scout |
 | Database | SQLite (dev) → Supabase Postgres (prod) |
-| Hosting | Vercel (frontend) + Railway (backend) + Supabase (database) |
+| Hosting | Vercel (frontend) + Railway web/worker services (backend) + Supabase (database) |
 | Testing | pytest — deterministic tests, no real API calls |
 
 ---
@@ -136,6 +136,9 @@ pip install -e ".[dev]"
 cp .env.example .env             # add ANTHROPIC_API_KEY
 alembic upgrade head
 uvicorn app.main:app --reload
+
+# separate terminal — queue worker
+python -m app.worker
 ```
 
 API: `http://localhost:8000` · Docs: `http://localhost:8000/docs`
@@ -193,15 +196,6 @@ App: `http://localhost:3000`
 | `GET` | `/api/results/{result_id}/graph` | Graph summary (edge counts, confidence, critical path) |
 | `GET` | `/api/results/{result_id}/files` | Paginated file listing (filterable by role/language) |
 | `GET` | `/api/results/{result_id}/edges` | Paginated dependency edges (filterable by confidence) |
-
-### Public lane
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/public/analyze` | Anonymous analysis (rate-limited, cached) |
-| `GET` | `/api/public/analysis/{job_id}` | Full result for a public job |
-| `GET` | `/api/public/analysis/{job_id}/summary` | Risk levels only (lightweight) |
-| `GET` | `/api/public/cache/{provider}/{owner}/{repo}/{sha}` | Cache lookup |
 
 ### System
 
@@ -363,11 +357,12 @@ The scanner has a hard ceiling of **800 files per repo** (`HARD_MAX_FILES`). Bey
 
 ## Deployment
 
-Deploys to **Railway** (backend) + **Vercel** (frontend) + **Supabase** (Postgres). See [DEPLOY.md](DEPLOY.md) for full step-by-step instructions.
+Deploys to **Railway** (backend) + **Vercel** (frontend) + **Supabase** (Postgres). See [DEPLOY.md](DEPLOY.md) for setup and [docs/PRODUCTION_ROLLOUT.md](docs/PRODUCTION_ROLLOUT.md) for the live rollout checklist and smoke test.
 
 | Service | Platform | Trigger |
 |---------|----------|---------|
-| Backend | Railway | Push to `main` (nixpacks, runs Procfile) |
+| Backend web | Railway | Push to `main` |
+| Backend worker | Railway | Push to `main` |
 | Frontend | Vercel | Push to `main` (Next.js auto-build) |
 | Database | Supabase | Manual — `alembic upgrade head` against prod DB URL |
 
@@ -384,6 +379,10 @@ Deploys to **Railway** (backend) + **Vercel** (frontend) + **Supabase** (Postgre
 | `DATABASE_URL` | No | Defaults to `sqlite+aiosqlite:///./dev.db`; use `postgresql+asyncpg://...` for Supabase |
 | `ENVIRONMENT` | No | `development` or `production` |
 | `CORS_ORIGINS` | No | Comma-separated allowed origins; defaults to `http://localhost:3000` |
+| `WORKER_POLL_INTERVAL_SECONDS` | No | Worker queue poll cadence; default `2.0` |
+| `WORKER_STALE_JOB_SECONDS` | No | Marks stuck running jobs as failed after this many seconds; default `1800` |
+| `WORKER_QUEUE_ORDER` | No | Queue claim order for worker; default `atlas,review` |
+| `OPS_WORKER_QUEUE_ALERT_SECONDS` | No | Queue age threshold for worker backlog alerts; default `120` |
 
 ### Frontend (`frontend/.env.local`)
 

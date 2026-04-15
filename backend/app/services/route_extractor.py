@@ -208,63 +208,64 @@ async def extract_endpoints(
         warnings=warnings,
     )
 
-    # Fetch the full recursive tree via github_service (uses GITHUB_TOKEN)
     try:
-        tree = await github_service.get_repo_tree(owner, repo)
+        async with github_service.create_github_client() as client:
+            # Fetch the full recursive tree via github_service (uses GITHUB_TOKEN)
+            tree = await github_service.get_repo_tree(owner, repo, client=client)
+
+            interesting_dirs = set(cfg.get("interesting_dirs", []))
+            interesting_files = set(cfg.get("interesting_files", []))
+            target_files = set(cfg.get("target_files", []))
+            file_patterns: list[str] = cfg.get("file_patterns", [])
+
+            candidate_paths: list[str] = []
+
+            for item in tree:
+                if item.get("type") != "blob":
+                    continue
+                path: str = item["path"]
+                name = path.split("/")[-1]
+                parts = path.split("/")
+
+                # Always include target files (e.g. Django urls.py)
+                if name in target_files:
+                    if path not in candidate_paths:
+                        candidate_paths.insert(0, path)
+                    continue
+
+                # Root-level interesting files
+                if len(parts) == 1 and name in interesting_files:
+                    if path not in candidate_paths:
+                        candidate_paths.append(path)
+                    continue
+
+                # Files inside interesting directories with matching extension
+                in_interesting = any(p in interesting_dirs for p in parts[:-1])
+                if in_interesting and any(re.search(pat, name) for pat in file_patterns):
+                    if path not in candidate_paths:
+                        candidate_paths.append(path)
+
+            # Fallback: root-level code files when nothing matched
+            if not candidate_paths:
+                for item in tree:
+                    if item.get("type") == "blob" and "/" not in item["path"]:
+                        name = item["path"]
+                        if any(re.search(pat, name) for pat in file_patterns):
+                            candidate_paths.append(name)
+
+            candidate_paths = candidate_paths[:20]
+
+            # Fetch and parse files concurrently with the same pooled client
+            fetch_tasks = [
+                github_service.get_file_content(owner, repo, path, client=client)
+                for path in candidate_paths
+            ]
+            file_contents = await asyncio.gather(*fetch_tasks, return_exceptions=True)
     except github_service.GitHubError as exc:
         endpoint_map.warnings.append(f"Could not fetch repo tree: {exc}")
         return endpoint_map
 
-    interesting_dirs = set(cfg.get("interesting_dirs", []))
-    interesting_files = set(cfg.get("interesting_files", []))
-    target_files = set(cfg.get("target_files", []))
-    file_patterns: list[str] = cfg.get("file_patterns", [])
-
-    candidate_paths: list[str] = []
-
-    for item in tree:
-        if item.get("type") != "blob":
-            continue
-        path: str = item["path"]
-        name = path.split("/")[-1]
-        parts = path.split("/")
-
-        # Always include target files (e.g. Django urls.py)
-        if name in target_files:
-            if path not in candidate_paths:
-                candidate_paths.insert(0, path)
-            continue
-
-        # Root-level interesting files
-        if len(parts) == 1 and name in interesting_files:
-            if path not in candidate_paths:
-                candidate_paths.append(path)
-            continue
-
-        # Files inside interesting directories with matching extension
-        in_interesting = any(p in interesting_dirs for p in parts[:-1])
-        if in_interesting and any(re.search(pat, name) for pat in file_patterns):
-            if path not in candidate_paths:
-                candidate_paths.append(path)
-
-    # Fallback: root-level code files when nothing matched
-    if not candidate_paths:
-        for item in tree:
-            if item.get("type") == "blob" and "/" not in item["path"]:
-                name = item["path"]
-                if any(re.search(pat, name) for pat in file_patterns):
-                    candidate_paths.append(name)
-
-    candidate_paths = candidate_paths[:20]
-
-    # Fetch and parse files concurrently
-    fetch_tasks = [
-        github_service.get_file_content(owner, repo, path)
-        for path in candidate_paths
-    ]
-    file_contents = await asyncio.gather(*fetch_tasks, return_exceptions=True)
-
-    for path, content in zip(candidate_paths, file_contents):
+    for path, content in zip(candidate_paths, file_contents, strict=False):
         if isinstance(content, Exception) or not content:
             continue
         endpoint_map.files_scanned.append(path)

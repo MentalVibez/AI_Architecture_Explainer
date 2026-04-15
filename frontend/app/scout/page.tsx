@@ -1,117 +1,169 @@
-/**
- * app/scout/page.tsx  —  RepoScout tool page
- *
- * Drop into Atlas's existing frontend directory structure:
- *   frontend/app/scout/page.tsx
- *
- * Design language: inherits Atlas's globals.css tokens (DM Serif, DM Mono,
- * dark background, border-based layout). RepoScout accent = #c8a96e (amber).
- * Atlas accent = #7cb9c8 (teal). Both live in the same design system.
- *
- * The "Analyze with Atlas →" button on each card calls POST /api/analyze
- * and redirects to the Atlas results page — the existing Atlas API endpoint,
- * unchanged.
- *
- * API: POST /api/scout/search  (new backend route from REPOSCOUT_INTEGRATION.md)
- */
-
 "use client";
 
-import { useState, useCallback } from "react";
+import Link from "next/link";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 
-/* ── Types ────────────────────────────────────────────────────────────────── */
+import { submitAnalysis } from "@/lib/api";
+import { useRepoWorkspace } from "@/components/workspace/RepoWorkspaceProvider";
 
 type Platform = "github" | "gitlab";
-type SortBy   = "stars" | "updated" | "best-match";
-type Verdict  = "HIGHLY_RECOMMENDED" | "RECOMMENDED" | "WORTH_CHECKING" | "AVOID";
-type SigType  = "good" | "warn" | "bad";
+type SortBy = "stars" | "updated" | "best-match";
+type Verdict = "HIGHLY_RECOMMENDED" | "RECOMMENDED" | "WORTH_CHECKING" | "AVOID";
+type SigType = "good" | "warn" | "bad";
 
-interface Signal   { label: string; type: SigType; verified: boolean }
-interface Scores   { quality_score: number; relevance_score: number; overall_score: number }
+interface Signal {
+  label: string;
+  type: SigType;
+  verified: boolean;
+}
+
+interface Scores {
+  quality_score: number;
+  relevance_score: number;
+  overall_score: number;
+}
+
 interface Evidence {
-  stars: number; forks: number; days_since_update: number | null;
-  has_license: boolean; license_name: string | null; readme_verified: boolean;
-  is_fork: boolean; is_archived: boolean; is_template: boolean;
-  open_issues: number; topic_matches: string[]; matched_terms: string[];
+  stars: number;
+  forks: number;
+  days_since_update: number | null;
+  has_license: boolean;
+  license_name: string | null;
+  readme_verified: boolean;
+  is_fork: boolean;
+  is_archived: boolean;
+  is_template: boolean;
+  open_issues: number;
+  topic_matches: string[];
+  matched_terms: string[];
   noise_flags: string[];
 }
+
 interface Repo {
-  id: string; platform: Platform; full_name: string; owner: string;
-  description: string; url: string; language: string | null;
-  created_at: string | null; updated_at: string | null;
-  scores: Scores; verdict: Verdict; ai_insight: string;
-  risks: string[]; signals: Signal[]; evidence: Evidence;
+  id: string;
+  platform: Platform;
+  full_name: string;
+  owner: string;
+  description: string;
+  url: string;
+  language: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  scores: Scores;
+  verdict: Verdict;
+  ai_insight: string;
+  risks: string[];
+  signals: Signal[];
+  evidence: Evidence;
 }
-interface ScoutResponse { query: string; total: number; repos: Repo[]; tldr: string }
 
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-
-function fmtNum(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n); }
+interface ScoutResponse {
+  query: string;
+  total: number;
+  repos: Repo[];
+  tldr: string;
+}
 
 const VERDICT_MAP: Record<Verdict, { label: string; color: string }> = {
-  HIGHLY_RECOMMENDED: { label: "✦ Top pick",       color: "#6dba8a" },
-  RECOMMENDED:        { label: "✔ Recommended",     color: "#6dba8a" },
-  WORTH_CHECKING:     { label: "◈ Worth checking",  color: "#c8a96e" },
-  AVOID:              { label: "✘ Avoid",            color: "#b86a6a" },
+  HIGHLY_RECOMMENDED: { label: "Top pick", color: "#35c58b" },
+  RECOMMENDED: { label: "Recommended", color: "#35c58b" },
+  WORTH_CHECKING: { label: "Worth checking", color: "#ffcb6b" },
+  AVOID: { label: "Avoid", color: "#ff8d8d" },
 };
 
-/* ── ScoreBar ────────────────────────────────────────────────────────────── */
+const SAMPLE_QUERIES = [
+  "nextjs starter auth",
+  "rag pipeline langchain",
+  "fastapi saas starter",
+  "aws cdk infrastructure",
+] as const;
+
+const WORKFLOW_POINTS = [
+  "Search GitHub and GitLab together",
+  "Rank by quality and semantic relevance",
+  "Suppress forks, mirrors, and low-signal noise",
+  "Send the winner into Atlas with one click",
+] as const;
+const EMPTY_STATE_HINTS = [
+  "Try broader technology terms instead of project names.",
+  "Enable both GitHub and GitLab when the search space is thin.",
+  "If you already know the repo, skip Scout and go straight to Atlas.",
+] as const;
+
+function fmtNum(n: number) {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+function scoreColor(value: number) {
+  if (value >= 75) return "#35c58b";
+  if (value >= 45) return "#ffcb6b";
+  return "#ff8d8d";
+}
+
+function platformLabel(platform: Platform) {
+  return platform === "github" ? "GitHub" : "GitLab";
+}
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
-  const color = value >= 75 ? "#6dba8a" : value >= 45 ? "#c8a96e" : "#b86a6a";
+  const color = scoreColor(value);
   return (
-    <div className="mb-2">
-      <div className="flex justify-between mb-0.5">
-        <span className="font-mono text-[10px] tracking-widest text-[#3a3a3a] uppercase">{label}</span>
-        <span className="font-mono text-[10px] font-medium" style={{ color }}>{value}</span>
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#7184a7]">
+          {label}
+        </span>
+        <span className="font-mono text-[11px]" style={{ color }}>
+          {value}
+        </span>
       </div>
-      <div className="h-px bg-[#1a1a1a] rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${value}%`, backgroundColor: color }} />
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${value}%`, backgroundColor: color }} />
       </div>
     </div>
   );
 }
 
-/* ── EvidenceDrawer ──────────────────────────────────────────────────────── */
-
-function EvidenceDrawer({ ev }: { ev: Evidence }) {
-  const rows: { label: string; val: string; good?: boolean; bad?: boolean }[] = [
-    { label: "Stars",       val: fmtNum(ev.stars),     good: ev.stars >= 100, bad: ev.stars < 10 },
-    { label: "Forks",       val: fmtNum(ev.forks) },
-    { label: "Last update", val: ev.days_since_update != null ? `${ev.days_since_update}d ago` : "unknown",
-      good: (ev.days_since_update ?? 999) <= 90, bad: (ev.days_since_update ?? 0) > 365 },
-    { label: "License",     val: ev.license_name ?? "None", good: ev.has_license, bad: !ev.has_license },
-    { label: "README",      val: ev.readme_verified ? "Confirmed" : "Unverified", good: ev.readme_verified },
-    { label: "Issues open", val: String(ev.open_issues) },
-    { label: "Fork",        val: ev.is_fork ? "Yes" : "No", bad: ev.is_fork },
-    { label: "Archived",    val: ev.is_archived ? "Yes" : "No", bad: ev.is_archived },
-  ];
-  const valColor = (r: typeof rows[0]) =>
-    r.good ? "#6dba8a" : r.bad ? "#b86a6a" : "#4a4a4a";
+function EvidencePanel({ evidence }: { evidence: Evidence }) {
+  const rows = [
+    { label: "Stars", value: fmtNum(evidence.stars) },
+    { label: "Forks", value: fmtNum(evidence.forks) },
+    { label: "Updated", value: evidence.days_since_update != null ? `${evidence.days_since_update}d ago` : "unknown" },
+    { label: "License", value: evidence.license_name ?? "none" },
+    { label: "README", value: evidence.readme_verified ? "verified" : "unverified" },
+    { label: "Issues", value: String(evidence.open_issues) },
+  ] as const;
 
   return (
-    <div className="border border-[#1a1a1a] rounded p-4 mt-3 bg-[#080808]">
-      <p className="font-mono text-[10px] tracking-[0.25em] text-[#2a2a2a] uppercase mb-3">Evidence</p>
-      <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] mb-3">
-        {rows.map((r) => (
-          <div key={r.label} className="flex justify-between">
-            <span className="text-[#3a3a3a]">{r.label}</span>
-            <span className="font-mono font-medium" style={{ color: valColor(r) }}>{r.val}</span>
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-3">
+            <span className="text-sm text-[#7f95ba]">{row.label}</span>
+            <span className="font-mono text-[11px] text-[#deebff]">{row.value}</span>
           </div>
         ))}
       </div>
-      {ev.topic_matches.length > 0 && (
-        <p className="text-[10px] mb-1">
-          <span className="text-[#2a2a2a]">Topic matches: </span>
-          <span className="font-mono text-[#6dba8a]">{ev.topic_matches.join(", ")}</span>
-        </p>
+      {evidence.topic_matches.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {evidence.topic_matches.map((topic) => (
+            <span
+              key={topic}
+              className="rounded-full border border-[#35c58b]/25 bg-[#35c58b]/10 px-2.5 py-1 font-mono text-[10px] text-[#8fe0b8]"
+            >
+              {topic}
+            </span>
+          ))}
+        </div>
       )}
-      {ev.noise_flags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {ev.noise_flags.map((f) => (
-            <span key={f} className="font-mono text-[10px] px-1.5 py-0.5 border border-[#c8a96e]/20 text-[#c8a96e]/60 rounded">
-              ⚠ {f}
+      {evidence.noise_flags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {evidence.noise_flags.map((flag) => (
+            <span
+              key={flag}
+              className="rounded-full border border-[#ffcb6b]/25 bg-[#ffcb6b]/10 px-2.5 py-1 font-mono text-[10px] text-[#ffd98f]"
+            >
+              {flag}
             </span>
           ))}
         </div>
@@ -120,355 +172,423 @@ function EvidenceDrawer({ ev }: { ev: Evidence }) {
   );
 }
 
-/* ── RepoCard ────────────────────────────────────────────────────────────── */
-
 function RepoCard({ repo, rank }: { repo: Repo; rank: number }) {
   const router = useRouter();
+  const { setActiveRepo } = useRepoWorkspace();
   const [showEvidence, setShowEvidence] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeErr, setAnalyzeErr] = useState("");
-
-  const overall  = repo.scores.overall_score;
-  const scoreColor = overall >= 75 ? "#6dba8a" : overall >= 45 ? "#c8a96e" : "#b86a6a";
-  const verdict  = VERDICT_MAP[repo.verdict];
+  const verdict = VERDICT_MAP[repo.verdict];
 
   async function handleAtlas() {
-    setAnalyzing(true); setAnalyzeErr("");
+    setAnalyzeErr("");
+    setAnalyzing(true);
+    setActiveRepo({
+      repo: repo.full_name,
+      url: repo.url,
+      provider: repo.platform,
+    });
+
     try {
-      const res = await fetch(
-        `/api/analyze`,
-        { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ repo_url: repo.url }) }
-      );
-      if (!res.ok) {
-        const b = await res.json().catch(() => ({}));
-        throw new Error(b.detail ?? `Atlas error ${res.status}`);
-      }
-      const { job_id } = await res.json();
-      if (typeof job_id !== "string") throw new Error("Unexpected response from Atlas.");
-      router.push(`/results/${job_id}`);
-    } catch (e) {
-      setAnalyzeErr(e instanceof Error ? e.message : "Failed to submit to Atlas.");
+      const { job_id } = await submitAnalysis(repo.url);
+      router.push(`/analyze?job_id=${job_id}`);
+    } catch (error) {
+      setAnalyzeErr(error instanceof Error ? error.message : "Failed to submit to Atlas.");
       setAnalyzing(false);
     }
   }
 
   return (
-    <div className="border border-[#1a1a1a] rounded-lg overflow-hidden
-                    hover:border-[#2a2a2a] transition-colors group">
-      {/* Header */}
-      <div className="flex items-start gap-4 p-5 border-b border-[#141414]">
-        {/* Rank */}
-        <div className={`w-8 h-8 flex items-center justify-center font-mono text-[11px] flex-shrink-0 rounded
-          ${rank === 1 ? "bg-[#c8a96e] text-[#0a0a0a]"
-          : rank === 2 ? "bg-[#5a5a5a] text-[#0a0a0a]"
-          : rank === 3 ? "bg-[#7a5a3a] text-[#e8e0d4]"
-          : "border border-[#1e1e1e] text-[#3a3a3a]"}`}
-        >
-          #{rank}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <a href={repo.url} target="_blank" rel="noopener noreferrer"
-             className="font-sans font-semibold text-[#e8e0d4] hover:text-white
-                        truncate block transition-colors text-sm">
-            {repo.full_name}
-            <span className={`ml-2 font-mono text-[9px] tracking-widest px-1.5 py-0.5 rounded uppercase
-              ${repo.platform === "github" ? "bg-[#1a1a1a] text-[#3a3a3a]" : "bg-orange-900/20 text-orange-500/60"}`}>
-              {repo.platform === "github" ? "GH" : "GL"}
-            </span>
-          </a>
-          <div className="font-mono text-[10px] text-[#3a3a3a] mt-0.5">
-            {repo.owner} · {repo.language ?? "—"} · {repo.created_at ? new Date(repo.created_at).getFullYear() : "—"}
+    <article className="panel rounded-[28px] p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] font-mono text-[11px] text-[#dce8ff]">
+            #{rank}
           </div>
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="font-mono text-[10px] tracking-wide" style={{ color: verdict.color }}>
-              {verdict.label}
-            </span>
-          </div>
-        </div>
-
-        {/* Overall score */}
-        <div className="text-center flex-shrink-0">
-          <div className="font-serif text-3xl leading-none" style={{ color: scoreColor }}>{overall}</div>
-          <div className="font-mono text-[9px] tracking-[0.2em] text-[#2a2a2a] uppercase mt-0.5">score</div>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="p-5">
-        {repo.description && (
-          <p className="font-sans text-[12px] text-[#4a4a4a] leading-relaxed mb-3">{repo.description}</p>
-        )}
-        {repo.ai_insight && (
-          <div className="border-l-2 border-[#c8a96e]/30 pl-3 font-sans text-[12px]
-                          italic text-[#5a5a5a] leading-relaxed mb-4">
-            {repo.ai_insight}
-          </div>
-        )}
-
-        {/* Score bars */}
-        <div className="mb-4">
-          <ScoreBar label="Quality"   value={repo.scores.quality_score} />
-          <ScoreBar label="Relevance" value={repo.scores.relevance_score} />
-        </div>
-
-        {/* Topic matches */}
-        {repo.evidence.topic_matches.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {repo.evidence.topic_matches.map((t) => (
-              <span key={t} className="font-mono text-[9px] px-1.5 py-0.5
-                                       border border-[#c8a96e]/20 text-[#c8a96e]/70 rounded tracking-wider">
-                {t}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href={repo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-lg font-semibold text-[#f5f8ff] hover:text-white"
+              >
+                {repo.full_name}
+              </a>
+              <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[#7f95ba]">
+                {platformLabel(repo.platform)}
               </span>
-            ))}
-          </div>
-        )}
-
-        {/* Risks */}
-        {repo.risks.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-4">
-            {repo.risks.map((r, i) => (
-              <span key={i} className="font-mono text-[9px] px-1.5 py-0.5
-                                       border border-[#c8a96e]/15 text-[#c8a96e]/50 rounded">
-                ⚠ {r}
+              <span
+                className="rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em]"
+                style={{ color: verdict.color, borderColor: `${verdict.color}40`, backgroundColor: `${verdict.color}12` }}
+              >
+                {verdict.label}
               </span>
-            ))}
-          </div>
-        )}
-
-        {/* Evidence toggle */}
-        <button onClick={() => setShowEvidence((s) => !s)}
-                className="font-mono text-[10px] text-[#2a2a2a] hover:text-[#4a4a4a]
-                           underline underline-offset-2 transition-colors mb-1">
-          {showEvidence ? "Hide evidence ↑" : "Show evidence ↓"}
-        </button>
-        {showEvidence && <EvidenceDrawer ev={repo.evidence} />}
-
-        {/* CTA row */}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#141414]">
-          <a href={repo.url} target="_blank" rel="noopener noreferrer"
-             className="font-mono text-[11px] text-[#c8a96e]/60 hover:text-[#c8a96e] transition-colors tracking-wider">
-            View repo →
-          </a>
-          <div className="flex flex-col items-end gap-1">
-            <button onClick={handleAtlas} disabled={analyzing}
-                    className="font-mono text-[11px] px-3 py-1.5 border border-[#7cb9c8]/30
-                               text-[#7cb9c8]/70 hover:text-[#7cb9c8] hover:border-[#7cb9c8]/60
-                               disabled:opacity-40 transition-all rounded tracking-wider">
-              {analyzing ? "Submitting…" : "Analyze with Atlas →"}
-            </button>
-            {analyzeErr && (
-              <p className="font-mono text-[9px] text-[#b86a6a] max-w-[220px] text-right">{analyzeErr}</p>
+            </div>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#6d7f9f]">
+              {repo.owner} · {repo.language ?? "Unknown language"} · {repo.created_at ? new Date(repo.created_at).getFullYear() : "No year"}
+            </p>
+            {repo.description && (
+              <p className="mt-3 text-sm leading-relaxed text-[#96aad0]">{repo.description}</p>
             )}
           </div>
         </div>
+
+        <div className="self-start rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center">
+          <p className="text-3xl font-semibold leading-none" style={{ color: scoreColor(repo.scores.overall_score) }}>
+            {repo.scores.overall_score}
+          </p>
+          <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#62779d]">overall</p>
+        </div>
       </div>
 
-      {/* Signals footer */}
-      {repo.signals.length > 0 && (
-        <div className="flex flex-wrap gap-1 px-5 py-3 bg-[#060606] border-t border-[#141414]">
-          {repo.signals.map((s, i) => (
-            <span key={i} className={`font-mono text-[9px] px-1.5 py-0.5 border rounded tracking-wider
-              ${s.type === "good" ? "border-[#6dba8a]/20 text-[#6dba8a]/60"
-              : s.type === "warn" ? "border-[#c8a96e]/20 text-[#c8a96e]/60"
-              : "border-[#b86a6a]/20 text-[#b86a6a]/60"}`}>
-              {!s.verified && "〜"}{s.label}
+      {repo.ai_insight && (
+        <div className="mt-4 rounded-2xl border border-[#4d7cff]/20 bg-[#4d7cff]/10 p-4 text-sm leading-relaxed text-[#d7e4ff]">
+          {repo.ai_insight}
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <ScoreBar label="quality" value={repo.scores.quality_score} />
+        <ScoreBar label="relevance" value={repo.scores.relevance_score} />
+      </div>
+
+      {repo.risks.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {repo.risks.map((risk) => (
+            <span
+              key={risk}
+              className="rounded-full border border-[#ffcb6b]/25 bg-[#ffcb6b]/10 px-2.5 py-1 font-mono text-[10px] text-[#ffd98f]"
+            >
+              {risk}
             </span>
           ))}
         </div>
       )}
-    </div>
+
+      {repo.signals.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {repo.signals.map((signal) => {
+            const color =
+              signal.type === "good" ? "#35c58b" : signal.type === "warn" ? "#ffcb6b" : "#ff8d8d";
+            return (
+              <span
+                key={`${signal.label}-${signal.type}`}
+                className="rounded-full border px-2.5 py-1 font-mono text-[10px]"
+                style={{ color, borderColor: `${color}30`, backgroundColor: `${color}10` }}
+              >
+                {signal.verified ? signal.label : `~ ${signal.label}`}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+        <button
+          onClick={() => setShowEvidence((value) => !value)}
+          className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#9ab0d4] hover:text-white"
+        >
+          {showEvidence ? "Hide evidence" : "Show evidence"}
+        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href={repo.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#9ab0d4] hover:text-white"
+          >
+            Open repo ↗
+          </a>
+          <button
+            onClick={handleAtlas}
+            disabled={analyzing}
+            className="rounded-full bg-[#4d7cff] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-white shadow-[0_12px_28px_rgba(77,124,255,0.25)] hover:bg-[#6794ff] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {analyzing ? "Opening…" : "Send to Atlas"}
+          </button>
+        </div>
+      </div>
+
+      {analyzeErr && <p className="mt-3 font-mono text-[11px] text-[#ff8d8d]">{analyzeErr}</p>}
+      {showEvidence && <EvidencePanel evidence={repo.evidence} />}
+    </article>
   );
 }
 
-/* ── Main page ───────────────────────────────────────────────────────────── */
-
 export default function ScoutPage() {
-  const [query,   setQuery]   = useState("");
-  const [token,   setToken]   = useState("");
-  const [github,  setGithub]  = useState(true);
-  const [gitlab,  setGitlab]  = useState(true);
-  const [sortBy,  setSortBy]  = useState<SortBy>("stars");
+  const [query, setQuery] = useState("");
+  const [token, setToken] = useState("");
+  const [github, setGithub] = useState(true);
+  const [gitlab, setGitlab] = useState(true);
+  const [sortBy, setSortBy] = useState<SortBy>("stars");
   const [loading, setLoading] = useState(false);
-  const [progress,setProgress]= useState(0);
-  const [status,  setStatus]  = useState("");
-  const [result,  setResult]  = useState<ScoutResponse | null>(null);
-  const [error,   setError]   = useState("");
+  const [status, setStatus] = useState("");
+  const [result, setResult] = useState<ScoutResponse | null>(null);
+  const [error, setError] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
 
   const handleScan = useCallback(async () => {
     if (!query.trim() || (!github && !gitlab)) return;
-    setLoading(true); setResult(null); setError(""); setProgress(10);
-    const platforms: Platform[] = [...(github ? ["github" as const] : []), ...(gitlab ? ["gitlab" as const] : [])];
+    setLoading(true);
+    setResult(null);
+    setError("");
+    setStatus("Searching repositories and scoring results…");
+
+    const platforms: Platform[] = [
+      ...(github ? ["github" as const] : []),
+      ...(gitlab ? ["gitlab" as const] : []),
+    ];
 
     try {
-      setStatus("Scanning repositories…"); setProgress(30);
-      const tick = setInterval(() => setProgress((p) => Math.min(p + 4, 75)), 700);
-      const res = await fetch(
-        `/api/scout/search`,
-        { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, platforms, sort_by: sortBy, ...(token ? { github_token: token } : {}) }) }
-      );
-      clearInterval(tick);
-      if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.detail ?? `Error ${res.status}`); }
-      setProgress(85); setStatus("Finalising AI scores…");
-      await new Promise((r) => setTimeout(r, 300));
+      const res = await fetch("/api/scout/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          platforms,
+          sort_by: sortBy,
+          ...(token ? { github_token: token } : {}),
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail ?? `Error ${res.status}`);
+      }
+
       const data: ScoutResponse = await res.json();
-      setResult(data); setProgress(100); setStatus(`✦ ${data.total} repositories analysed`);
+      setResult(data);
       setHasSearched(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "An unexpected error occurred.");
-      setStatus(""); setProgress(0);
-    } finally { setLoading(false); }
-  }, [query, token, github, gitlab, sortBy]);
+      setStatus(`${data.total} repositories ranked`);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unexpected search failure.");
+      setStatus("");
+    } finally {
+      setLoading(false);
+    }
+  }, [github, gitlab, query, sortBy, token]);
 
   return (
-    <div className="max-w-6xl mx-auto px-6">
-
-      {/* Tool header */}
-      <section className="pt-16 pb-10 border-b border-[#1a1a1a]">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="font-mono text-[10px] tracking-[0.3em] text-[#c8a96e] uppercase">Tool 01</span>
-          <span className="h-px w-8 bg-[#1e1e1e]" />
-        </div>
-        <h1 className="font-serif text-5xl text-[#e8e0d4] mb-3">RepoScout</h1>
-        <p className="font-sans text-[#5a5a5a] text-base leading-relaxed max-w-xl">
-          Search GitHub and GitLab simultaneously. Credibility scores, noise suppression,
-          intent-aware ranking. Then send the winner to Atlas for a deep dive.
-        </p>
-      </section>
-
-      {/* Search panel */}
-      <section className="py-10">
-        <div className="border border-[#1a1a1a] rounded-lg p-6 bg-[#0c0c0c]">
-
-          <div className="flex gap-3 mb-4">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !loading && handleScan()}
-              placeholder='e.g. "RAG pipeline LangChain" or "AWS CDK infrastructure as code"'
-              className="flex-1 bg-[#080808] border border-[#1e1e1e] rounded px-4 py-2.5
-                         font-mono text-[13px] text-[#e8e0d4] placeholder-[#2a2a2a]
-                         outline-none focus:border-[#c8a96e]/40 transition-colors"
-            />
-            <button
-              onClick={handleScan}
-              disabled={loading || !query.trim() || (!github && !gitlab)}
-              className="px-6 py-2.5 bg-[#c8a96e] text-[#0a0a0a] font-mono text-[12px]
-                         tracking-widest uppercase rounded hover:bg-[#d4b87a]
-                         disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-            >
-              {loading ? "Scanning…" : "⌖ Scan"}
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2 items-center mb-4">
-            {([
-              { id: "github", label: "GitHub", val: github, set: setGithub },
-              { id: "gitlab", label: "GitLab", val: gitlab, set: setGitlab },
-            ] as const).map((p) => (
-              <button key={p.id} onClick={() => p.set(!p.val)}
-                      className={`px-3 py-1 font-mono text-[11px] tracking-widest uppercase rounded border transition-colors
-                        ${p.val
-                          ? "border-[#c8a96e]/40 text-[#c8a96e]/80 bg-[#c8a96e]/5"
-                          : "border-[#1a1a1a] text-[#3a3a3a] hover:border-[#2a2a2a]"}`}>
-                {p.label}
-              </button>
-            ))}
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}
-                    className="ml-auto bg-[#080808] border border-[#1a1a1a] rounded px-3 py-1
-                               font-mono text-[11px] text-[#3a3a3a] outline-none">
-              <option value="stars">Sort: Stars</option>
-              <option value="updated">Sort: Updated</option>
-              <option value="best-match">Sort: Best match</option>
-            </select>
-          </div>
-
-          <input type="password" value={token} onChange={(e) => setToken(e.target.value)}
-                 placeholder="GitHub token (optional — raises rate limit to 5,000 req/hr)"
-                 autoComplete="off"
-                 className="w-full bg-[#080808] border border-[#1a1a1a] rounded px-4 py-2
-                            font-mono text-[11px] text-[#3a3a3a] placeholder-[#1e1e1e]
-                            outline-none focus:border-[#c8a96e]/20 transition-colors" />
-          <p className="font-mono text-[10px] text-[#1e1e1e] mt-1.5">
-            Token used only for this request and never stored. github.com/settings/tokens — no scopes needed for public repos.
-          </p>
-
-          {loading && (
-            <div className="mt-4">
-              <div className="h-px bg-[#141414] rounded-full overflow-hidden">
-                <div className="h-full bg-[#c8a96e] transition-all duration-300 rounded-full"
-                     style={{ width: `${progress}%` }} />
-              </div>
-              <p className="font-mono text-[10px] text-[#2a2a2a] mt-1.5 italic">{status}</p>
+    <div className="page-shell">
+      <section className="page-hero">
+        <div className="hero-grid">
+          <div>
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-[#35c58b]/25 bg-[#35c58b]/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.24em] text-[#8fe0b8]">
+                Tool 01
+              </span>
+              <span className="hero-kicker">
+                Cross-repo discovery workspace
+              </span>
             </div>
-          )}
+
+            <h1 className="hero-title">
+              Search first.
+              <br />
+              Pick the right repo before you go deep.
+            </h1>
+
+            <p className="hero-copy mt-6">
+              RepoScout is the front door for the product now. Search GitHub and GitLab,
+              rank candidates by quality and relevance, then move the winner directly into
+              Atlas for architecture analysis.
+            </p>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              {WORKFLOW_POINTS.map((point) => (
+                <div key={point} className="surface-note">
+                  <p className="surface-note-copy mt-0">{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel-strong rounded-[28px] p-6">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#8fe0b8]">
+                  RepoScout Query
+                </p>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-[#8ea3c7]">
+                  Search both platforms, tune ranking, and pass the best result into Atlas.
+                </p>
+              </div>
+              <Link
+                href="/#analyze"
+                className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#c2d3f2] hover:text-white"
+              >
+                Jump to Atlas
+              </Link>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && !loading && void handleScan()}
+                placeholder="e.g. nextjs auth starter or rag pipeline langchain"
+                className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#07101d] px-4 py-3.5 font-mono text-[13px] text-[#f5f8ff] placeholder-[#7082a5] focus:border-[#35c58b]/40 focus:outline-none"
+              />
+              <button
+                onClick={() => void handleScan()}
+                disabled={loading || !query.trim() || (!github && !gitlab)}
+                className="rounded-2xl bg-[#35c58b] px-6 py-3.5 font-mono text-[12px] uppercase tracking-[0.18em] text-[#07131b] hover:bg-[#4bd495] disabled:cursor-not-allowed disabled:opacity-40 sm:min-w-[10rem]"
+              >
+                {loading ? "Searching…" : "Run Scout"}
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {([
+                { key: "github", label: "GitHub", value: github, toggle: setGithub },
+                { key: "gitlab", label: "GitLab", value: gitlab, toggle: setGitlab },
+              ] as const).map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => item.toggle(!item.value)}
+                  className={`rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] ${
+                    item.value
+                      ? "border-[#35c58b]/35 bg-[#35c58b]/10 text-[#a2ebc6]"
+                      : "border-white/10 bg-white/[0.02] text-[#8ea3c7]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value as SortBy)}
+                className="w-full rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[#dce8ff] outline-none sm:ml-auto sm:w-auto"
+              >
+                <option value="stars">Sort by stars</option>
+                <option value="updated">Sort by updated</option>
+                <option value="best-match">Sort by best match</option>
+              </select>
+            </div>
+
+            <div className="mt-4">
+              <input
+                type="password"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                autoComplete="off"
+                placeholder="Optional GitHub token to raise rate limits for public repo search"
+                className="w-full rounded-2xl border border-white/10 bg-[#07101d] px-4 py-3 font-mono text-[12px] text-[#f5f8ff] placeholder-[#7082a5] focus:border-[#35c58b]/40 focus:outline-none"
+              />
+              <p className="mt-2 font-mono text-[10px] text-[#62779d]">
+                Token is used for the current request only and is not stored.
+              </p>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {SAMPLE_QUERIES.map((sample) => (
+                <button
+                  key={sample}
+                  onClick={() => setQuery(sample)}
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] text-[#b7c8e8] hover:text-white"
+                >
+                  {sample}
+                </button>
+              ))}
+            </div>
+
+            {(status || error) && (
+              <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                {status && <p className="font-mono text-[11px] text-[#b7c8e8]">{status}</p>}
+                {error && <p className="mt-1 font-mono text-[11px] text-[#ff8d8d]">{error}</p>}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Error */}
-      {error && (
-        <div className="border border-[#b86a6a]/20 bg-[#b86a6a]/5 rounded p-3
-                        font-mono text-[11px] text-[#b86a6a] mb-6">{error}</div>
-      )}
-
-      {/* TLDR */}
       {result?.tldr && (
-        <div className="border border-[#c8a96e]/20 bg-[#c8a96e]/3 rounded-lg p-5 mb-8 relative">
-          <span className="absolute -top-px right-4 font-mono text-[9px] tracking-[0.3em]
-                           bg-[#c8a96e] text-[#0a0a0a] px-2 py-0.5 uppercase">
-            TLDR
-          </span>
-          <p className="font-sans text-[13px] text-[#6a6a6a] leading-relaxed">{result.tldr}</p>
-        </div>
+        <section className="pb-6">
+          <div className="panel-strong rounded-[28px] p-6">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#8fe0b8]">TLDR</p>
+            <p className="mt-3 max-w-4xl text-[15px] leading-relaxed text-[#d8e5fb]">{result.tldr}</p>
+          </div>
+        </section>
       )}
 
-      {/* Results */}
       {result && result.repos.length > 0 && (
         <section className="pb-20">
-          <div className="flex justify-between items-center mb-5 flex-wrap gap-2">
-            <h2 className="font-serif text-2xl text-[#e8e0d4]">
-              <span className="text-[#c8a96e]">{result.total}</span> repositories
-            </h2>
-            <span className="font-mono text-[10px] text-[#2a2a2a] tracking-widest uppercase">
-              Sorted by overall score
-            </span>
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#6d7f9f]">
+                Ranked Results
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#f5f8ff]">
+                {result.total} repositories for “{result.query}”
+              </h2>
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#6d7f9f]">
+              Overall score blends quality + relevance
+            </p>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {result.repos.map((repo, i) => (
-              <RepoCard key={repo.id} repo={repo} rank={i + 1} />
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            {result.repos.map((repo, index) => (
+              <RepoCard key={repo.id} repo={repo} rank={index + 1} />
             ))}
           </div>
         </section>
       )}
 
-      {/* No results empty state */}
       {!loading && hasSearched && result && result.repos.length === 0 && !error && (
-        <div className="text-center py-24">
-          <div className="font-mono text-4xl mb-5 text-[#1e1e1e]">⌖</div>
-          <p className="font-serif text-2xl text-[#3a3a3a] mb-2">
-            No repositories found
-          </p>
-          <p className="font-sans text-[13px] text-[#2a2a2a] mb-8">
-            for &ldquo;{result.query}&rdquo;
-          </p>
-          <ul className="font-mono text-[11px] text-[#2a2a2a] tracking-wider space-y-2 inline-block text-left">
-            <li>→ Try broader or shorter search terms</li>
-            <li>→ Switch from GitHub-only to both GitHub and GitLab</li>
-            <li>→ Search by technology instead of project name</li>
-            <li>→ Use English keywords — repo names are typically English</li>
-          </ul>
-        </div>
+        <section className="pb-20">
+          <div className="panel rounded-[28px] p-8 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#6d7f9f]">No results</p>
+            <h2 className="mt-3 text-2xl font-semibold text-[#f5f8ff]">Scout didn’t find strong matches yet.</h2>
+            <p className="mt-3 text-sm leading-relaxed text-[#94a8cb]">
+              Try broader search terms, enable both platforms, or search by technology rather than project name.
+            </p>
+            <div className="mt-6 grid gap-3 md:grid-cols-3 text-left">
+              {EMPTY_STATE_HINTS.map((hint) => (
+                <div key={hint} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <p className="text-sm leading-relaxed text-[#dce8ff]">{hint}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link
+                href="/"
+                className="rounded-full border border-white/10 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#c2d3f2] hover:text-white"
+              >
+                Open Atlas
+              </Link>
+            </div>
+          </div>
+        </section>
       )}
 
-      {/* Initial empty state */}
       {!loading && !hasSearched && !error && (
-        <div className="text-center py-24">
-          <div className="font-mono text-5xl mb-4 text-[#1a1a1a]">⌖</div>
-          <p className="font-sans text-[#2a2a2a]">Enter a query to begin scouting</p>
-        </div>
+        <section className="pb-20">
+          <div className="panel rounded-[28px] p-8 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#6d7f9f]">Ready</p>
+            <h2 className="mt-3 text-2xl font-semibold text-[#f5f8ff]">Run a query to start the workflow.</h2>
+            <p className="mt-3 text-sm leading-relaxed text-[#94a8cb]">
+              RepoScout is most useful when you need to narrow a field before deeper architecture analysis.
+            </p>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setQuery(SAMPLE_QUERIES[0])}
+                className="rounded-full bg-[#35c58b] px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#07131b]"
+              >
+                Try a sample query
+              </button>
+              <Link
+                href="/"
+                className="rounded-full border border-white/10 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#c2d3f2] hover:text-white"
+              >
+                Go to Atlas
+              </Link>
+            </div>
+          </div>
+        </section>
       )}
     </div>
   );

@@ -9,12 +9,11 @@ No dependency closures are called directly.
 
 Covers:
   Auth:
-    - no auth on public route (anonymous → allowed)
     - no auth on protected route → 401
     - valid API key → 200
-    - invalid API key → anonymous (not 401 — public routes allow anon)
+    - invalid API key → anonymous
     - valid JWT → 200
-    - expired JWT → anonymous (falls through, public route still serves)
+    - expired JWT → anonymous
 
   Quota:
     - request under daily limit → 200
@@ -22,18 +21,6 @@ Covers:
     - free plan private scope → 403
     - quota reset window elapsed → 200 after reset
 
-  Pipeline:
-    - valid GitHub URL → 202 (stub: no real SHA fetch)
-    - valid GitLab URL → 202
-    - invalid URL → 400
-    - unsupported host → 400
-    - cache hit → 200 with is_cache_hit=True (stub returns None, so 202)
-    - dedup → existing job returned (stub returns None, so new job)
-
-  Claim boundary:
-    - every 200 response has analysis_tier, runtime_verified, executed_checks
-    - runtime_verified always False on public route
-    - executed_checks always [] on public route
 """
 
 from __future__ import annotations
@@ -47,14 +34,6 @@ from tests.conftest import make_account, make_jwt
 # ─────────────────────────────────────────────────────────
 
 class TestAuth:
-    def test_no_auth_on_public_analyze_is_allowed(self, client):
-        """Public route accepts anonymous — rate limit is IP-based."""
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "https://github.com/owner/repo"},
-        )
-        assert resp.status_code in (202, 400), f"Unexpected: {resp.status_code} {resp.text}"
-
     def test_no_auth_on_protected_route_returns_401(self, client):
         resp = client.get("/_test/auth-required")
         assert resp.status_code == 401
@@ -211,103 +190,3 @@ class TestQuota:
             headers={"X-Atlas-API-Key": raw_key},
         )
         assert resp.status_code == 200
-
-
-# ─────────────────────────────────────────────────────────
-# Pipeline tests — POST /api/public/analyze
-# ─────────────────────────────────────────────────────────
-
-class TestPublicAnalyzePipeline:
-    def test_valid_github_url_returns_202(self, client):
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "https://github.com/owner/repo"},
-        )
-        assert resp.status_code == 202
-        body = resp.json()
-        assert "job_id" in body
-        assert body["job_id"] != ""
-        assert body["status"] == "queued"
-        assert body["is_cache_hit"] is False
-
-    def test_valid_gitlab_url_returns_202(self, client):
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "https://gitlab.com/group/project"},
-        )
-        assert resp.status_code == 202
-
-    def test_invalid_url_returns_400(self, client):
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "not-a-url"},
-        )
-        assert resp.status_code in (400, 422)
-
-    def test_unsupported_host_returns_validation_error(self, client):
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "https://bitbucket.org/owner/repo"},
-        )
-        assert resp.status_code in (400, 422)
-
-    def test_http_url_rejected(self, client):
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "http://github.com/owner/repo"},
-        )
-        assert resp.status_code in (400, 422)
-
-    def test_response_has_poll_url(self, client):
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "https://github.com/owner/repo"},
-        )
-        assert resp.status_code == 202
-        assert resp.json()["poll_url"].startswith("/api/public/analysis/")
-
-    def test_two_requests_same_url_dedup_without_sha(self, client):
-        """Without a commit SHA, dedup matches by repo identity — second request is a dedup hit."""
-        url = "https://github.com/owner/repo"
-        r1 = client.post("/api/public/analyze", json={"repo_url": url})
-        r2 = client.post("/api/public/analyze", json={"repo_url": url})
-        assert r1.status_code == 202 and r2.status_code == 202
-        # With no SHA, dedup matches any queued/running job for the same repo.
-        # Both responses are valid 202s; r2 is a dedup hit returning r1's job_id.
-        assert r1.json()["job_id"] != "" and r2.json()["job_id"] != ""
-
-    def test_unknown_job_id_returns_404(self, client):
-        resp = client.get("/api/public/analysis/nonexistent-job-id")
-        assert resp.status_code == 404
-
-    def test_cache_lookup_miss_returns_hit_false(self, client):
-        resp = client.get("/api/public/cache/github/owner/repo/abc123deadbeef")
-        assert resp.status_code == 200
-        assert resp.json()["hit"] is False
-
-
-# ─────────────────────────────────────────────────────────
-# Claim boundary — on every response that returns data
-# ─────────────────────────────────────────────────────────
-
-class TestClaimBoundaryInResponses:
-    def test_analyze_202_does_not_include_claim_fields(self, client):
-        """The 202 submission response is lightweight — claim fields are on the result."""
-        resp = client.post(
-            "/api/public/analyze",
-            json={"repo_url": "https://github.com/owner/repo"},
-        )
-        assert resp.status_code == 202
-        # Submission response intentionally does NOT include claim boundary
-        body = resp.json()
-        assert "job_id" in body
-        assert "status"  in body
-
-    def test_404_response_does_not_leak_internals(self, client):
-        resp = client.get("/api/public/analysis/fake-id")
-        assert resp.status_code == 404
-        body = resp.json()
-        assert "detail" in body
-        # Must not expose internal stack traces
-        assert "traceback" not in str(body).lower()
-        assert "sqlalchemy" not in str(body).lower()

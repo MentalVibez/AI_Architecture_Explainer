@@ -2,6 +2,8 @@ import type {
   AnalyzeResponse,
   AnalysisResult,
   JobStatusResponse,
+  OpsSnapshotResponse,
+  RecentRunsResponse,
   ReviewJobSubmissionResponse,
   ReviewResult,
   ReviewStatusResponse,
@@ -45,6 +47,14 @@ export async function getJobStatus(jobId: number): Promise<JobStatusResponse> {
 
 export async function getResult(resultId: number): Promise<AnalysisResult> {
   return apiFetch<AnalysisResult>(`/api/results/${resultId}`);
+}
+
+export async function getRecentRuns(limit = 8): Promise<RecentRunsResponse> {
+  return apiFetch<RecentRunsResponse>(`/api/history/runs?limit=${limit}`);
+}
+
+export async function getOpsSnapshot(): Promise<OpsSnapshotResponse> {
+  return apiFetch<OpsSnapshotResponse>("/api/ops/summary");
 }
 
 export async function submitReview(repoUrl: string, branch?: string): Promise<ReviewJobSubmissionResponse> {

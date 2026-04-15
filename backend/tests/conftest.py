@@ -35,7 +35,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.routes.routes_public_analysis import router as public_router
 from app.db.session import get_db
 from app.models.analysis import Account, Base
 
@@ -134,10 +133,8 @@ def db(create_tables) -> Generator[Session, None, None]:
 
 def _build_app() -> FastAPI:
     app = FastAPI(title="Atlas Test App")
-    app.include_router(public_router)
 
-    # Minimal protected test route — lets us test quota enforcement
-    # via HTTP without needing a real /api/public/analyze submission
+    # Minimal protected test routes for auth/quota behavior.
     from fastapi import Depends
 
     from app.api.deps import check_quota, resolve_account

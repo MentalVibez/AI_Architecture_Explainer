@@ -1,7 +1,7 @@
 import asyncio
 
-import httpx
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,49 +24,34 @@ async def _check_database(db: AsyncSession) -> str:
         return "unreachable"
 
 
-async def _check_anthropic() -> str:
-    """Probe the Anthropic API with a lightweight models list request.
-
-    Returns "ok", "misconfigured" (no key), or "unreachable" (network/auth error).
-    Times out after 3s so it never blocks the health response.
-    """
-    if not settings.anthropic_api_key:
-        return "misconfigured"
-    try:
-        base = (settings.anthropic_base_url or "https://api.anthropic.com").rstrip("/")
-        headers = {
-            "x-api-key": settings.anthropic_api_key,
-            "anthropic-version": "2023-06-01",
-        }
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            r = await client.get(f"{base}/v1/models", headers=headers)
-        return "ok" if r.status_code < 500 else "unreachable"
-    except Exception:
-        return "unreachable"
+def _llm_status() -> str:
+    """Health must stay local; report config state without probing external vendors."""
+    return "ok" if settings.anthropic_api_key else "misconfigured"
 
 
 @router.get("/health")
-async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
-    db_status, llm_status = await asyncio.gather(
-        _check_database(db),
-        _check_anthropic(),
-    )
+async def health_check(db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    db_status = await _check_database(db)
+    llm_status = _llm_status()
+    is_healthy = db_status == "ok"
 
-    return {
-        "status": "ok",
+    return JSONResponse(status_code=200 if is_healthy else 503, content={
+        "status": "ok" if is_healthy else "degraded",
         "service": "codebase-atlas-backend",
         "llm": llm_status,
+        "llm_check_mode": "config_only",
         "database": db_status,
         "jobs": {
-            "execution_mode": "in_process_background_tasks",
-            "topology": "single_web_process_recommended",
+            "execution_mode": "database_worker_queue",
+            "topology": "separate_web_and_worker_processes",
             "restart_recovery": True,
+            "worker_health_source": "/api/ops/summary",
         },
         "intelligence": {
             "scan_timeout_s": DEEP_SCAN_TIMEOUT_SECONDS,
             "review_timeout_s": REVIEW_TIMEOUT_SECONDS,
             "scorecard_timeout_s": SCORECARD_TIMEOUT_SECONDS,
-            "llm_review_enabled": llm_status == "ok",
+            "llm_review_enabled": bool(settings.anthropic_api_key),
             "max_files_per_repo": 800,
         },
-    }
+    })

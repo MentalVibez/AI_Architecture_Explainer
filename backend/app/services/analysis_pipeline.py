@@ -3,6 +3,8 @@ import asyncio
 import logging
 from typing import Any
 
+import httpx
+
 from app.core.config import settings
 from app.services import framework_detector, github_service, manifest_parser
 
@@ -33,11 +35,12 @@ _MAX_PRIORITY_DEPTH = 2
 
 async def _load_analysis_inputs(owner: str, repo: str) -> dict[str, Any]:
     """Fetch deterministic analysis inputs once for Atlas and Map."""
-    metadata = await github_service.get_repo_metadata(owner, repo)
-    default_branch = metadata.get("default_branch", "HEAD")
-    tree = await github_service.get_repo_tree(owner, repo, default_branch)
-    tree_paths = [item["path"] for item in tree if item["type"] == "blob"]
-    file_contents = await _fetch_priority_files(owner, repo, tree_paths)
+    async with github_service.create_github_client() as client:
+        metadata = await github_service.get_repo_metadata(owner, repo, client=client)
+        default_branch = metadata.get("default_branch", "HEAD")
+        tree = await github_service.get_repo_tree(owner, repo, default_branch, client=client)
+        tree_paths = [item["path"] for item in tree if item["type"] == "blob"]
+        file_contents = await _fetch_priority_files(owner, repo, tree_paths, client=client)
     npm_deps, python_deps = _parse_dependencies(file_contents)
 
     return {
@@ -55,6 +58,7 @@ async def _fetch_priority_files(
     owner: str,
     repo: str,
     tree_paths: list[str],
+    client: httpx.AsyncClient,
 ) -> dict[str, str]:
     priority_paths = [
         path
@@ -62,7 +66,7 @@ async def _fetch_priority_files(
         if path.split("/")[-1] in PRIORITY_FILENAMES and path.count("/") <= _MAX_PRIORITY_DEPTH
     ]
     contents = await asyncio.gather(
-        *(github_service.get_file_content(owner, repo, path) for path in priority_paths)
+        *(github_service.get_file_content(owner, repo, path, client=client) for path in priority_paths)
     )
     return {
         path: content

@@ -9,7 +9,7 @@ One Review row per completed job. Failed jobs get a Review row too
 (with error_code + error_message set, report fields null).
 """
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -19,6 +19,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 _JSON = JSONB().with_variant(JSON(), "sqlite")
 
 from app.core.database import Base
+
+
+def _utcnow_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Review(Base):
@@ -75,7 +79,7 @@ class Review(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # ── Timestamps ────────────────────────────────────────────────────────────
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     job = relationship("ReviewJob", back_populates="review")
@@ -120,7 +124,7 @@ class Review(Base):
                 report.review_summary.model_dump() if report.review_summary else None
             ),
             meta_json=meta.model_dump() if meta else None,
-            completed_at=datetime.utcnow(),
+            completed_at=_utcnow_naive(),
         )
 
     @classmethod
@@ -131,13 +135,15 @@ class Review(Base):
         error_code: str,
         error_message: str,
         branch: str = "main",
+        commit: str | None = None,
     ) -> "Review":
         """Build a Review row for a failed job."""
         return cls(
             job_id=job_id,
             repo_url=repo_url,
+            commit=commit,
             branch=branch,
             error_code=error_code,
             error_message=error_message,
-            completed_at=datetime.utcnow(),
+            completed_at=_utcnow_naive(),
         )

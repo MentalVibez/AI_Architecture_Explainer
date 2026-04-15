@@ -24,6 +24,7 @@ class ReviewJob(Base):
     status: Mapped[str] = mapped_column(String(50), default="queued")
     repo_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     branch: Mapped[str] = mapped_column(String(255), server_default="main")
+    commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
     error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

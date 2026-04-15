@@ -26,7 +26,7 @@ All pre-LLM analysis is deterministic and testable. The LLM receives a structure
 All database access uses SQLAlchemy async (`asyncpg` for Postgres, `aiosqlite` for SQLite). Never introduce synchronous DB calls into the async pipeline.
 
 ### Job-Based Processing
-The API returns a `job_id` immediately. Clients poll `/api/analyze/{job_id}` for status. Any jobs stuck in `running` on server restart are automatically marked `failed`.
+The API returns a `job_id` immediately. Clients poll `/api/analyze/{job_id}` for status. A separate worker process claims queued jobs from the database and periodically recovers stale `running` jobs after worker restarts.
 
 ---
 
@@ -39,7 +39,7 @@ These decisions were made deliberately — do not revert them.
 - **Healthchecks on every container** — backend probes `/health`, frontend probes `/`. Required for `depends_on: service_healthy` in compose and any future orchestration.
 - **Migrations before server start** — `backend/docker-entrypoint.sh` runs `alembic upgrade head` then `exec "$@"`. Never remove this or bake migrations into the image build.
 - **Secrets never in images** — env vars come from `.env.staging` on the server at runtime, never `COPY`-ed into the image. `.dockerignore` enforces this.
-- **Job execution is in-process today** — Atlas/Review/public jobs use FastAPI `BackgroundTasks`, so production should run a single backend web process unless/until a real queue/worker tier is added.
+- **Job execution is worker-owned** — the web process only creates queued jobs. A separate worker process (`python -m app.worker`) claims Atlas/Review/public jobs from the database and runs them out-of-band.
 
 ---
 
@@ -100,13 +100,13 @@ alembic upgrade head
 
 | Environment | Platform | Trigger |
 |-------------|----------|---------|
-| Production backend | Railway | Push to `main` (nixpacks, runs Procfile) |
+| Production backend | Railway | Push to `main` (deploy `web`, plus a separate worker service using `python -m app.worker`) |
 | Production frontend | Vercel | Push to `main` (Next.js auto-build) |
 | Staging (both) | Home server (Docker) | Push to `main` → `staging.yml` GitHub Action SSHes in and rebuilds |
 | Database (prod) | Supabase | Manual: `alembic upgrade head` against prod DB URL |
 
 Environment variables are set through Railway/Vercel/Supabase UIs for production — never committed to the repo. Staging vars live in `.env.staging` on the home server only.
-Keep the backend as a single web process in production while jobs still run via `BackgroundTasks`.
+Run the backend web service and the worker as separate processes in production.
 
 ---
 

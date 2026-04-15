@@ -32,12 +32,12 @@ export default function SampleRepos() {
           key={label}
           onClick={() => handleClick(url, label)}
           disabled={loading !== null}
-          className="px-3 py-1.5 rounded border border-[#1e1e1e] bg-[#0f0f0f]
-                     hover:border-[#2a2a2a] hover:bg-[#161616] font-mono text-[11px]
-                     text-[#4a4a4a] hover:text-[#6a6a6a] disabled:opacity-40
+          className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2
+                     hover:border-[#4d7cff]/30 hover:bg-[#4d7cff]/10 font-mono text-[11px]
+                     text-[#a6b7d5] hover:text-[#eef4ff] disabled:opacity-40
                      disabled:cursor-not-allowed transition-colors"
         >
-          {loading === label ? "Submitting…" : label}
+          {loading === label ? "Running…" : label}
         </button>
       ))}
     </div>

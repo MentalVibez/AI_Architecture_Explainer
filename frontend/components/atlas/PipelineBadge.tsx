@@ -3,10 +3,10 @@ interface PipelineBadgeProps {
 }
 
 const STEPS = [
-  { label: "Scan",      kind: "det", desc: "GitHub API fetch + manifest parsing" },
-  { label: "Structure", kind: "det", desc: "Framework detection (heuristic rules)" },
-  { label: "Classify",  kind: "det", desc: "Evidence object construction" },
-  { label: "Explain",   kind: "llm", desc: "Claude: diagram + summaries" },
+  { label: "Fetch", kind: "det", desc: "Repository tree + priority files" },
+  { label: "Resolve", kind: "det", desc: "Frameworks, manifests, routes, graph clues" },
+  { label: "Score", kind: "det", desc: "Evidence-backed findings and confidence" },
+  { label: "Explain", kind: "llm", desc: "LLM turns evidence into human-readable output" },
 ] as const;
 
 export default function PipelineBadge({ variant = "compact" }: PipelineBadgeProps) {
@@ -15,20 +15,20 @@ export default function PipelineBadge({ variant = "compact" }: PipelineBadgeProp
       <div className="flex items-center gap-2 flex-wrap">
         <span
           className="font-mono text-[10px] tracking-[0.2em] uppercase px-2.5 py-1 rounded"
-          style={{ color: "#7cb9c8", border: "1px solid #7cb9c820", background: "#7cb9c808" }}
+          style={{ color: "#8eb1ff", border: "1px solid #8eb1ff25", background: "#8eb1ff10" }}
         >
-          Deterministic
+          Deterministic core
         </span>
-        <span className="font-mono text-[10px] text-[#2a2a2a]">→</span>
+        <span className="font-mono text-[10px] text-[#62779d]">→</span>
         <span
           className="font-mono text-[10px] tracking-[0.2em] uppercase px-2.5 py-1 rounded"
-          style={{ color: "#c8a96e", border: "1px solid #c8a96e20", background: "#c8a96e08" }}
+          style={{ color: "#c5b3ff", border: "1px solid #c5b3ff25", background: "#c5b3ff10" }}
         >
-          LLM last-mile
+          LLM explanation layer
         </span>
         <a
           href="/how-it-works"
-          className="font-mono text-[10px] text-[#2a2a2a] hover:text-[#4a4a4a] transition-colors"
+          className="font-mono text-[10px] text-[#7a8dad] hover:text-[#dbe7ff] transition-colors"
         >
           How it works →
         </a>
@@ -44,22 +44,22 @@ export default function PipelineBadge({ variant = "compact" }: PipelineBadgeProp
             <div
               className="px-3 py-1.5 rounded font-mono text-[11px] tracking-wider whitespace-nowrap"
               style={{
-                color: step.kind === "llm" ? "#c8a96e" : "#7cb9c8",
-                border: `1px solid ${step.kind === "llm" ? "#c8a96e" : "#7cb9c8"}20`,
-                background: `${step.kind === "llm" ? "#c8a96e" : "#7cb9c8"}08`,
+                color: step.kind === "llm" ? "#c5b3ff" : "#8eb1ff",
+                border: `1px solid ${step.kind === "llm" ? "#c5b3ff" : "#8eb1ff"}20`,
+                background: `${step.kind === "llm" ? "#c5b3ff" : "#8eb1ff"}10`,
               }}
             >
               {step.label}
             </div>
             <span
               className="font-mono text-[9px] tracking-[0.15em] uppercase"
-              style={{ color: step.kind === "llm" ? "#c8a96e40" : "#7cb9c840" }}
+              style={{ color: step.kind === "llm" ? "#c5b3ff80" : "#8eb1ff80" }}
             >
               {step.kind === "llm" ? "LLM" : "Det."}
             </span>
           </div>
           {i < STEPS.length - 1 && (
-            <span className="font-mono text-[11px] text-[#2a2a2a] mt-1.5 mx-1.5">→</span>
+            <span className="font-mono text-[11px] text-[#62779d] mt-1.5 mx-1.5">→</span>
           )}
         </div>
       ))}

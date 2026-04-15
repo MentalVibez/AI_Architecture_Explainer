@@ -15,13 +15,13 @@ function BulletSummary({ text }: { text: string }) {
           const content = trimmed.replace(/^[•*-]\s*/, "");
           return (
             <div key={i} className="flex items-start gap-2">
-              <span className="text-[#c8a96e] mt-0.5 shrink-0">•</span>
-              <span className="font-sans text-[13px] text-[#8a8a8a] leading-relaxed">{content}</span>
+              <span className="text-[#c5b3ff] mt-0.5 shrink-0">•</span>
+              <span className="font-sans text-[13px] text-[#d7e4ff] leading-relaxed">{content}</span>
             </div>
           );
         }
         return (
-          <p key={i} className="font-mono text-[11px] text-[#3a3a3a] uppercase tracking-widest pt-2 first:pt-0">
+          <p key={i} className="font-mono text-[11px] text-[#6d7f9f] uppercase tracking-widest pt-2 first:pt-0">
             {trimmed}
           </p>
         );
@@ -34,19 +34,15 @@ export default function HiringManagerSummary({ result }: Props) {
   const { hiring_manager_summary, confidence_score } = result;
 
   return (
-    <section className="border border-[#1a1a1a] rounded-lg overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-        <h2 className="font-mono text-[11px] tracking-[0.3em] text-[#3a3a3a] uppercase">
+    <section className="panel rounded-[28px] overflow-hidden">
+      <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+        <h2 className="font-mono text-[11px] tracking-[0.24em] text-[#6d7f9f] uppercase">
           Non-Technical
         </h2>
         {confidence_score != null && (
           <span
             className={`font-mono text-[11px] ${
-              confidence_score >= 0.7
-                ? "text-[#8ab58a]"
-                : confidence_score >= 0.4
-                ? "text-[#c8a96e]"
-                : "text-[#c84b4b]"
+              confidence_score >= 0.7 ? "text-[#35c58b]" : confidence_score >= 0.4 ? "text-[#ffcb6b]" : "text-[#ff8d8d]"
             }`}
           >
             Confidence: {confidence_score.toFixed(2)}
@@ -58,7 +54,7 @@ export default function HiringManagerSummary({ result }: Props) {
         {hiring_manager_summary ? (
           <BulletSummary text={hiring_manager_summary} />
         ) : (
-          <p className="font-mono text-[12px] text-[#4a4a4a]">Summary not yet available.</p>
+          <p className="font-mono text-[12px] text-[#94a8cb]">Summary not yet available.</p>
         )}
       </div>
     </section>

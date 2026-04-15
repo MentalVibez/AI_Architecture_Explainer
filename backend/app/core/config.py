@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     cors_origins: str = "http://localhost:3000"
+    worker_poll_interval_seconds: float = 2.0
+    worker_stale_job_seconds: int = 1800
+    worker_queue_order: str = "atlas,review"
+    ops_worker_queue_alert_seconds: int = 120
 
     @property
     def is_development(self) -> bool:

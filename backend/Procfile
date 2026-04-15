@@ -1,1 +1,2 @@
 web: sh ./docker-entrypoint.sh
+worker: sh ./docker-entrypoint.sh python -m app.worker

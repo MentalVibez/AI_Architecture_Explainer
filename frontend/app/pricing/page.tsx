@@ -50,7 +50,7 @@ export default function PricingPage() {
                 "Architecture diagrams",
                 "Framework detection",
                 "API surface mapping",
-                "Quality scorecard (Beta)",
+                "Quality scorecard",
               ].map((f) => (
                 <li key={f} className="flex items-start gap-2.5">
                   <span className="text-[#c8a96e] mt-0.5 shrink-0 text-[11px]">✓</span>
@@ -188,7 +188,7 @@ export default function PricingPage() {
             },
             {
               q: "When are paid plans available?",
-              a: "We're focused on stability and accuracy first. Paid tiers will launch once the core tools are out of beta. The free tier will always exist.",
+              a: "We're focused on making the public-repo workflow strong first. Paid tiers will launch once private repos, higher limits, and persistent team features are ready. The free tier will always exist.",
             },
           ].map(({ q, a }) => (
             <div key={q} className="border-t border-[#1a1a1a] pt-6">

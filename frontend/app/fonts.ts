@@ -1,21 +1,22 @@
-import { DM_Mono, DM_Sans, DM_Serif_Display } from "next/font/google";
+import localFont from "next/font/local";
 
-export const dmSans = DM_Sans({
-  subsets: ["latin"],
+export const dmSans = localFont({
+  src: "./fonts/GeistVF.woff",
   variable: "--font-sans",
   display: "swap",
+  weight: "100 900",
 });
 
-export const dmMono = DM_Mono({
-  subsets: ["latin"],
+export const dmMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
   variable: "--font-mono",
   display: "swap",
-  weight: ["400", "500"],
+  weight: "100 900",
 });
 
-export const dmSerif = DM_Serif_Display({
-  subsets: ["latin"],
+export const dmSerif = localFont({
+  src: "./fonts/GeistVF.woff",
   variable: "--font-serif",
   display: "swap",
-  weight: ["400"],
+  weight: "100 900",
 });

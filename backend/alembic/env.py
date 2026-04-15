@@ -1,11 +1,11 @@
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import MetaData, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 import app.models  # noqa: F401 — ensure all existing models are registered
-import app.models.analysis  # noqa: F401 — registers new public-lane models
+import app.models.analysis  # noqa: F401 — registers account/workspace metadata
 from alembic import context
 from app.core.config import settings
 from app.core.database import Base as CoreBase
@@ -20,9 +20,8 @@ if config.config_file_name is not None:
 config.set_main_option("sqlalchemy.url", settings.resolved_database_url)
 
 # Merge both metadata objects so autogenerate sees all tables.
-# CoreBase: existing models (analysis_job, analysis_result, repo, review, etc.)
-# AnalysisBase: new public-lane models (accounts, public_cache, workspaces, etc.)
-from sqlalchemy import MetaData
+# CoreBase: core product models (analysis_job, analysis_result, repo, review, etc.)
+# AnalysisBase: account/workspace models that still live in app.models.analysis
 _combined = MetaData()
 for _table in (
     list(CoreBase.metadata.tables.values())

@@ -1,89 +1,58 @@
-import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.database import AsyncSessionLocal, get_db
+from app.core.database import get_db
 from app.models.analysis_job import AnalysisJob
-from app.models.analysis_result import AnalysisResult
 from app.models.repo import Repo
 from app.schemas.analyze_request import AnalyzeRequest
 from app.schemas.analyze_response import AnalyzeResponse, JobStatusResponse
-from app.services.analysis_pipeline import run_analysis
-from app.services.summary_service import generate_summaries
 from app.utils.github_url import parse_github_url
 
-logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api")
+ANALYSIS_POLL_INTERVAL_SECONDS = 2
 
 
-async def run_analysis_job(job_id: int, owner: str, repo: str) -> None:
-    """Background task: run full analysis pipeline and persist results."""
-    async with AsyncSessionLocal() as db:
-        job = await db.get(AnalysisJob, job_id)
-        if not job:
-            return
+def _duration_seconds(started_at: datetime | None, ended_at: datetime | None) -> int:
+    if not started_at or not ended_at:
+        return 0
+    started = started_at if started_at.tzinfo else started_at.replace(tzinfo=UTC)
+    ended = ended_at if ended_at.tzinfo else ended_at.replace(tzinfo=UTC)
+    return max(0, int((ended - started).total_seconds()))
 
-        job.status = "running"
-        job.started_at = datetime.now(UTC)
-        await db.commit()
 
-        try:
-            evidence, intel_result = await run_analysis(owner, repo)
-            summaries = await generate_summaries(evidence)
+def _phase_label(status: str) -> str:
+    return {
+        "queued": "queue",
+        "running": "analysis",
+        "completed": "complete",
+        "failed": "failed",
+    }.get(status, "unknown")
 
-            result = AnalysisResult(
-                job_id=job_id,
-                detected_stack=evidence["detected_stack"],
-                dependencies={
-                    "npm": evidence.get("npm_dependencies", []),
-                    "python": evidence.get("python_dependencies", []),
-                },
-                entry_points=[],
-                folder_map=[],
-                diagram_mermaid=summaries["diagram_mermaid"],
-                developer_summary=summaries["developer_summary"],
-                hiring_manager_summary=summaries["hiring_manager_summary"],
-                confidence_score=None,
-                caveats=[],
-                raw_evidence=[evidence],
+
+def _status_detail(status: str, duration_seconds: int) -> str:
+    if status == "queued":
+        return "Queued and waiting for the analysis worker to start."
+    if status == "running":
+        if duration_seconds >= 90:
+            return (
+                "Still running. Larger repositories can take longer while "
+                "Atlas finishes evidence collection."
             )
-            db.add(result)
-            await db.flush()  # get result.id before persistence
-
-            # Persist intelligence data (non-blocking — failures are logged, not raised)
-            if intel_result is not None:
-                from app.services.intelligence_persistence import persist_intelligence
-                repo_info = evidence.get("repo", {})
-                await persist_intelligence(
-                    result_id=result.id,
-                    repo_url=f"https://github.com/{owner}/{repo}",
-                    repo_owner=repo_info.get("owner", owner),
-                    repo_name=repo_info.get("name", repo),
-                    intel_result=intel_result,
-                    db=db,
-                )
-
-            job.status = "completed"
-            job.completed_at = datetime.now(UTC)
-            await db.commit()
-
-        except Exception as exc:
-            logger.exception("Analysis pipeline failed for job %d: %s", job_id, exc)
-            job.status = "failed"
-            from app.services.github_service import GitHubError
-            job.error_message = (
-                str(exc) if isinstance(exc, (GitHubError, ValueError))
-                else f"{type(exc).__name__}: {exc}"
-            )
-            job.completed_at = datetime.now(UTC)
-            await db.commit()
+        return "Collecting repository evidence and assembling the Atlas workspace."
+    if status == "completed":
+        if duration_seconds > 0:
+            return f"Completed successfully in about {duration_seconds} seconds."
+        return "Completed successfully."
+    if status == "failed":
+        return "The analysis job failed before the Atlas workspace could be assembled."
+    return "Analysis job status is unavailable."
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
@@ -91,7 +60,6 @@ async def run_analysis_job(job_id: int, owner: str, repo: str) -> None:
 async def create_analysis(
     request: Request,
     body: AnalyzeRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> AnalyzeResponse:
     parsed = parse_github_url(body.repo_url)
@@ -117,8 +85,6 @@ async def create_analysis(
     await db.commit()
     await db.refresh(job)
 
-    background_tasks.add_task(run_analysis_job, job.id, owner, repo_name)
-
     return AnalyzeResponse(job_id=job.id, status=job.status)
 
 
@@ -138,10 +104,22 @@ async def get_job_status(
         raise HTTPException(status_code=404, detail="Job not found")
 
     result_id = job.result.id if job.result else None
+    duration_seconds = _duration_seconds(
+        job.started_at or job.created_at,
+        job.completed_at or datetime.now(UTC),
+    )
 
     return JobStatusResponse(
         job_id=job.id,
         status=job.status,
+        phase=_phase_label(job.status),
+        status_detail=_status_detail(job.status, duration_seconds),
         result_id=result_id,
         error_message=job.error_message,
+        duration_seconds=duration_seconds,
+        next_poll_seconds=(
+            ANALYSIS_POLL_INTERVAL_SECONDS if job.status in {"queued", "running"} else None
+        ),
+        created_at=job.created_at,
+        completed_at=job.completed_at,
     )

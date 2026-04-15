@@ -1,5 +1,5 @@
-from ..models.report import ReviewReport
+from ..backend_bridge import load_backend_module
 
+export = load_backend_module("app.services.reviewer.exports.json_exporter").export
 
-def export(report: ReviewReport) -> str:
-    return report.model_dump_json(indent=2)
+__all__ = ["export"]
