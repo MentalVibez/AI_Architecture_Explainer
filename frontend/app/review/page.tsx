@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { getReviewResult, getReviewStatus, submitReview } from "@/lib/api";
@@ -76,7 +76,7 @@ function reviewPhaseIndex(phase: ReviewStatusResponse["phase"] | undefined) {
   return 0;
 }
 
-export default function ReviewPage() {
+function ReviewPageContent() {
   const searchParams = useSearchParams();
   const { activeRepo, setActiveRepo, addRecentRun } = useRepoWorkspace();
   const [url, setUrl] = useState("");
@@ -366,6 +366,14 @@ export default function ReviewPage() {
 
       {result && <ReviewResultPanel result={result} />}
     </div>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#07111f]" />}>
+      <ReviewPageContent />
+    </Suspense>
   );
 }
 

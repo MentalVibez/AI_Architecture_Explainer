@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { getApiUrl } from "@/lib/api";
@@ -184,7 +184,7 @@ function GroupCard({ group }: { group: EndpointGroup }) {
   );
 }
 
-export default function MapPage() {
+function MapPageContent() {
   const searchParams = useSearchParams();
   const { activeRepo, setActiveRepo } = useRepoWorkspace();
   const [input, setInput] = useState("");
@@ -527,6 +527,14 @@ export default function MapPage() {
         </section>
       )}
     </div>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#07111f]" />}>
+      <MapPageContent />
+    </Suspense>
   );
 }
 
