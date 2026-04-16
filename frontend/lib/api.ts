@@ -9,17 +9,17 @@ import type {
   ReviewStatusResponse,
 } from "./types";
 
-// API_URL resolution:
-// - Server components: use API_URL (private, set to internal service address in prod)
-// - Client components: use NEXT_PUBLIC_API_URL (exposed to browser)
-// Fallback to localhost for local dev in both cases.
+// API URL resolution:
+// - Server components need an absolute URL, so they use API_URL/NEXT_PUBLIC_API_URL.
+// - Client components should stay same-origin and let Next/Vercel rewrites forward /api/*
+//   to the backend. This avoids stale baked-in public backend hosts.
 export function getApiUrl(): string {
   if (typeof window === "undefined") {
-    // Server-side: prefer the private API_URL env var
+    // Server-side: prefer the private API_URL env var.
     return process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   }
-  // Client-side: must use the public env var
-  return process.env.NEXT_PUBLIC_API_URL ?? "";
+  // Client-side: use relative paths so deploys rely on current rewrites, not baked env URLs.
+  return "";
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -29,6 +29,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text();
+    if (res.status === 404 && body.includes("\"Application not found\"")) {
+      throw new Error(
+        "Backend application not found. Check the frontend rewrite target or Vercel API environment variables.",
+      );
+    }
     throw new Error(`API error ${res.status}: ${body}`);
   }
   return res.json() as Promise<T>;
