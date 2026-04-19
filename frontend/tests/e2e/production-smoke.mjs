@@ -37,10 +37,6 @@ async function run() {
     if (homeChecks.health !== 200 || homeChecks.ops !== 200 || homeChecks.history !== 200) {
       throw new Error(`Homepage API checks failed: ${JSON.stringify(homeChecks)}`);
     }
-    if (homeChecks.github !== "ok") {
-      throw new Error(`GitHub auth health is degraded: ${JSON.stringify(homeChecks)}`);
-    }
-
     await page.goto(`${BASE_URL}/scout`, { waitUntil: "networkidle", timeout: 60000 });
     await page.getByPlaceholder("e.g. nextjs auth starter or rag pipeline langchain").fill("fastapi");
     await page.getByRole("button", { name: "Run Scout" }).click();
@@ -53,6 +49,14 @@ async function run() {
 
     await page.goto(`${BASE_URL}/review?repo=tiangolo/fastapi`, { waitUntil: "networkidle", timeout: 60000 });
     await page.getByRole("button", { name: /Run Review/i }).isVisible();
+
+    const postFlowHealth = await page.evaluate(async () => {
+      const health = await fetch("/health");
+      return await health.json();
+    });
+    if (!["ok", "configured"].includes(postFlowHealth.github?.status)) {
+      throw new Error(`GitHub auth health is degraded after live flows: ${JSON.stringify(postFlowHealth)}`);
+    }
 
     if (consoleErrors.length > 0) {
       throw new Error(`Console errors detected: ${consoleErrors.join(" | ")}`);

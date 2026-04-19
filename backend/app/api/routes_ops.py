@@ -256,7 +256,7 @@ def _attention_message(
 
 
 def _github_attention_message(github: ExternalServiceStatusResponse) -> str | None:
-    if github.status == "ok":
+    if github.status in {"ok", "configured"}:
         return None
     return (
         "GitHub API authentication is degraded. "
