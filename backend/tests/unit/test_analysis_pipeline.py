@@ -37,3 +37,19 @@ def test_select_candidate_paths_expands_for_library_style_repos() -> None:
     result = route_extractor._select_candidate_paths(tree, "generic")
 
     assert "tests/test_validate_response_recursive/app.py" in result
+
+
+def test_generic_extractor_catches_decorator_routes_when_framework_is_unknown() -> None:
+    content = """
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/health")
+async def health():
+    return {"ok": True}
+"""
+
+    result = route_extractor._extract_routes_from_content(content, "generic", "tests/app.py")
+
+    assert any(route.path == "/health" and route.method == "GET" for route in result)

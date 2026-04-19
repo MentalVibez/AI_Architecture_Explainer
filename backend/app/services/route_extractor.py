@@ -67,11 +67,12 @@ FRAMEWORK_PATTERNS: dict[str, dict] = {
     "generic": {
         "file_patterns": [r"\.(py|js|ts|go|rb|java)$"],
         "route_re": [
+            r'@(?:app|router|\w+)\.(?P<method>get|post|put|patch|delete|options|head|route)\s*\(\s*["\'](?P<path>[^"\']+)["\']',
             r'(?:GET|POST|PUT|PATCH|DELETE)\s+["\']?(/[^\s"\']+)',
             r'["\']method["\'\s:]+["\'](?P<method>GET|POST|PUT|DELETE|PATCH)["\']',
         ],
         "interesting_dirs": ["routes", "api", "controllers", "handlers"],
-        "interesting_files": [],
+        "interesting_files": ["main.py", "app.py", "router.py", "routes.py", "api.py", "urls.py", "route.ts", "route.js"],
     },
 }
 
