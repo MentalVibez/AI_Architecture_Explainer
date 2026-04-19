@@ -66,13 +66,17 @@ async def _fetch_priority_files(
         if path.split("/")[-1] in PRIORITY_FILENAMES and path.count("/") <= _MAX_PRIORITY_DEPTH
     ]
     contents = await asyncio.gather(
-        *(github_service.get_file_content(owner, repo, path, client=client) for path in priority_paths)
+        *(github_service.get_file_content(owner, repo, path, client=client) for path in priority_paths),
+        return_exceptions=True,
     )
-    return {
-        path: content
-        for path, content in zip(priority_paths, contents, strict=False)
-        if content
-    }
+    fetched: dict[str, str] = {}
+    for path, content in zip(priority_paths, contents, strict=False):
+        if isinstance(content, Exception):
+            logger.warning("Skipping priority file %s for %s/%s after fetch error: %s", path, owner, repo, content)
+            continue
+        if content:
+            fetched[path] = content
+    return fetched
 
 
 def _parse_dependencies(file_contents: dict[str, str]) -> tuple[list[str], list[str]]:
