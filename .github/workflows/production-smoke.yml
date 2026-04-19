@@ -1,6 +1,8 @@
 name: Production Smoke
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: "*/15 * * * *"
@@ -27,6 +29,21 @@ jobs:
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+
+      - name: Wait for public site readiness
+        env:
+          BASE_URL: https://www.codebaseatlas.com
+        run: |
+          for i in $(seq 1 18); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/health")
+            if [ "$code" = "200" ]; then
+              echo "Public site healthy after attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i: /health returned $code, retrying in 10s..."
+            sleep 10
+          done
+          echo "Public site failed to become healthy after 180s" && exit 1
 
       - name: Run production smoke test
         working-directory: frontend

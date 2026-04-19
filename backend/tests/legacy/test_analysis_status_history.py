@@ -110,7 +110,11 @@ async def test_recent_runs_returns_atlas_and_review_history(client):
 
 
 @pytest.mark.asyncio
-async def test_ops_summary_reports_queue_counts_and_recent_failures(client):
+async def test_ops_summary_reports_queue_counts_and_recent_failures(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.api.routes_ops.github_auth_snapshot",
+        lambda: {"mode": "token", "status": "ok", "detail": ""},
+    )
     async with TestSessionLocal() as session:
         repo = Repo(
             github_owner="fastapi",
@@ -148,6 +152,7 @@ async def test_ops_summary_reports_queue_counts_and_recent_failures(client):
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "active"
+    assert payload["github"]["status"] in {"configured", "not_configured", "degraded", "error", "ok"}
     assert payload["atlas"]["running"] == 1
     assert payload["atlas"]["failed_last_24h"] == 1
     assert payload["review"]["running"] == 1
@@ -158,7 +163,11 @@ async def test_ops_summary_reports_queue_counts_and_recent_failures(client):
 
 
 @pytest.mark.asyncio
-async def test_ops_summary_detects_worker_backlog_without_runner(client):
+async def test_ops_summary_detects_worker_backlog_without_runner(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.api.routes_ops.github_auth_snapshot",
+        lambda: {"mode": "token", "status": "ok", "detail": ""},
+    )
     async with TestSessionLocal() as session:
         repo = Repo(
             github_owner="tiangolo",
@@ -184,3 +193,23 @@ async def test_ops_summary_detects_worker_backlog_without_runner(client):
     assert payload["atlas"]["queued"] == 1
     assert payload["atlas"]["oldest_queued_seconds"] >= 240
     assert "without an active worker" in payload["attention_message"]
+
+
+def test_ops_summary_marks_github_degradation_as_attention() -> None:
+    from app.api.routes_ops import _github_attention_message, _ops_status
+    from app.schemas.ops_response import ExternalServiceStatusResponse, QueueMetricsResponse
+
+    idle = QueueMetricsResponse(
+        queued=0,
+        running=0,
+        completed_last_24h=0,
+        failed_last_24h=0,
+    )
+    github = ExternalServiceStatusResponse(
+        mode="fallback_unauthenticated",
+        status="degraded",
+        detail="Configured GITHUB_TOKEN was rejected by GitHub; requests are falling back to public API limits.",
+    )
+
+    assert _ops_status(idle, idle, github) == "watch"
+    assert "GitHub API authentication is degraded" in _github_attention_message(github)

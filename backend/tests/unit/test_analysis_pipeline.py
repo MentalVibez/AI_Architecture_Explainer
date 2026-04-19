@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from app.services import analysis_pipeline
+from app.services import route_extractor
 
 
 @pytest.mark.asyncio
@@ -24,3 +25,15 @@ async def test_fetch_priority_files_skips_read_errors(monkeypatch: pytest.Monkey
         )
 
     assert result == {"README.md": "# FastAPI"}
+
+
+def test_select_candidate_paths_expands_for_library_style_repos() -> None:
+    tree = [
+        {"type": "blob", "path": "tests/test_validate_response_recursive/app.py"},
+        {"type": "blob", "path": "fastapi-slim/README.md"},
+        {"type": "blob", "path": "pyproject.toml"},
+    ]
+
+    result = route_extractor._select_candidate_paths(tree, "generic")
+
+    assert "tests/test_validate_response_recursive/app.py" in result

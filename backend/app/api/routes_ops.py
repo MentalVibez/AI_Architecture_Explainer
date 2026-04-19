@@ -48,11 +48,16 @@ async def get_ops_summary(db: AsyncSession = Depends(get_db)) -> OpsSnapshotResp
         review_results_by_job=review_results_by_job,
         recent_cutoff=recent_cutoff,
     )
+    github = ExternalServiceStatusResponse(**github_auth_snapshot())
+    attention_message = _combine_attention_messages(
+        _github_attention_message(github),
+        _attention_message(atlas_metrics, review_metrics),
+    )
 
     return OpsSnapshotResponse(
-        status=_ops_status(atlas_metrics, review_metrics),
-        attention_message=_attention_message(atlas_metrics, review_metrics),
-        github=ExternalServiceStatusResponse(**github_auth_snapshot()),
+        status=_ops_status(atlas_metrics, review_metrics, github),
+        attention_message=attention_message,
+        github=github,
         atlas=atlas_metrics,
         review=review_metrics,
         recent_failures=recent_failures[:5],
@@ -201,12 +206,13 @@ def _oldest_age_seconds(
 def _ops_status(
     atlas: QueueMetricsResponse,
     review: QueueMetricsResponse,
+    github: ExternalServiceStatusResponse,
 ) -> str:
     total_running = atlas.running + review.running
     total_queued = atlas.queued + review.queued
     total_failed = atlas.failed_last_24h + review.failed_last_24h
 
-    if total_failed >= 3 or _attention_message(atlas, review):
+    if github.status != "ok" or total_failed >= 3 or _attention_message(atlas, review):
         return "watch"
     if total_running > 0 or total_queued > 0:
         return "active"
@@ -247,6 +253,22 @@ def _attention_message(
         )
 
     return None
+
+
+def _github_attention_message(github: ExternalServiceStatusResponse) -> str | None:
+    if github.status == "ok":
+        return None
+    return (
+        "GitHub API authentication is degraded. "
+        f"{github.detail or 'Requests may fall back to public rate limits.'}"
+    )
+
+
+def _combine_attention_messages(*messages: str | None) -> str | None:
+    filtered = [message for message in messages if message]
+    if not filtered:
+        return None
+    return " ".join(filtered)
 
 
 def _atlas_repo_label(job: AnalysisJob) -> str:

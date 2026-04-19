@@ -171,6 +171,72 @@ def _extract_routes_from_content(
     return unique
 
 
+def _select_candidate_paths(tree: list[dict], framework: str) -> list[str]:
+    cfg = FRAMEWORK_PATTERNS.get(framework, FRAMEWORK_PATTERNS["generic"])
+    interesting_dirs = set(cfg.get("interesting_dirs", []))
+    interesting_files = set(cfg.get("interesting_files", []))
+    target_files = set(cfg.get("target_files", []))
+    file_patterns: list[str] = cfg.get("file_patterns", [])
+
+    candidate_paths: list[str] = []
+
+    for item in tree:
+        if item.get("type") != "blob":
+            continue
+        path: str = item["path"]
+        name = path.split("/")[-1]
+        parts = path.split("/")
+
+        if name in target_files:
+            if path not in candidate_paths:
+                candidate_paths.insert(0, path)
+            continue
+
+        if len(parts) == 1 and name in interesting_files:
+            if path not in candidate_paths:
+                candidate_paths.append(path)
+            continue
+
+        in_interesting = any(p in interesting_dirs for p in parts[:-1])
+        if in_interesting and any(re.search(pat, name) for pat in file_patterns):
+            if path not in candidate_paths:
+                candidate_paths.append(path)
+
+    # Library-style repos often tuck examples and route demos under tests/examples/docs.
+    if len(candidate_paths) < 8:
+        for item in tree:
+            if item.get("type") != "blob":
+                continue
+            path = item["path"]
+            name = path.split("/")[-1]
+            if name not in interesting_files:
+                continue
+            if path not in candidate_paths:
+                candidate_paths.append(path)
+
+    if not candidate_paths:
+        broad_dirs = {"tests", "examples", "example", "demo", "docs", "docs_src", "src", "app", "api"}
+        for item in tree:
+            if item.get("type") != "blob":
+                continue
+            path = item["path"]
+            name = path.split("/")[-1]
+            parts = path.split("/")
+            if any(re.search(pat, name) for pat in file_patterns) and any(p in broad_dirs for p in parts[:-1]):
+                candidate_paths.append(path)
+
+    if not candidate_paths:
+        for item in tree:
+            if item.get("type") != "blob":
+                continue
+            path = item["path"]
+            name = path.split("/")[-1]
+            if "/" not in path and any(re.search(pat, name) for pat in file_patterns):
+                candidate_paths.append(path)
+
+    return candidate_paths[:30]
+
+
 async def extract_endpoints(
     owner: str,
     repo: str,
@@ -212,48 +278,7 @@ async def extract_endpoints(
         async with github_service.create_github_client() as client:
             # Fetch the full recursive tree via github_service (uses GITHUB_TOKEN)
             tree = await github_service.get_repo_tree(owner, repo, client=client)
-
-            interesting_dirs = set(cfg.get("interesting_dirs", []))
-            interesting_files = set(cfg.get("interesting_files", []))
-            target_files = set(cfg.get("target_files", []))
-            file_patterns: list[str] = cfg.get("file_patterns", [])
-
-            candidate_paths: list[str] = []
-
-            for item in tree:
-                if item.get("type") != "blob":
-                    continue
-                path: str = item["path"]
-                name = path.split("/")[-1]
-                parts = path.split("/")
-
-                # Always include target files (e.g. Django urls.py)
-                if name in target_files:
-                    if path not in candidate_paths:
-                        candidate_paths.insert(0, path)
-                    continue
-
-                # Root-level interesting files
-                if len(parts) == 1 and name in interesting_files:
-                    if path not in candidate_paths:
-                        candidate_paths.append(path)
-                    continue
-
-                # Files inside interesting directories with matching extension
-                in_interesting = any(p in interesting_dirs for p in parts[:-1])
-                if in_interesting and any(re.search(pat, name) for pat in file_patterns):
-                    if path not in candidate_paths:
-                        candidate_paths.append(path)
-
-            # Fallback: root-level code files when nothing matched
-            if not candidate_paths:
-                for item in tree:
-                    if item.get("type") == "blob" and "/" not in item["path"]:
-                        name = item["path"]
-                        if any(re.search(pat, name) for pat in file_patterns):
-                            candidate_paths.append(name)
-
-            candidate_paths = candidate_paths[:20]
+            candidate_paths = _select_candidate_paths(tree, use_framework)
 
             # Fetch and parse files concurrently with the same pooled client
             fetch_tasks = [

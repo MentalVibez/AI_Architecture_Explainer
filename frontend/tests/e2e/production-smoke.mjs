@@ -22,15 +22,23 @@ async function run() {
         fetch("/api/ops/summary"),
         fetch("/api/history/runs?limit=6"),
       ]);
+      const healthPayload = await health.json();
+      const opsPayload = await ops.json();
       return {
         health: health.status,
         ops: ops.status,
         history: history.status,
+        github: healthPayload.github?.status,
+        opsStatus: opsPayload.status,
+        attentionMessage: opsPayload.attention_message,
       };
     });
 
     if (homeChecks.health !== 200 || homeChecks.ops !== 200 || homeChecks.history !== 200) {
       throw new Error(`Homepage API checks failed: ${JSON.stringify(homeChecks)}`);
+    }
+    if (homeChecks.github !== "ok") {
+      throw new Error(`GitHub auth health is degraded: ${JSON.stringify(homeChecks)}`);
     }
 
     await page.goto(`${BASE_URL}/scout`, { waitUntil: "networkidle", timeout: 60000 });
