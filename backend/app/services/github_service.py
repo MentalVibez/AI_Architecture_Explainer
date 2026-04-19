@@ -31,7 +31,11 @@ def _headers() -> dict[str, str]:
 
 def create_github_client() -> httpx.AsyncClient:
     """Build a reusable GitHub client so callers can share connection pooling."""
-    return httpx.AsyncClient(headers=_headers(), timeout=GITHUB_TIMEOUT_SECONDS)
+    return httpx.AsyncClient(
+        headers=_headers(),
+        timeout=GITHUB_TIMEOUT_SECONDS,
+        follow_redirects=True,
+    )
 
 
 def github_auth_snapshot() -> dict[str, str]:
@@ -81,6 +85,7 @@ async def _request_with_auth_fallback(
     fallback_kwargs: dict[str, Any] = {
         "headers": fallback_headers,
         "timeout": client.timeout,
+        "follow_redirects": True,
     }
     transport = getattr(client, "_transport", None)
     if transport is not None:

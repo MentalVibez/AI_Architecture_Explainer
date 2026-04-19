@@ -53,3 +53,31 @@ async def test_get_repo_metadata_raises_when_fallback_also_fails() -> None:
             await github_service.get_repo_metadata("tiangolo", "fastapi", client=client)
 
     assert github_service.github_auth_snapshot()["status"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_get_repo_metadata_fallback_follows_redirects() -> None:
+    redirected = "https://api.github.com/repositories/160919119"
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.headers.get("Authorization"):
+            return httpx.Response(401, json={"message": "Bad credentials"})
+        if str(request.url) == "https://api.github.com/repos/tiangolo/fastapi":
+            return httpx.Response(301, headers={"location": redirected}, request=request)
+        if str(request.url) == redirected:
+            return httpx.Response(200, json={"default_branch": "main"})
+        return httpx.Response(500, json={"message": "unexpected request"})
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(
+        transport=transport,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Authorization": "Bearer broken-token",
+        },
+    ) as client:
+        metadata = await github_service.get_repo_metadata("tiangolo", "fastapi", client=client)
+
+    assert metadata["default_branch"] == "main"
+    assert github_service.github_auth_snapshot()["mode"] == "fallback_unauthenticated"
