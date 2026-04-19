@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.services.github_service import github_auth_snapshot
 from app.services.intelligence_pipeline import (
     DEEP_SCAN_TIMEOUT_SECONDS,
     REVIEW_TIMEOUT_SECONDS,
@@ -41,6 +42,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> JSONResponse:
         "llm": llm_status,
         "llm_check_mode": "config_only",
         "database": db_status,
+        "github": github_auth_snapshot(),
         "jobs": {
             "execution_mode": "database_worker_queue",
             "topology": "separate_web_and_worker_processes",

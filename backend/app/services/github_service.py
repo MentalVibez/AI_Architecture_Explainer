@@ -1,5 +1,6 @@
 """Fetches repo metadata and file tree from the GitHub API."""
 import base64
+import logging
 from typing import Any
 
 import httpx
@@ -8,6 +9,13 @@ from app.core.config import settings
 
 GITHUB_API = "https://api.github.com"
 GITHUB_TIMEOUT_SECONDS = 15.0
+logger = logging.getLogger(__name__)
+
+_github_auth_state: dict[str, str] = {
+    "mode": "token" if settings.github_token else "unauthenticated",
+    "status": "configured" if settings.github_token else "not_configured",
+    "detail": "",
+}
 
 
 class GitHubError(Exception):
@@ -26,6 +34,16 @@ def create_github_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(headers=_headers(), timeout=GITHUB_TIMEOUT_SECONDS)
 
 
+def github_auth_snapshot() -> dict[str, str]:
+    return dict(_github_auth_state)
+
+
+def _set_auth_state(*, mode: str, status: str, detail: str = "") -> None:
+    _github_auth_state["mode"] = mode
+    _github_auth_state["status"] = status
+    _github_auth_state["detail"] = detail
+
+
 def _handle_response(response: httpx.Response, context: str) -> None:
     if response.status_code == 404:
         raise GitHubError(f"Repository not found or is private ({context})")
@@ -38,6 +56,55 @@ def _handle_response(response: httpx.Response, context: str) -> None:
     response.raise_for_status()
 
 
+async def _request_with_auth_fallback(
+    client: httpx.AsyncClient,
+    path: str,
+    *,
+    context: str,
+    params: dict[str, str] | None = None,
+) -> httpx.Response:
+    response = await client.get(path, params=params)
+    if response.status_code != 401 or "Authorization" not in client.headers:
+        if response.status_code < 400:
+            mode = "token" if "Authorization" in client.headers else "unauthenticated"
+            status = "ok" if mode == "token" else "degraded"
+            detail = "" if mode == "token" else "No GITHUB_TOKEN configured; using public API limits."
+            _set_auth_state(mode=mode, status=status, detail=detail)
+        return response
+
+    logger.warning("GitHub token unauthorized for %s; retrying unauthenticated", context)
+    fallback_headers = {
+        key: value
+        for key, value in client.headers.items()
+        if key.lower() != "authorization"
+    }
+    fallback_kwargs: dict[str, Any] = {
+        "headers": fallback_headers,
+        "timeout": client.timeout,
+    }
+    transport = getattr(client, "_transport", None)
+    if transport is not None:
+        fallback_kwargs["transport"] = transport
+    async with httpx.AsyncClient(
+        **fallback_kwargs,
+    ) as fallback_client:
+        fallback_response = await fallback_client.get(path, params=params)
+    if fallback_response.status_code < 400:
+        _set_auth_state(
+            mode="fallback_unauthenticated",
+            status="degraded",
+            detail="Configured GITHUB_TOKEN was rejected by GitHub; requests are falling back to public API limits.",
+        )
+        return fallback_response
+
+    _set_auth_state(
+        mode="token_rejected",
+        status="error",
+        detail="Configured GITHUB_TOKEN was rejected by GitHub and unauthenticated fallback also failed.",
+    )
+    return fallback_response
+
+
 async def get_repo_metadata(
     owner: str,
     repo: str,
@@ -47,7 +114,11 @@ async def get_repo_metadata(
         async with create_github_client() as new_client:
             return await get_repo_metadata(owner, repo, client=new_client)
 
-    response = await client.get(f"{GITHUB_API}/repos/{owner}/{repo}")
+    response = await _request_with_auth_fallback(
+        client,
+        f"{GITHUB_API}/repos/{owner}/{repo}",
+        context=f"{owner}/{repo}",
+    )
     _handle_response(response, f"{owner}/{repo}")
     return response.json()
 
@@ -62,8 +133,10 @@ async def get_repo_tree(
         async with create_github_client() as new_client:
             return await get_repo_tree(owner, repo, branch=branch, client=new_client)
 
-    response = await client.get(
+    response = await _request_with_auth_fallback(
+        client,
         f"{GITHUB_API}/repos/{owner}/{repo}/git/trees/{branch}",
+        context=f"{owner}/{repo} tree",
         params={"recursive": "1"},
     )
     _handle_response(response, f"{owner}/{repo} tree")
@@ -81,7 +154,11 @@ async def get_file_content(
         async with create_github_client() as new_client:
             return await get_file_content(owner, repo, path, client=new_client)
 
-    response = await client.get(f"{GITHUB_API}/repos/{owner}/{repo}/contents/{path}")
+    response = await _request_with_auth_fallback(
+        client,
+        f"{GITHUB_API}/repos/{owner}/{repo}/contents/{path}",
+        context=path,
+    )
     if response.status_code == 404:
         return None
     _handle_response(response, path)

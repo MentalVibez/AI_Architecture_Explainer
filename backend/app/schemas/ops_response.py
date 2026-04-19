@@ -3,6 +3,12 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class ExternalServiceStatusResponse(BaseModel):
+    mode: str
+    status: str
+    detail: str = ""
+
+
 class QueueMetricsResponse(BaseModel):
     queued: int
     running: int
@@ -23,6 +29,7 @@ class RecentFailureResponse(BaseModel):
 class OpsSnapshotResponse(BaseModel):
     status: str
     attention_message: str | None = None
+    github: ExternalServiceStatusResponse
     atlas: QueueMetricsResponse
     review: QueueMetricsResponse
     recent_failures: list[RecentFailureResponse]

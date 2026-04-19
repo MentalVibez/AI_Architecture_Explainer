@@ -8,6 +8,7 @@ async def test_health(client):
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["database"] == "ok"
+    assert payload["github"]["status"] in {"configured", "not_configured", "degraded", "error", "ok"}
     assert payload["llm_check_mode"] == "config_only"
     assert payload["jobs"]["execution_mode"] == "database_worker_queue"
     assert payload["jobs"]["topology"] == "separate_web_and_worker_processes"

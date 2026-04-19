@@ -9,10 +9,12 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.services.github_service import github_auth_snapshot
 from app.models.analysis_job import AnalysisJob
 from app.models.review import Review
 from app.models.review_job import ReviewJob
 from app.schemas.ops_response import (
+    ExternalServiceStatusResponse,
     OpsSnapshotResponse,
     QueueMetricsResponse,
     RecentFailureResponse,
@@ -50,6 +52,7 @@ async def get_ops_summary(db: AsyncSession = Depends(get_db)) -> OpsSnapshotResp
     return OpsSnapshotResponse(
         status=_ops_status(atlas_metrics, review_metrics),
         attention_message=_attention_message(atlas_metrics, review_metrics),
+        github=ExternalServiceStatusResponse(**github_auth_snapshot()),
         atlas=atlas_metrics,
         review=review_metrics,
         recent_failures=recent_failures[:5],
