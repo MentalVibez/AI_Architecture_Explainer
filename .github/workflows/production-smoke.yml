@@ -7,12 +7,21 @@ on:
   schedule:
     - cron: "*/15 * * * *"
 
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +37,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Wait for public site readiness
         env:
@@ -46,7 +55,131 @@ jobs:
           echo "Public site failed to become healthy after 180s" && exit 1
 
       - name: Run production smoke test
+        id: smoke
+        continue-on-error: true
         working-directory: frontend
         env:
           BASE_URL: https://www.codebaseatlas.com
+          SMOKE_SUMMARY_PATH: ./test-results/production-smoke-summary.json
+          SMOKE_SCREENSHOT_PATH: ./test-results/production-smoke-failure.png
         run: node ./tests/e2e/production-smoke.mjs
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-smoke-artifacts-${{ github.run_id }}
+          path: frontend/test-results
+          if-no-files-found: ignore
+
+      - name: Create or update production alert issue
+        if: steps.smoke.outcome != 'success'
+        uses: actions/github-script@v7
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require("fs");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "Production smoke failure";
+            const label = "production-alert";
+            const summaryPath = "frontend/test-results/production-smoke-summary.json";
+            const summary = fs.existsSync(summaryPath)
+              ? JSON.parse(fs.readFileSync(summaryPath, "utf8"))
+              : {};
+
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch (error) {
+              if (error.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name: label,
+                  color: "B60205",
+                  description: "Production smoke failures that need attention",
+                });
+              } else {
+                throw error;
+              }
+            }
+
+            const body = [
+              "Production smoke failed.",
+              "",
+              `- Run: ${process.env.RUN_URL}`,
+              `- Base URL: ${summary.baseUrl || "https://www.codebaseatlas.com"}`,
+              `- Error: ${summary.error || "Unknown failure"}`,
+              `- GitHub status: ${summary.checks?.home?.github || summary.checks?.postFlowHealth?.github?.status || "unknown"}`,
+              `- Ops status: ${summary.checks?.home?.opsStatus || "unknown"}`,
+              `- Attention message: ${summary.checks?.home?.attentionMessage || "none"}`,
+              "",
+              "Artifacts for this run include the captured smoke summary and failure screenshot.",
+            ].join("\n");
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              labels: label,
+              per_page: 100,
+            });
+
+            const existing = issues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+              });
+              return;
+            }
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: [label],
+            });
+
+      - name: Resolve open production alert issues on recovery
+        if: steps.smoke.outcome == 'success'
+        uses: actions/github-script@v7
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const label = "production-alert";
+            const title = "Production smoke failure";
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              labels: label,
+              per_page: 100,
+            });
+
+            for (const issue of issues.filter((item) => item.title === title)) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body: `Production smoke recovered on ${process.env.RUN_URL}. Closing this alert.`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                state: "closed",
+              });
+            }
+
+      - name: Fail workflow if smoke test failed
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
