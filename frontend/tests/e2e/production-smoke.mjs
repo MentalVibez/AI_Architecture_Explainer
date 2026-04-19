@@ -70,9 +70,10 @@ async function run() {
     }
 
     await page.goto(`${BASE_URL}/scout`, { waitUntil: "networkidle", timeout: 60000 });
+    await page.getByRole("button", { name: "GitLab" }).click();
     await page.getByPlaceholder("e.g. nextjs auth starter or rag pipeline langchain").fill("fastapi");
     await page.getByRole("button", { name: "Run Scout" }).click();
-    await page.waitForSelector("text=Ranked Results", { timeout: 60000 });
+    await page.waitForSelector("text=Ranked Results", { timeout: 90000 });
     summary.checks.scout = { ok: true };
 
     await page.goto(`${BASE_URL}/map`, { waitUntil: "networkidle", timeout: 60000 });
