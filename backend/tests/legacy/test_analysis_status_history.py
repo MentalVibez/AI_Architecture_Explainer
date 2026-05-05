@@ -152,7 +152,13 @@ async def test_ops_summary_reports_queue_counts_and_recent_failures(client, monk
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "active"
-    assert payload["github"]["status"] in {"configured", "not_configured", "degraded", "error", "ok"}
+    assert payload["github"]["status"] in {
+        "configured",
+        "not_configured",
+        "degraded",
+        "error",
+        "ok",
+    }
     assert payload["atlas"]["running"] == 1
     assert payload["atlas"]["failed_last_24h"] == 1
     assert payload["review"]["running"] == 1
@@ -180,7 +186,7 @@ async def test_ops_summary_detects_worker_backlog_without_runner(client, monkeyp
         atlas_queued = AnalysisJob(
             repo_id=repo.id,
             status="queued",
-            created_at=_utcnow() - timedelta(minutes=5),
+            created_at=_utcnow() - timedelta(seconds=150),
         )
         session.add(atlas_queued)
         await session.commit()
@@ -191,8 +197,81 @@ async def test_ops_summary_detects_worker_backlog_without_runner(client, monkeyp
     payload = response.json()
     assert payload["status"] == "watch"
     assert payload["atlas"]["queued"] == 1
-    assert payload["atlas"]["oldest_queued_seconds"] >= 240
+    assert payload["atlas"]["oldest_queued_seconds"] >= 120
+    assert payload["atlas"]["oldest_queued_jobs"][0]["job_id"] == str(atlas_queued.id)
+    assert payload["atlas"]["oldest_queued_jobs"][0]["repo"] == (
+        "tiangolo/full-stack-fastapi-postgresql"
+    )
+    assert payload["atlas"]["oldest_queued_jobs"][0]["age_seconds"] >= 120
     assert "without an active worker" in payload["attention_message"]
+    assert payload["queue_guard"]["cleared_atlas"] == 0
+
+
+@pytest.mark.asyncio
+async def test_ops_summary_clears_jobs_that_exceed_queue_guard(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.api.routes_ops.github_auth_snapshot",
+        lambda: {"mode": "token", "status": "ok", "detail": ""},
+    )
+    async with TestSessionLocal() as session:
+        repo = Repo(
+            github_owner="vercel",
+            github_repo="next.js",
+            github_url="https://github.com/vercel/next.js",
+        )
+        session.add(repo)
+        await session.flush()
+
+        expired = AnalysisJob(
+            repo_id=repo.id,
+            status="queued",
+            created_at=_utcnow() - timedelta(minutes=5),
+        )
+        session.add(expired)
+        await session.commit()
+
+    response = await client.get("/api/ops/summary")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["atlas"]["queued"] == 0
+    assert payload["atlas"]["failed_last_24h"] == 1
+    assert payload["queue_guard"]["cleared_atlas"] == 1
+    assert payload["queue_guard"]["root_cause"] == "atlas_worker_inactive"
+    assert "Railway worker service" in payload["queue_guard"]["recommended_action"]
+
+    async with TestSessionLocal() as session:
+        refreshed = await session.get(AnalysisJob, expired.id)
+        assert refreshed.status == "failed"
+        assert "No active Atlas worker" in refreshed.error_message
+
+
+@pytest.mark.asyncio
+async def test_analysis_poll_notifies_user_when_queue_guard_clears_job(client):
+    async with TestSessionLocal() as session:
+        repo = Repo(
+            github_owner="django",
+            github_repo="django",
+            github_url="https://github.com/django/django",
+        )
+        session.add(repo)
+        await session.flush()
+
+        expired = AnalysisJob(
+            repo_id=repo.id,
+            status="queued",
+            created_at=_utcnow() - timedelta(minutes=5),
+        )
+        session.add(expired)
+        await session.commit()
+
+    response = await client.get(f"/api/analyze/{expired.id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "failed"
+    assert "No active Atlas worker" in payload["error_message"]
+    assert payload["next_poll_seconds"] is None
 
 
 def test_ops_summary_marks_github_degradation_as_attention() -> None:
@@ -208,7 +287,10 @@ def test_ops_summary_marks_github_degradation_as_attention() -> None:
     github = ExternalServiceStatusResponse(
         mode="fallback_unauthenticated",
         status="degraded",
-        detail="Configured GITHUB_TOKEN was rejected by GitHub; requests are falling back to public API limits.",
+        detail=(
+            "Configured GITHUB_TOKEN was rejected by GitHub; "
+            "requests are falling back to public API limits."
+        ),
     )
 
     assert _ops_status(idle, idle, github) == "watch"

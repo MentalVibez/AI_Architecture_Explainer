@@ -7,11 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.analysis_job import AnalysisJob
 from app.models.repo import Repo
 from app.schemas.analyze_request import AnalyzeRequest
 from app.schemas.analyze_response import AnalyzeResponse, JobStatusResponse
+from app.services.queue_guardian import clear_expired_queued_jobs
 from app.utils.github_url import parse_github_url
 
 limiter = Limiter(key_func=get_remote_address)
@@ -93,6 +95,8 @@ async def create_analysis(
 async def get_job_status(
     request: Request, job_id: int, db: AsyncSession = Depends(get_db)
 ) -> JobStatusResponse:
+    await clear_expired_queued_jobs(db, settings.worker_queue_guard_seconds)
+
     result = await db.execute(
         select(AnalysisJob)
         .where(AnalysisJob.id == job_id)

@@ -15,16 +15,23 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.middleware.rate_limit import check_review_rate_limit
 from app.models.review import Review
 from app.models.review_job import ReviewJob
+from app.services.queue_guardian import clear_expired_queued_jobs
 from app.services.reviewer.utils.repo_url import normalize_repo_url
 
 router = APIRouter(prefix="/api/review", tags=["review"])
 logger = logging.getLogger(__name__)
 REVIEW_POLL_INTERVAL_SECONDS = 5
-RETRYABLE_ERROR_CODES = {"REVIEW_TIMEOUT", "ENGINE_ERROR", "UNEXPECTED_BACKEND_ERROR"}
+RETRYABLE_ERROR_CODES = {
+    "REVIEW_TIMEOUT",
+    "ENGINE_ERROR",
+    "UNEXPECTED_BACKEND_ERROR",
+    "QUEUE_TIMEOUT",
+}
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -144,6 +151,10 @@ def _status_detail(status: str, error_code: str | None, duration_seconds: int) -
                 "The review exceeded the time budget before the report "
                 "could be completed."
             ),
+            "QUEUE_TIMEOUT": (
+                "The review waited too long for an available worker and was "
+                "cleared from the queue."
+            ),
         }.get(
             error_code or "",
             "The review job failed before a report could be completed.",
@@ -170,6 +181,8 @@ def _suggested_action(status: str, error_code: str | None) -> str | None:
         return "Use Atlas or Map first, or try a smaller repository."
     if error_code in RETRYABLE_ERROR_CODES:
         return "Retry the review in a moment. If it keeps failing, inspect backend logs."
+    if error_code == "QUEUE_TIMEOUT":
+        return "Retry after confirming the worker service is healthy."
     return "Inspect the backend logs before retrying."
 
 
@@ -221,6 +234,9 @@ async def poll_review(
     job = await db.get(ReviewJob, uid)
     if not job:
         raise HTTPException(404, "Review job not found")
+
+    await clear_expired_queued_jobs(db, settings.worker_queue_guard_seconds)
+    await db.refresh(job)
 
     review = await db.scalar(select(Review).where(Review.job_id == uid))
     return _build_review_status_response(job, review)

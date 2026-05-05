@@ -57,6 +57,9 @@ In Railway → both backend services → **Variables**, add:
 | `WORKER_POLL_INTERVAL_SECONDS` | Optional — default `2.0` |
 | `WORKER_STALE_JOB_SECONDS` | Optional — default `1800` |
 | `WORKER_QUEUE_ORDER` | Optional — default `atlas,review` |
+| `WORKER_ATLAS_CONCURRENCY` | Optional — default `2` |
+| `WORKER_REVIEW_CONCURRENCY` | Optional — default `1` |
+| `WORKER_QUEUE_GUARD_SECONDS` | Optional — default `180`; queued jobs older than this are failed with a user-facing reason |
 | `OPS_WORKER_QUEUE_ALERT_SECONDS` | Optional — default `120` |
 
 > After adding variables, Railway will redeploy automatically.

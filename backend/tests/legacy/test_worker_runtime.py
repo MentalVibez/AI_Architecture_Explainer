@@ -7,7 +7,11 @@ from app.models.analysis_job import AnalysisJob
 from app.models.repo import Repo
 from app.models.review_job import ReviewJob
 from app.services.job_recovery import recover_stale_jobs
-from app.services.worker_runtime import claim_next_atlas_job, claim_next_review_job
+from app.services.worker_runtime import (
+    _queue_concurrency,
+    claim_next_atlas_job,
+    claim_next_review_job,
+)
 from tests.legacy.conftest import TestSessionLocal
 
 
@@ -128,3 +132,17 @@ async def test_recover_stale_jobs_marks_atlas_and_review_failures():
         assert "Worker stopped" in refreshed_atlas.error_message
         assert refreshed_review.status == "failed"
         assert refreshed_review.error_code == "WORKER_RESTARTED"
+
+
+def test_queue_concurrency_uses_per_queue_settings(monkeypatch):
+    monkeypatch.setattr("app.services.worker_runtime.settings.worker_atlas_concurrency", 3)
+    monkeypatch.setattr("app.services.worker_runtime.settings.worker_review_concurrency", 2)
+
+    assert _queue_concurrency(("atlas", "review")) == {"atlas": 3, "review": 2}
+
+
+def test_queue_concurrency_never_drops_below_one(monkeypatch):
+    monkeypatch.setattr("app.services.worker_runtime.settings.worker_atlas_concurrency", 0)
+    monkeypatch.setattr("app.services.worker_runtime.settings.worker_review_concurrency", -4)
+
+    assert _queue_concurrency(("atlas", "review")) == {"atlas": 1, "review": 1}

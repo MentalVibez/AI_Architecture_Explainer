@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import uuid
-from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -41,33 +40,45 @@ class ReviewClaim:
 async def run_worker_loop() -> None:
     queue_order = _queue_order()
     await _recover_stale_jobs()
-    logger.info("worker_started queues=%s", ",".join(queue_order))
+    queue_concurrency = _queue_concurrency(queue_order)
+    logger.info(
+        "worker_started queues=%s concurrency=%s",
+        ",".join(queue_order),
+        ",".join(f"{queue}:{count}" for queue, count in queue_concurrency.items()),
+    )
 
-    last_recovery = asyncio.get_running_loop().time()
-    queue_cycle = deque(queue_order)
+    tasks = [
+        asyncio.create_task(_recovery_loop(), name="worker-recovery"),
+    ]
+    for queue_name in queue_order:
+        for slot in range(queue_concurrency[queue_name]):
+            tasks.append(
+                asyncio.create_task(
+                    _run_queue_loop(queue_name, slot + 1),
+                    name=f"worker-{queue_name}-{slot + 1}",
+                )
+            )
+
+    await asyncio.gather(*tasks)
+
+
+async def _run_queue_loop(queue_name: str, slot: int) -> None:
+    logger.info("worker_queue_lane_started queue=%s slot=%d", queue_name, slot)
 
     while True:
-        worked = False
-
-        for _ in range(len(queue_cycle)):
-            queue_name = queue_cycle[0]
-            queue_cycle.rotate(-1)
-
-            claim = await _claim_for_queue(queue_name)
-            if claim is None:
-                continue
-
-            worked = True
-            await _run_claim(queue_name, claim)
-            break
-
-        now = asyncio.get_running_loop().time()
-        if now - last_recovery >= RECOVERY_INTERVAL_SECONDS:
-            await _recover_stale_jobs()
-            last_recovery = now
-
-        if not worked:
+        claim = await _claim_for_queue(queue_name)
+        if claim is None:
             await asyncio.sleep(settings.worker_poll_interval_seconds)
+            continue
+
+        logger.info("worker_claimed_job queue=%s slot=%d claim=%s", queue_name, slot, claim)
+        await _run_claim(queue_name, claim)
+
+
+async def _recovery_loop() -> None:
+    while True:
+        await asyncio.sleep(RECOVERY_INTERVAL_SECONDS)
+        await _recover_stale_jobs()
 
 
 async def claim_next_atlas_job(
@@ -197,6 +208,17 @@ def _queue_order() -> tuple[str, ...]:
     ]
     valid = [item for item in configured if item in {"atlas", "review"}]
     return tuple(valid or ("atlas", "review"))
+
+
+def _queue_concurrency(queue_order: tuple[str, ...]) -> dict[str, int]:
+    configured = {
+        "atlas": settings.worker_atlas_concurrency,
+        "review": settings.worker_review_concurrency,
+    }
+    return {
+        queue_name: max(1, int(configured.get(queue_name, 1)))
+        for queue_name in queue_order
+    }
 
 
 async def _recover_stale_jobs() -> None:

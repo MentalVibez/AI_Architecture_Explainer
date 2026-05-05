@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     worker_poll_interval_seconds: float = 2.0
     worker_stale_job_seconds: int = 1800
     worker_queue_order: str = "atlas,review"
+    worker_atlas_concurrency: int = 2
+    worker_review_concurrency: int = 1
+    worker_queue_guard_seconds: int = 180
     ops_worker_queue_alert_seconds: int = 120
 
     @property

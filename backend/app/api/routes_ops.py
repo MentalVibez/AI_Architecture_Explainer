@@ -9,16 +9,19 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.services.github_service import github_auth_snapshot
 from app.models.analysis_job import AnalysisJob
 from app.models.review import Review
 from app.models.review_job import ReviewJob
 from app.schemas.ops_response import (
     ExternalServiceStatusResponse,
     OpsSnapshotResponse,
+    QueuedJobResponse,
+    QueueGuardResponse,
     QueueMetricsResponse,
     RecentFailureResponse,
 )
+from app.services.github_service import github_auth_snapshot
+from app.services.queue_guardian import clear_expired_queued_jobs
 
 router = APIRouter(prefix="/api/ops", tags=["ops"])
 
@@ -27,6 +30,11 @@ router = APIRouter(prefix="/api/ops", tags=["ops"])
 async def get_ops_summary(db: AsyncSession = Depends(get_db)) -> OpsSnapshotResponse:
     now = datetime.now(UTC)
     recent_cutoff = now - timedelta(hours=24)
+    guard_summary = await clear_expired_queued_jobs(
+        db,
+        settings.worker_queue_guard_seconds,
+        now=now,
+    )
 
     atlas_jobs_result = await db.execute(
         select(AnalysisJob).options(selectinload(AnalysisJob.repo))
@@ -60,6 +68,13 @@ async def get_ops_summary(db: AsyncSession = Depends(get_db)) -> OpsSnapshotResp
         github=github,
         atlas=atlas_metrics,
         review=review_metrics,
+        queue_guard=QueueGuardResponse(
+            guard_after_seconds=settings.worker_queue_guard_seconds,
+            cleared_atlas=guard_summary.atlas_cleared,
+            cleared_review=guard_summary.review_cleared,
+            root_cause=guard_summary.root_cause,
+            recommended_action=guard_summary.recommended_action,
+        ),
         recent_failures=recent_failures[:5],
         generated_at=now,
     )
@@ -96,6 +111,7 @@ def _atlas_metrics(
             [job for job in jobs if job.status == "running"],
             attribute="started_at",
         ),
+        oldest_queued_jobs=_atlas_queued_jobs(jobs),
     )
 
 
@@ -130,6 +146,7 @@ def _review_metrics(
             [job for job in jobs if job.status == "running"],
             attribute="started_at",
         ),
+        oldest_queued_jobs=_review_queued_jobs(jobs),
     )
 
 
@@ -201,6 +218,45 @@ def _oldest_age_seconds(
         return None
     oldest = min(timestamps)
     return max(0, int((datetime.now(UTC) - oldest).total_seconds()))
+
+
+def _atlas_queued_jobs(jobs: list[AnalysisJob], limit: int = 5) -> list[QueuedJobResponse]:
+    queued = sorted(
+        [job for job in jobs if job.status == "queued"],
+        key=lambda job: _aware_datetime(job.created_at) or datetime.max.replace(tzinfo=UTC),
+    )
+    return [
+        QueuedJobResponse(
+            job_id=str(job.id),
+            repo=_atlas_repo_label(job),
+            age_seconds=_age_seconds(job.created_at),
+            created_at=job.created_at,
+        )
+        for job in queued[:limit]
+    ]
+
+
+def _review_queued_jobs(jobs: list[ReviewJob], limit: int = 5) -> list[QueuedJobResponse]:
+    queued = sorted(
+        [job for job in jobs if job.status == "queued"],
+        key=lambda job: _aware_datetime(job.created_at) or datetime.max.replace(tzinfo=UTC),
+    )
+    return [
+        QueuedJobResponse(
+            job_id=str(job.id),
+            repo=_review_repo_label(job.repo_url),
+            age_seconds=_age_seconds(job.created_at),
+            created_at=job.created_at,
+        )
+        for job in queued[:limit]
+    ]
+
+
+def _age_seconds(value: datetime | None) -> int:
+    timestamp = _aware_datetime(value)
+    if not timestamp:
+        return 0
+    return max(0, int((datetime.now(UTC) - timestamp).total_seconds()))
 
 
 def _ops_status(
