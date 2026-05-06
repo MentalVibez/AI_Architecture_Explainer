@@ -72,7 +72,11 @@ async def _request_with_auth_fallback(
         if response.status_code < 400:
             mode = "token" if "Authorization" in client.headers else "unauthenticated"
             status = "ok" if mode == "token" else "degraded"
-            detail = "" if mode == "token" else "No GITHUB_TOKEN configured; using public API limits."
+            detail = (
+                ""
+                if mode == "token"
+                else "No GITHUB_TOKEN configured; using public API limits."
+            )
             _set_auth_state(mode=mode, status=status, detail=detail)
         return response
 
@@ -98,14 +102,20 @@ async def _request_with_auth_fallback(
         _set_auth_state(
             mode="fallback_unauthenticated",
             status="degraded",
-            detail="Configured GITHUB_TOKEN was rejected by GitHub; requests are falling back to public API limits.",
+            detail=(
+                "Configured GITHUB_TOKEN was rejected by GitHub; "
+                "requests are falling back to public API limits."
+            ),
         )
         return fallback_response
 
     _set_auth_state(
         mode="token_rejected",
         status="error",
-        detail="Configured GITHUB_TOKEN was rejected by GitHub and unauthenticated fallback also failed.",
+        detail=(
+            "Configured GITHUB_TOKEN was rejected by GitHub and unauthenticated "
+            "fallback also failed."
+        ),
     )
     return fallback_response
 

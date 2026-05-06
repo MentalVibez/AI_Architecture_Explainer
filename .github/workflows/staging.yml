@@ -8,7 +8,22 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Check staging secrets
+        id: staging_secrets
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          if [ -z "$STAGING_HOST" ] || [ -z "$STAGING_USER" ] || [ -z "$STAGING_SSH_KEY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Staging deploy skipped: STAGING_HOST, STAGING_USER, or STAGING_SSH_KEY is missing."
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
       - name: Deploy to home server
+        if: steps.staging_secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_HOST }}
@@ -21,6 +36,7 @@ jobs:
             docker image prune -f
 
       - name: Smoke test
+        if: steps.staging_secrets.outputs.configured == 'true'
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
         run: |

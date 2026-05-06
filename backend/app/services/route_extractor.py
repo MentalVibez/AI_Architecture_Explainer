@@ -72,7 +72,16 @@ FRAMEWORK_PATTERNS: dict[str, dict] = {
             r'["\']method["\'\s:]+["\'](?P<method>GET|POST|PUT|DELETE|PATCH)["\']',
         ],
         "interesting_dirs": ["routes", "api", "controllers", "handlers"],
-        "interesting_files": ["main.py", "app.py", "router.py", "routes.py", "api.py", "urls.py", "route.ts", "route.js"],
+        "interesting_files": [
+            "main.py",
+            "app.py",
+            "router.py",
+            "routes.py",
+            "api.py",
+            "urls.py",
+            "route.ts",
+            "route.js",
+        ],
     },
 }
 
@@ -216,14 +225,26 @@ def _select_candidate_paths(tree: list[dict], framework: str) -> list[str]:
                 candidate_paths.append(path)
 
     if not candidate_paths:
-        broad_dirs = {"tests", "examples", "example", "demo", "docs", "docs_src", "src", "app", "api"}
+        broad_dirs = {
+            "tests",
+            "examples",
+            "example",
+            "demo",
+            "docs",
+            "docs_src",
+            "src",
+            "app",
+            "api",
+        }
         for item in tree:
             if item.get("type") != "blob":
                 continue
             path = item["path"]
             name = path.split("/")[-1]
             parts = path.split("/")
-            if any(re.search(pat, name) for pat in file_patterns) and any(p in broad_dirs for p in parts[:-1]):
+            if any(re.search(pat, name) for pat in file_patterns) and any(
+                p in broad_dirs for p in parts[:-1]
+            ):
                 candidate_paths.append(path)
 
     if not candidate_paths:
@@ -265,7 +286,6 @@ async def extract_endpoints(
         if from_profile:
             warnings.append("Framework not determined by stack profile — using broad scan")
 
-    cfg = FRAMEWORK_PATTERNS.get(use_framework, FRAMEWORK_PATTERNS["generic"])
     endpoint_map = EndpointMap(
         repo=f"{owner}/{repo}",
         framework=framework,

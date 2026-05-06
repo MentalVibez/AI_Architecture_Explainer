@@ -1,8 +1,7 @@
 import httpx
 import pytest
 
-from app.services import analysis_pipeline
-from app.services import route_extractor
+from app.services import analysis_pipeline, route_extractor
 
 
 @pytest.mark.asyncio
