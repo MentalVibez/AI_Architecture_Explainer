@@ -1,6 +1,7 @@
 import type {
   AnalyzeResponse,
   AnalysisResult,
+  CodebaseGuide,
   JobStatusResponse,
   OpsSnapshotResponse,
   RecentRunsResponse,
@@ -52,6 +53,14 @@ export async function getJobStatus(jobId: number): Promise<JobStatusResponse> {
 
 export async function getResult(resultId: number): Promise<AnalysisResult> {
   return apiFetch<AnalysisResult>(`/api/results/${resultId}`);
+}
+
+export async function getCodebaseGuide(resultId: number): Promise<CodebaseGuide> {
+  return apiFetch<CodebaseGuide>(`/api/results/${resultId}/guide`);
+}
+
+export async function getOnboardingPlan(resultId: number): Promise<CodebaseGuide> {
+  return apiFetch<CodebaseGuide>(`/api/results/${resultId}/onboarding`);
 }
 
 export async function getRecentRuns(limit = 8): Promise<RecentRunsResponse> {

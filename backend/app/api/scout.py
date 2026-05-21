@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.core.security import public_route_limiter
 from app.llm.provider import get_llm_provider  # reuse Atlas's existing DI
 from app.schemas.scout import ScoutError, ScoutRequest, ScoutResponse
 from app.services.repo_scout import run_scout
@@ -42,8 +43,17 @@ _ERROR_MESSAGES: dict[str, tuple[int, str]] = {
 )
 async def scout_search(
     req: ScoutRequest,
+    request: Request,
     llm=Depends(get_llm_provider),
 ):
+    await public_route_limiter.check(
+        request,
+        route="scout",
+        burst_limit=20,
+        burst_window_seconds=300,
+        daily_limit=120,
+        subject=req.query[:80],
+    )
     try:
         return await run_scout(req, llm)
     except RuntimeError as e:

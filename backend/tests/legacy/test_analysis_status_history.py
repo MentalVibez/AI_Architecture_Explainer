@@ -48,7 +48,9 @@ async def test_analysis_status_includes_metadata(client):
 
 
 @pytest.mark.asyncio
-async def test_recent_runs_returns_atlas_and_review_history(client):
+async def test_recent_runs_returns_atlas_and_review_history(client, monkeypatch):
+    from app.core import config as config_module
+    monkeypatch.setattr(config_module.settings, "expose_public_history", True)
     async with TestSessionLocal() as session:
         repo = Repo(
             github_owner="vercel",
@@ -111,6 +113,8 @@ async def test_recent_runs_returns_atlas_and_review_history(client):
 
 @pytest.mark.asyncio
 async def test_ops_summary_reports_queue_counts_and_recent_failures(client, monkeypatch):
+    from app.core import config as config_module
+    monkeypatch.setattr(config_module.settings, "admin_api_key", "test-admin-key")
     monkeypatch.setattr(
         "app.api.routes_ops.github_auth_snapshot",
         lambda: {"mode": "token", "status": "ok", "detail": ""},
@@ -147,7 +151,7 @@ async def test_ops_summary_reports_queue_counts_and_recent_failures(client, monk
         session.add_all([atlas_failed, atlas_running, review_running])
         await session.commit()
 
-    response = await client.get("/api/ops/summary")
+    response = await client.get("/api/ops/summary", headers={"x-atlas-admin-key": "test-admin-key"})
 
     assert response.status_code == 200
     payload = response.json()
@@ -170,6 +174,8 @@ async def test_ops_summary_reports_queue_counts_and_recent_failures(client, monk
 
 @pytest.mark.asyncio
 async def test_ops_summary_detects_worker_backlog_without_runner(client, monkeypatch):
+    from app.core import config as config_module
+    monkeypatch.setattr(config_module.settings, "admin_api_key", "test-admin-key")
     monkeypatch.setattr(
         "app.api.routes_ops.github_auth_snapshot",
         lambda: {"mode": "token", "status": "ok", "detail": ""},
@@ -191,7 +197,7 @@ async def test_ops_summary_detects_worker_backlog_without_runner(client, monkeyp
         session.add(atlas_queued)
         await session.commit()
 
-    response = await client.get("/api/ops/summary")
+    response = await client.get("/api/ops/summary", headers={"x-atlas-admin-key": "test-admin-key"})
 
     assert response.status_code == 200
     payload = response.json()
@@ -209,6 +215,8 @@ async def test_ops_summary_detects_worker_backlog_without_runner(client, monkeyp
 
 @pytest.mark.asyncio
 async def test_ops_summary_clears_jobs_that_exceed_queue_guard(client, monkeypatch):
+    from app.core import config as config_module
+    monkeypatch.setattr(config_module.settings, "admin_api_key", "test-admin-key")
     monkeypatch.setattr(
         "app.api.routes_ops.github_auth_snapshot",
         lambda: {"mode": "token", "status": "ok", "detail": ""},
@@ -230,7 +238,7 @@ async def test_ops_summary_clears_jobs_that_exceed_queue_guard(client, monkeypat
         session.add(expired)
         await session.commit()
 
-    response = await client.get("/api/ops/summary")
+    response = await client.get("/api/ops/summary", headers={"x-atlas-admin-key": "test-admin-key"})
 
     assert response.status_code == 200
     payload = response.json()

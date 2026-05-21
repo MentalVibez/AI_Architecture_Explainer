@@ -47,7 +47,7 @@ class ScoutRequest(BaseModel):
     sort_by: SortBy = SortBy.STARS
     # Token is optional. If provided it is used only for the duration
     # of this request and never logged or persisted.
-    github_token: str | None = Field(default=None, exclude=True)
+    github_token: str | None = Field(default=None, exclude=True, max_length=160)
 
     @field_validator("platforms")
     @classmethod

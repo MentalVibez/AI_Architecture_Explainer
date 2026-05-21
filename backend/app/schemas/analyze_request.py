@@ -1,12 +1,12 @@
 import re
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 _NORMALIZE_RE = re.compile(r"(https://github\.com/[^/?#]+/[^/?#.]+?)(?:\.git)?(?:[/?#].*)?$")
 
 
 class AnalyzeRequest(BaseModel):
-    repo_url: str
+    repo_url: str = Field(..., min_length=18, max_length=240)
 
     @field_validator("repo_url")
     @classmethod

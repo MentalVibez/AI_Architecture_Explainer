@@ -7,16 +7,18 @@ Review API routes. Three endpoints:
 Current scope: public GitHub repos only.
 """
 import logging
+import re
 import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import public_route_limiter
 from app.middleware.rate_limit import check_review_rate_limit
 from app.models.review import Review
 from app.models.review_job import ReviewJob
@@ -26,6 +28,8 @@ from app.services.reviewer.utils.repo_url import normalize_repo_url
 router = APIRouter(prefix="/api/review", tags=["review"])
 logger = logging.getLogger(__name__)
 REVIEW_POLL_INTERVAL_SECONDS = 5
+_GIT_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$")
+_GIT_SHA_RE = re.compile(r"^[a-fA-F0-9]{7,40}$")
 RETRYABLE_ERROR_CODES = {
     "REVIEW_TIMEOUT",
     "ENGINE_ERROR",
@@ -34,12 +38,32 @@ RETRYABLE_ERROR_CODES = {
 }
 
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
+# Schemas
 
 class ReviewRequest(BaseModel):
-    repo_url: str
-    branch: str | None = None
-    commit: str | None = None
+    repo_url: str = Field(..., min_length=18, max_length=240)
+    branch: str | None = Field(default=None, max_length=128)
+    commit: str | None = Field(default=None, max_length=40)
+
+    @field_validator("branch")
+    @classmethod
+    def valid_branch(cls, value: str | None) -> str | None:
+        if value is None or value == "":
+            return None
+        if value.startswith(("-", "/")) or ".." in value or value.endswith(".lock"):
+            raise ValueError("Invalid branch name.")
+        if not _GIT_REF_RE.fullmatch(value):
+            raise ValueError("Invalid branch name.")
+        return value
+
+    @field_validator("commit")
+    @classmethod
+    def valid_commit(cls, value: str | None) -> str | None:
+        if value is None or value == "":
+            return None
+        if not _GIT_SHA_RE.fullmatch(value):
+            raise ValueError("Commit must be a 7-40 character hexadecimal SHA.")
+        return value.lower()
 
 
 class ReviewJobResponse(BaseModel):
@@ -64,7 +88,7 @@ class ReviewStatusResponse(BaseModel):
     completed_at: datetime | None = None
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _validate_and_normalize(repo_url: str, branch: str | None) -> tuple[str, str]:
     try:
@@ -147,6 +171,9 @@ def _status_detail(status: str, error_code: str | None, duration_seconds: int) -
                 "The repository exceeded the current review size limits "
                 "for this public service."
             ),
+            "INVALID_COMMIT": (
+                "The requested commit could not be checked out from the cloned repository."
+            ),
             "REVIEW_TIMEOUT": (
                 "The review exceeded the time budget before the report "
                 "could be completed."
@@ -179,6 +206,8 @@ def _suggested_action(status: str, error_code: str | None) -> str | None:
         return "Verify that the repository is public and reachable, then retry."
     if error_code == "REPO_TOO_LARGE":
         return "Use Atlas or Map first, or try a smaller repository."
+    if error_code == "INVALID_COMMIT":
+        return "Verify that the commit SHA belongs to the selected public repository."
     if error_code in RETRYABLE_ERROR_CODES:
         return "Retry the review in a moment. If it keeps failing, inspect backend logs."
     if error_code == "QUEUE_TIMEOUT":
@@ -186,7 +215,7 @@ def _suggested_action(status: str, error_code: str | None) -> str | None:
     return "Inspect the backend logs before retrying."
 
 
-# ── POST /api/review/ ─────────────────────────────────────────────────────────
+# POST /api/review/
 
 @router.post("/", response_model=ReviewJobResponse, status_code=202)
 async def submit_review(
@@ -198,6 +227,14 @@ async def submit_review(
     await check_review_rate_limit(request)
 
     canonical_url, branch = _validate_and_normalize(req.repo_url, req.branch)
+    await public_route_limiter.check(
+        request,
+        route="review",
+        burst_limit=2,
+        burst_window_seconds=3600,
+        daily_limit=3,
+        subject=canonical_url,
+    )
 
     job = ReviewJob(
         repo_url=canonical_url,
@@ -218,7 +255,7 @@ async def submit_review(
     )
 
 
-# ── GET /api/review/{job_id} ──────────────────────────────────────────────────
+# GET /api/review/{job_id}
 
 @router.get("/{job_id}", response_model=ReviewStatusResponse)
 async def poll_review(
@@ -242,7 +279,7 @@ async def poll_review(
     return _build_review_status_response(job, review)
 
 
-# ── GET /api/review/results/{result_id} ──────────────────────────────────────
+# GET /api/review/results/{result_id}
 
 @router.get("/results/{result_id}")
 async def fetch_review_result(

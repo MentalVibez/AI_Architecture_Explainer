@@ -49,24 +49,24 @@ async function run() {
         fetch("/api/history/runs?limit=6"),
       ]);
       const healthPayload = await health.json();
-      const opsPayload = await ops.json();
       return {
         health: health.status,
         ops: ops.status,
         history: history.status,
-        github: healthPayload.github?.status,
-        githubDetail: healthPayload.github?.detail || "",
-        opsStatus: opsPayload.status,
-        attentionMessage: opsPayload.attention_message,
+        service: healthPayload.service,
+        publicHealthStatus: healthPayload.status,
       };
     });
     summary.checks.home = homeChecks;
 
-    if (homeChecks.health !== 200 || homeChecks.ops !== 200 || homeChecks.history !== 200) {
+    if (homeChecks.health !== 200) {
       throw new Error(`Homepage API checks failed: ${JSON.stringify(homeChecks)}`);
     }
-    if (!["ok", "configured"].includes(homeChecks.github)) {
-      throw new Error(`GitHub health is degraded on homepage load: ${JSON.stringify(homeChecks)}`);
+    if (!["codebase-atlas-backend"].includes(homeChecks.service)) {
+      throw new Error(`Unexpected health service payload: ${JSON.stringify(homeChecks)}`);
+    }
+    if (![200, 401, 404].includes(homeChecks.ops) || ![200, 401, 404].includes(homeChecks.history)) {
+      throw new Error(`Protected API checks returned unexpected statuses: ${JSON.stringify(homeChecks)}`);
     }
 
     await page.goto(`${BASE_URL}/scout`, { waitUntil: "networkidle", timeout: 60000 });
@@ -94,8 +94,8 @@ async function run() {
       return await health.json();
     });
     summary.checks.postFlowHealth = postFlowHealth;
-    if (!["ok", "configured"].includes(postFlowHealth.github?.status)) {
-      throw new Error(`GitHub auth health is degraded after live flows: ${JSON.stringify(postFlowHealth)}`);
+    if (postFlowHealth.status !== "ok") {
+      throw new Error(`Public health is degraded after live flows: ${JSON.stringify(postFlowHealth)}`);
     }
 
     if (consoleErrors.length > 0) {

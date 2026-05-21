@@ -4,6 +4,7 @@ os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("SENTRY_DSN", "")
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -16,7 +17,7 @@ test_engine = create_async_engine(TEST_DATABASE_URL, future=True)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def setup_db():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -25,7 +26,7 @@ async def setup_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client():
     async def override_get_db():
         async with TestSessionLocal() as session:

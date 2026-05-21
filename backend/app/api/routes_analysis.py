@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import public_route_limiter
 from app.models.analysis_job import AnalysisJob
 from app.models.repo import Repo
 from app.schemas.analyze_request import AnalyzeRequest
@@ -69,6 +70,14 @@ async def create_analysis(
         raise HTTPException(status_code=422, detail="Could not parse GitHub repo URL")
 
     owner, repo_name = parsed
+    await public_route_limiter.check(
+        request,
+        route="analyze",
+        burst_limit=5,
+        burst_window_seconds=300,
+        daily_limit=25,
+        subject=f"{owner}/{repo_name}",
+    )
 
     result = await db.execute(select(Repo).where(Repo.github_url == body.repo_url))
     repo = result.scalar_one_or_none()

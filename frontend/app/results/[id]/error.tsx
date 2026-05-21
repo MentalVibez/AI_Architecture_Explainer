@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 interface Props {
   error: Error & { digest?: string };
   reset: () => void;
@@ -25,14 +27,14 @@ export default function ResultError({ error, reset }: Props) {
         >
           Try again
         </button>
-        <a
+        <Link
           href="/"
           className="font-mono text-[12px] tracking-widest uppercase px-5 py-2.5
                      border border-[#1e1e1e] text-[#4a4a4a] rounded
                      hover:border-[#2a2a2a] hover:text-[#6a6a6a] transition-colors"
         >
           New analysis
-        </a>
+        </Link>
       </div>
     </div>
   );

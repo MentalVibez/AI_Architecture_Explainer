@@ -27,6 +27,12 @@ jobs:
       - name: Lint
         run: ruff check app tests
 
+      - name: Security lint
+        run: bandit -q -r app -lll
+
+      - name: Dependency audit
+        run: pip-audit
+
       - name: Test
         run: pytest
         env:

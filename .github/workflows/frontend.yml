@@ -29,6 +29,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
       - name: Build
         run: npm run build
         env:

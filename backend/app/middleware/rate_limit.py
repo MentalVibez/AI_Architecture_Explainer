@@ -19,6 +19,8 @@ from collections import defaultdict
 
 from fastapi import HTTPException, Request
 
+from app.core.security import client_ip
+
 MAX_REVIEWS_PER_DAY  = 3
 MAX_REVIEWS_PER_HOUR = 2
 
@@ -29,13 +31,7 @@ _lock = asyncio.Lock()
 
 def _get_client_ip(request: Request) -> str:
     """Extract real client IP, respecting Railway/Vercel proxy headers."""
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    real_ip = request.headers.get("x-real-ip")
-    if real_ip:
-        return real_ip
-    return request.client.host if request.client else "unknown"
+    return client_ip(request)
 
 
 async def check_review_rate_limit(request: Request) -> None:

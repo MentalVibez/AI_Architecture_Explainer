@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function NotFound() {
   return (
     <div className="max-w-lg mx-auto px-6 py-32 text-center">
@@ -10,14 +12,14 @@ export default function NotFound() {
       <p className="font-sans text-[14px] text-[#4a4a4a] leading-relaxed mb-10">
         This page doesn&apos;t exist or may have been removed.
       </p>
-      <a
+      <Link
         href="/"
         className="inline-block font-mono text-[12px] tracking-widest uppercase
                    px-6 py-3 bg-[#c8a96e] text-[#0a0a0a] rounded
                    hover:bg-[#d4b87a] transition-colors"
       >
         Back to CodebaseAtlas
-      </a>
+      </Link>
     </div>
   );
 }

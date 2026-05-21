@@ -122,9 +122,7 @@ async def _run_review_impl(
     with tempfile.TemporaryDirectory() as tmp:
 
         # Step 1: Clone
-        resolved_commit = await _clone(clone_url, branch, tmp)
-        if commit:
-            resolved_commit = commit
+        resolved_commit = await _clone(clone_url, branch, tmp, commit=commit)
 
         # Step 2: Pre-flight size check (fast, before expensive analysis)
         _check_repo_size(tmp)
@@ -240,7 +238,7 @@ async def _run_review_impl(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-async def _clone(clone_url: str, branch: str, dest: str) -> str:
+async def _clone(clone_url: str, branch: str, dest: str, commit: str | None = None) -> str:
     """
     Clone repo. Returns short commit SHA. Raises ReviewError on any failure.
 
@@ -288,9 +286,38 @@ async def _clone(clone_url: str, branch: str, dest: str) -> str:
         raise ReviewError("CLONE_FAILED",
                           f"git clone failed (exit {rc}): {msg[:200]}")
 
+    if commit:
+        fetch_proc = await asyncio.create_subprocess_exec(
+            "git", "fetch", "--depth", "1", "origin", commit,
+            cwd=dest,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, fetch_stderr = await fetch_proc.communicate()
+        if fetch_proc.returncode != 0:
+            message = fetch_stderr.decode("utf-8", errors="replace")
+            raise ReviewError(
+                "INVALID_COMMIT",
+                f"Requested commit could not be fetched from the repository: {message[:160]}",
+            )
+
+        checkout_proc = await asyncio.create_subprocess_exec(
+            "git", "checkout", "--detach", commit,
+            cwd=dest,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, checkout_stderr = await checkout_proc.communicate()
+        if checkout_proc.returncode != 0:
+            message = checkout_stderr.decode("utf-8", errors="replace")
+            raise ReviewError(
+                "INVALID_COMMIT",
+                f"Requested commit is not reachable from the cloned repository: {message[:160]}",
+            )
+
     # Get commit SHA
     sha_proc = await asyncio.create_subprocess_exec(
-        "git", "rev-parse", "--short", "HEAD",
+        "git", "rev-parse", "HEAD",
         cwd=dest,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,

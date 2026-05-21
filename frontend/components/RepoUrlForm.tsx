@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitAnalysis } from "@/lib/api";
 import { useRepoWorkspace } from "@/components/workspace/RepoWorkspaceProvider";
@@ -10,28 +10,35 @@ import { normalizeRepoWorkspace } from "@/lib/repo-workspace";
 export default function RepoUrlForm() {
   const router = useRouter();
   const { activeRepo, setActiveRepo } = useRepoWorkspace();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (activeRepo?.url && activeRepo.url !== url) {
+    if (activeRepo?.url) {
       setUrl(activeRepo.url);
     }
-  }, [activeRepo, url]);
+  }, [activeRepo?.url]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const normalized = normalizeRepoWorkspace({ url });
+    const submittedUrl = (inputRef.current?.value || url).trim();
+    if (!submittedUrl) {
+      setLoading(false);
+      return;
+    }
+
+    const normalized = normalizeRepoWorkspace({ url: submittedUrl });
     if (normalized) {
       setActiveRepo(normalized);
     }
 
     try {
-      const { job_id } = await submitAnalysis(url.trim());
+      const { job_id } = await submitAnalysis(submittedUrl);
       router.push(`/analyze?job_id=${job_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -43,6 +50,7 @@ export default function RepoUrlForm() {
     <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
+          ref={inputRef}
           type="url"
           placeholder="Paste a public GitHub repository URL"
           value={url}
@@ -57,7 +65,7 @@ export default function RepoUrlForm() {
         />
         <button
           type="submit"
-          disabled={loading || !url}
+          disabled={loading}
           className="rounded-2xl bg-[#4d7cff] px-6 py-3.5 text-[#f8fbff] shadow-[0_14px_30px_rgba(77,124,255,0.28)]
                      hover:bg-[#6894ff] disabled:opacity-40 disabled:cursor-not-allowed
                      font-mono text-[12px] tracking-[0.18em] uppercase sm:min-w-[10.5rem]"

@@ -19,9 +19,13 @@ class Settings(BaseSettings):
     db_name: str = "postgres"
 
     sentry_dsn: str = ""
+    admin_api_key: str = ""
+    redis_url: str = ""
 
     environment: str = "development"
     cors_origins: str = "http://localhost:3000"
+    trusted_proxy_hosts: str = "127.0.0.1,::1"
+    expose_public_history: bool = False
     worker_poll_interval_seconds: float = 2.0
     worker_stale_job_seconds: int = 1800
     worker_queue_order: str = "atlas,review"
@@ -37,6 +41,10 @@ class Settings(BaseSettings):
     @property
     def allowed_origins(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def trusted_proxies(self) -> set[str]:
+        return {o.strip() for o in self.trusted_proxy_hosts.split(",") if o.strip()}
 
     @property
     def resolved_database_url(self) -> str:

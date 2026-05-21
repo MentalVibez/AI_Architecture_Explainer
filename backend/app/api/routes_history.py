@@ -1,11 +1,13 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import require_admin
 from app.models.analysis_job import AnalysisJob
 from app.models.analysis_result import AnalysisResult
 from app.models.repo import Repo
@@ -17,9 +19,13 @@ router = APIRouter(prefix="/api/history", tags=["history"])
 
 @router.get("/runs", response_model=RecentRunsResponse)
 async def get_recent_runs(
+    request: Request,
     limit: int = Query(default=8, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
 ) -> RecentRunsResponse:
+    if not settings.expose_public_history:
+        require_admin(request)
+
     atlas_limit = min(limit, 12)
     review_limit = min(limit, 12)
 

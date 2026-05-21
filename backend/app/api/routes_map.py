@@ -12,6 +12,7 @@ The framework detection is reused from the Atlas pipeline — no separate
 service call required.
 """
 import logging
+import re
 import time
 
 from fastapi import APIRouter, HTTPException, Request
@@ -19,6 +20,7 @@ from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.core.security import public_route_limiter
 from app.services.analysis_pipeline import run_stack_analysis
 from app.services.endpoint_enricher import enrich_endpoint_map
 from app.services.route_extractor import extract_endpoints
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/api/map", tags=["map"])
+_GITHUB_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$")
 
 # Maps framework_detector output strings → FRAMEWORK_PATTERNS keys
 _FRAMEWORK_MAP: dict[str, str] = {
@@ -98,6 +101,18 @@ async def map_endpoints(
     Example: GET /api/map/tiangolo/fastapi?force_framework=fastapi
     """
     start = time.monotonic()
+
+    if not _GITHUB_SEGMENT_RE.fullmatch(owner) or not _GITHUB_SEGMENT_RE.fullmatch(repo):
+        raise HTTPException(status_code=422, detail="Invalid GitHub owner or repository name.")
+
+    await public_route_limiter.check(
+        request,
+        route="map",
+        burst_limit=20,
+        burst_window_seconds=300,
+        daily_limit=100,
+        subject=f"{owner}/{repo}",
+    )
 
     # Step 1: deterministic stack analysis (reuse Atlas pipeline, no LLM)
     try:

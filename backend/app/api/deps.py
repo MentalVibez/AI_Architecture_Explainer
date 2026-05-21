@@ -52,7 +52,7 @@ except ImportError:
     _JWT_AVAILABLE = False
     log.warning("python-jose not installed. pip install python-jose[cryptography]")
 
-_JWT_SECRET_KEY = os.getenv("ATLAS_JWT_SECRET", "change-me-in-production")
+_JWT_SECRET_KEY = os.getenv("ATLAS_JWT_SECRET", "")
 _JWT_ALGORITHM  = os.getenv("ATLAS_JWT_ALGORITHM", "HS256")
 _API_KEY_HEADER = "X-Atlas-API-Key"
 _BEARER_PREFIX  = "Bearer "
@@ -151,7 +151,7 @@ def _resolve_by_jwt(token: str, db: Session | None) -> RequestContext | None:
     Production requirement: set ATLAS_JWT_SECRET to a secure random value.
     Startup validation should assert it is not the default.
     """
-    if not _JWT_AVAILABLE or db is None:
+    if not _JWT_AVAILABLE or db is None or not _JWT_SECRET_KEY:
         return None
 
     try:

@@ -17,6 +17,7 @@ from app.api.routes_review import router as review_router
 from app.api.scout import router as scout_router
 from app.core.config import settings
 from app.core.logging_config import configure_logging
+from app.core.security import SecurityHeadersMiddleware
 
 try:
     import sentry_sdk
@@ -52,6 +53,7 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

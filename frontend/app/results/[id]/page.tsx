@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { getResult } from "@/lib/api";
+import { getCodebaseGuide, getResult } from "@/lib/api";
 import { normalizeStackItems } from "@/lib/types";
 import DeveloperSummary from "@/components/DeveloperSummary";
 import HiringManagerSummary from "@/components/HiringManagerSummary";
@@ -10,22 +10,23 @@ import WorkspaceSync from "@/components/workspace/WorkspaceSync";
 import WorkspaceRunSync from "@/components/workspace/WorkspaceRunSync";
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
   try {
-    const result = await getResult(Number(params.id));
+    const result = await getResult(Number(id));
     const evidence = (result.raw_evidence?.[0] as Record<string, unknown>) ?? {};
     const repo = (evidence.repo as Record<string, string>) ?? {};
-    const repoLabel = repo.owner && repo.name ? `${repo.owner}/${repo.name}` : `Report #${params.id}`;
+    const repoLabel = repo.owner && repo.name ? `${repo.owner}/${repo.name}` : `Report #${id}`;
     return {
       title: `${repoLabel} — Atlas Workspace | CodebaseAtlas`,
       description: `Architecture diagram, framework detection, and plain-English summaries for ${repoLabel}.`,
       openGraph: {
         title: `${repoLabel} — Atlas Workspace`,
         description: `Architecture diagram, framework detection, and summaries for ${repoLabel}.`,
-        url: `https://www.codebaseatlas.com/results/${params.id}`,
+        url: `https://www.codebaseatlas.com/results/${id}`,
       },
       robots: { index: false },
     };
@@ -38,7 +39,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ResultPage({ params }: Props) {
-  const result = await getResult(Number(params.id));
+  const { id } = await params;
+  const resultId = Number(id);
+  const [result, guide] = await Promise.all([
+    getResult(resultId),
+    getCodebaseGuide(resultId),
+  ]);
 
   const evidence = (result.raw_evidence?.[0] as Record<string, unknown>) ?? {};
   const repo = (evidence.repo as Record<string, string>) ?? {};
@@ -84,7 +90,7 @@ export default async function ResultPage({ params }: Props) {
               {repoLabel ?? `Result #${result.id}`}
             </h1>
             <p className="mt-4 max-w-3xl text-[15px] leading-relaxed text-[#d7e4ff]">
-              Deterministic evidence collected first, then translated into architecture and onboarding context.
+              Deterministic evidence collected first, then translated into architecture and codebase guidance.
             </p>
           </div>
 
@@ -235,6 +241,8 @@ export default async function ResultPage({ params }: Props) {
         </section>
       )}
 
+      <CodebaseGuideSection guide={guide} />
+
       {result.diagram_mermaid && <DiagramPanel mermaid={result.diagram_mermaid} />}
 
       <section id="developer-summary">
@@ -242,6 +250,181 @@ export default async function ResultPage({ params }: Props) {
       </section>
 
       <HiringManagerSummary result={result} />
+    </div>
+  );
+}
+
+function CodebaseGuideSection({
+  guide,
+}: {
+  guide: Awaited<ReturnType<typeof getCodebaseGuide>>;
+}) {
+  return (
+    <section id="codebase-guide" className="panel-strong rounded-[32px] p-6 sm:p-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#a9c2ff]">
+            Codebase Guide
+          </p>
+          <h2 className="mt-2 max-w-2xl text-3xl font-semibold tracking-[-0.03em] text-[#f5f8ff]">
+            Understand the system before you change it.
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#a9bce0]">
+            {guide.overview}
+          </p>
+        </div>
+        <div className="grid min-w-[220px] grid-cols-2 gap-2">
+          <Metric label="Reading path" value={String(guide.reading_path.length)} />
+          <Metric label="Setup notes" value={String(guide.setup_blockers.length)} />
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6d7f9f]">
+            Investigation path
+          </p>
+          <div className="mt-4 space-y-3">
+            {guide.week_plan.map((item) => (
+              <div key={item.phase} className="surface-note">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a9c2ff]">
+                  {item.phase}
+                </p>
+                <h3 className="mt-2 text-base font-semibold text-[#f5f8ff]">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#9fb2d2]">{item.goal}</p>
+                <div className="mt-3 space-y-2">
+                  {item.actions.slice(0, 4).map((action) => (
+                    <p key={action} className="text-sm leading-relaxed text-[#d8e5ff]">
+                      {action}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6d7f9f]">
+            Code reading path
+          </p>
+          <div className="mt-4 space-y-3">
+            {guide.reading_path.length > 0 ? (
+              guide.reading_path.map((item, index) => (
+                <div key={item.path} className="surface-note">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#4d7cff]/25 bg-[#4d7cff]/10 font-mono text-[10px] text-[#cfe0ff]">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="break-all font-mono text-[12px] text-[#edf4ff]">{item.path}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-[#94a8cb]">{item.reason}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="surface-note">
+                <p className="text-sm leading-relaxed text-[#94a8cb]">
+                  Atlas did not have enough path evidence to rank files. Start with the summary and ask a project owner for the main entry point.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <CodebaseGuideList
+          title="Safe contribution paths"
+          items={guide.starter_tasks.map((task) => ({
+            title: task.title,
+            detail: task.why_safe,
+            meta: task.related_paths.join(", "),
+          }))}
+        />
+        <CodebaseGuideList
+          title="Change risk coach"
+          items={guide.risk_notes.map((note) => ({
+            title: note.title,
+            detail: note.guidance,
+            meta: note.related_paths.join(", "),
+          }))}
+        />
+        <CodebaseGuideList
+          title="Team questions"
+          items={guide.team_questions.map((question) => ({
+            title: question,
+            detail: "",
+            meta: "",
+          }))}
+        />
+      </div>
+
+      {guide.concepts.length > 0 && (
+        <div className="mt-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6d7f9f]">
+            Concept explainer
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {guide.concepts.map((concept) => (
+              <div key={concept.name} className="surface-note">
+                <h3 className="text-base font-semibold text-[#f5f8ff]">{concept.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#94a8cb]">{concept.explanation}</p>
+                {concept.evidence.length > 0 && (
+                  <p className="mt-3 break-all font-mono text-[11px] text-[#7f95ba]">
+                    {concept.evidence[0]}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {guide.setup_blockers.length > 0 && (
+        <div className="mt-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6d7f9f]">
+            Setup readiness
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {guide.setup_blockers.map((blocker) => (
+              <div key={blocker.title} className="surface-note">
+                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#ffd98f]">
+                  {blocker.severity}
+                </p>
+                <h3 className="mt-2 text-base font-semibold text-[#f5f8ff]">{blocker.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#94a8cb]">{blocker.guidance}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CodebaseGuideList({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ title: string; detail: string; meta: string }>;
+}) {
+  return (
+    <div>
+      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6d7f9f]">
+        {title}
+      </p>
+      <div className="mt-4 space-y-3">
+        {items.map((item) => (
+          <div key={item.title} className="surface-note">
+            <h3 className="text-sm font-semibold leading-relaxed text-[#edf4ff]">{item.title}</h3>
+            {item.detail && <p className="mt-2 text-sm leading-relaxed text-[#94a8cb]">{item.detail}</p>}
+            {item.meta && <p className="mt-3 break-all font-mono text-[11px] text-[#7f95ba]">{item.meta}</p>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

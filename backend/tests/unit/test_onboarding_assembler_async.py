@@ -25,6 +25,22 @@ import pytest
 
 from app.services.contracts.onboarding_models import ScanState
 
+
+@pytest.fixture(autouse=True)
+def run_threaded_analyzers_inline(monkeypatch):
+    """
+    Keep these unit tests deterministic.
+
+    The production assembler uses asyncio.to_thread so real analyzer file I/O
+    does not block workers. In this test module every analyzer is patched, so
+    running the patched callable inline exercises the assembler contract without
+    relying on thread-pool behavior from the host Python/runtime.
+    """
+    async def inline_to_thread(func, /, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    monkeypatch.setattr(asyncio, "to_thread", inline_to_thread)
+
 # ─────────────────────────────────────────────────────────
 # Minimal async-compatible DB and result fakes
 # ─────────────────────────────────────────────────────────

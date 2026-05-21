@@ -147,6 +147,61 @@ export interface AnalysisResult {
   created_at: string;
 }
 
+export interface WeekPlanItem {
+  phase: string;
+  title: string;
+  goal: string;
+  actions: string[];
+}
+
+export interface ReadingPathItem {
+  path: string;
+  reason: string;
+  confidence: number;
+}
+
+export interface ConceptNote {
+  name: string;
+  explanation: string;
+  evidence: string[];
+}
+
+export interface StarterTask {
+  title: string;
+  why_safe: string;
+  suggested_checks: string[];
+  related_paths: string[];
+}
+
+export interface RiskNote {
+  title: string;
+  guidance: string;
+  related_paths: string[];
+}
+
+export interface SetupBlocker {
+  title: string;
+  severity: string;
+  guidance: string;
+}
+
+export interface CodebaseGuide {
+  result_id: number;
+  repo_label: string | null;
+  overview: string;
+  week_plan: WeekPlanItem[];
+  reading_path: ReadingPathItem[];
+  concepts: ConceptNote[];
+  starter_tasks: StarterTask[];
+  risk_notes: RiskNote[];
+  mentor_questions: string[];
+  team_questions: string[];
+  setup_blockers: SetupBlocker[];
+  evidence_summary: Record<string, unknown>;
+}
+
+export type OnboardingPlan = CodebaseGuide;
+
 /** Normalize a stack category to always return StackItem objects. */
 export function normalizeStackItems(items: StackCategory): StackItem[] {
   return items.map((item) =>

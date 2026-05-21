@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function PricingPage() {
   return (
     <div className="max-w-5xl mx-auto px-6">
@@ -59,14 +61,14 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <a
+            <Link
               href="/#analyze"
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5
                          bg-[#c8a96e] text-[#0a0a0a] font-mono text-[12px] tracking-wider
                          rounded hover:bg-[#d4b87a] transition-colors"
             >
               Start analyzing →
-            </a>
+            </Link>
           </div>
 
           {/* Pro */}

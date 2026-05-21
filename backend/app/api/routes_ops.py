@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import require_admin
 from app.models.analysis_job import AnalysisJob
 from app.models.review import Review
 from app.models.review_job import ReviewJob
@@ -27,7 +28,11 @@ router = APIRouter(prefix="/api/ops", tags=["ops"])
 
 
 @router.get("/summary", response_model=OpsSnapshotResponse)
-async def get_ops_summary(db: AsyncSession = Depends(get_db)) -> OpsSnapshotResponse:
+async def get_ops_summary(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> OpsSnapshotResponse:
+    require_admin(request)
     now = datetime.now(UTC)
     recent_cutoff = now - timedelta(hours=24)
     guard_summary = await clear_expired_queued_jobs(
