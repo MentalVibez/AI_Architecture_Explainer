@@ -69,6 +69,10 @@ async def process_review_job(
             len(report.findings),
         )
 
+        if job.pr_number and job.pr_repo:
+            from app.services.pr_comment_service import post_pr_comment
+            await post_pr_comment(pr_repo=job.pr_repo, pr_number=job.pr_number, review=review, job=job)
+
     except ReviewError as exc:
         review = Review.from_error(
             job_id=job_id,
@@ -93,6 +97,10 @@ async def process_review_job(
             exc.message,
         )
 
+        if job.pr_number and job.pr_repo:
+            from app.services.pr_comment_service import post_pr_comment
+            await post_pr_comment(pr_repo=job.pr_repo, pr_number=job.pr_number, review=review, job=job)
+
     except Exception as exc:
         review = Review.from_error(
             job_id=job_id,
@@ -111,6 +119,11 @@ async def process_review_job(
         await db.commit()
 
         logger.exception("review_job_unexpected_error job_id=%s repo=%s", job_id, repo_url)
+
+        if job.pr_number and job.pr_repo:
+            from app.services.pr_comment_service import post_pr_comment
+            await post_pr_comment(pr_repo=job.pr_repo, pr_number=job.pr_number, review=review, job=job)
+
         raise
 
 

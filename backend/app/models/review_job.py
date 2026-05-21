@@ -26,6 +26,10 @@ class ReviewJob(Base):
     branch: Mapped[str] = mapped_column(String(255), server_default="main")
     commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
+    # Set when the job was triggered by a GitHub PR webhook
+    pr_number: Mapped[int | None] = mapped_column(nullable=True)
+    pr_repo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 

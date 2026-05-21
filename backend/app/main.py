@@ -14,6 +14,7 @@ from app.api.routes_map import router as map_router
 from app.api.routes_ops import router as ops_router
 from app.api.routes_results import router as results_router
 from app.api.routes_review import router as review_router
+from app.api.routes_webhook import router as webhook_router
 from app.api.scout import router as scout_router
 from app.core.config import settings
 from app.core.logging_config import configure_logging
@@ -71,4 +72,5 @@ app.include_router(ops_router)
 app.include_router(scout_router)
 app.include_router(map_router)
 app.include_router(review_router)
+app.include_router(webhook_router)
 app.include_router(intelligence_router, prefix="/api")

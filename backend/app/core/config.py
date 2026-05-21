@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     anthropic_base_url: str = ""
     anthropic_custom_headers: str = ""
     github_token: str = ""
+    github_webhook_secret: str = ""
 
     # Full URL takes precedence. Individual components are used when set,
     # allowing Railway to inject each value separately (avoids URL-parsing issues).
