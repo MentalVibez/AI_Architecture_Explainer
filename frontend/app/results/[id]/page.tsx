@@ -11,6 +11,7 @@ import AgentAnalysisSection from "@/components/AgentAnalysisSection";
 import WorkspaceSync from "@/components/workspace/WorkspaceSync";
 import WorkspaceRunSync from "@/components/workspace/WorkspaceRunSync";
 import CopyLinkButton from "@/components/CopyLinkButton";
+import DownloadGuideButton from "@/components/DownloadGuideButton";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -247,7 +248,7 @@ export default async function ResultPage({ params }: Props) {
         </section>
       )}
 
-      <CodebaseGuideSection guide={guide} />
+      <CodebaseGuideSection guide={guide} repoLabel={repoLabel} />
 
       {result.diagram_mermaid && <DiagramPanel mermaid={result.diagram_mermaid} />}
 
@@ -281,8 +282,10 @@ export default async function ResultPage({ params }: Props) {
 
 function CodebaseGuideSection({
   guide,
+  repoLabel,
 }: {
   guide: Awaited<ReturnType<typeof getCodebaseGuide>>;
+  repoLabel?: string | null;
 }) {
   return (
     <section id="codebase-guide" className="panel-strong rounded-[32px] p-6 sm:p-8">
@@ -297,6 +300,9 @@ function CodebaseGuideSection({
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#a9bce0]">
             {guide.overview}
           </p>
+          <div className="mt-4">
+            <DownloadGuideButton guide={guide} repoLabel={repoLabel} />
+          </div>
         </div>
         <div className="grid min-w-[220px] grid-cols-2 gap-2">
           <Metric label="Reading path" value={String(guide.reading_path.length)} />
