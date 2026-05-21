@@ -109,3 +109,9 @@ export async function triggerAgentAnalysis(
 export async function getAgentAnalysis(resultId: number): Promise<AgentRunResponse> {
   return apiFetch<AgentRunResponse>(`/api/results/${resultId}/agent-analysis`);
 }
+
+export async function resolveShareSlug(
+  slug: string
+): Promise<{ type: "atlas" | "review"; id: string }> {
+  return apiFetch<{ type: "atlas" | "review"; id: string }>(`/api/r/${encodeURIComponent(slug)}`);
+}

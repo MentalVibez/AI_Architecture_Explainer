@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, String, Text, func
@@ -6,10 +7,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
+def _gen_slug() -> str:
+    return secrets.token_urlsafe(8)
+
+
 class AtlasResult(Base):
     __tablename__ = "atlas_results"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    share_slug: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, default=_gen_slug)
     job_id: Mapped[int] = mapped_column(ForeignKey("atlas_jobs.id"), unique=True)
     repo_snapshot_sha: Mapped[str | None] = mapped_column(String(40), nullable=True)
     detected_stack: Mapped[dict] = mapped_column(JSON, default=dict)

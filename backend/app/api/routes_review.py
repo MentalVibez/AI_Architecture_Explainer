@@ -298,6 +298,7 @@ async def fetch_review_result(
 
     return {
         "result_id": str(review.id),
+        "share_slug": review.share_slug,
         "job_id": str(review.job_id),
         "repo_url": review.repo_url,
         "commit": review.commit,

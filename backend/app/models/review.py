@@ -8,6 +8,7 @@ Separation of concerns:
 One Review row per completed job. Failed jobs get a Review row too
 (with error_code + error_message set, report fields null).
 """
+import secrets
 import uuid
 from datetime import UTC, datetime
 
@@ -25,6 +26,10 @@ def _utcnow_naive() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+def _gen_slug() -> str:
+    return secrets.token_urlsafe(8)
+
+
 class Review(Base):
     __tablename__ = "reviews"
 
@@ -32,6 +37,7 @@ class Review(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    share_slug: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, default=_gen_slug)
     job_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("review_jobs.id", ondelete="CASCADE"),

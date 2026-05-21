@@ -9,6 +9,7 @@ import type { ReviewFinding, ReviewResult, ReviewStatusResponse } from "@/lib/ty
 import { useRepoWorkspace } from "@/components/workspace/RepoWorkspaceProvider";
 import { normalizeRepoWorkspace } from "@/lib/repo-workspace";
 import RecentRuns from "@/components/workspace/RecentRuns";
+import CopyLinkButton from "@/components/CopyLinkButton";
 
 type JobStatus = "idle" | "queued" | "running" | "completed" | "failed";
 
@@ -423,7 +424,10 @@ function ReviewResultPanel({ result }: { result: ReviewResult }) {
     <section className="space-y-6 pb-20">
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         <div className="panel-strong rounded-[28px] p-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#d8cbff]">Review result</p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#d8cbff]">Review result</p>
+            {result.share_slug && <CopyLinkButton path={`/r/${result.share_slug}`} />}
+          </div>
           <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#f5f8ff] break-all">{result.repo_url}</h2>
           <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:gap-4">
             <p className="text-6xl font-semibold leading-none" style={{ color: overallColor }}>

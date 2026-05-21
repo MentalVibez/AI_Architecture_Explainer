@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class AnalysisResultResponse(BaseModel):
     id: int
     job_id: int
+    share_slug: str | None
     repo_snapshot_sha: str | None
     detected_stack: dict
     dependencies: dict

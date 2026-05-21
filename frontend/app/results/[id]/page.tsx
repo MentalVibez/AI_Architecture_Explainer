@@ -10,6 +10,7 @@ import KnowledgeGraph from "@/components/KnowledgeGraph";
 import AgentAnalysisSection from "@/components/AgentAnalysisSection";
 import WorkspaceSync from "@/components/workspace/WorkspaceSync";
 import WorkspaceRunSync from "@/components/workspace/WorkspaceRunSync";
+import CopyLinkButton from "@/components/CopyLinkButton";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -115,6 +116,9 @@ export default async function ResultPage({ params }: Props) {
             >
               Open Map
             </Link>
+            {result.share_slug && (
+              <CopyLinkButton path={`/r/${result.share_slug}`} />
+            )}
           </div>
         </div>
 

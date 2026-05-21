@@ -109,6 +109,7 @@ export interface ReviewFinding {
 
 export interface ReviewResult {
   result_id: string;
+  share_slug: string | null;
   job_id: string;
   repo_url: string;
   commit: string | null;
@@ -143,6 +144,7 @@ type StackCategory = (StackItem | string)[];
 export interface AnalysisResult {
   id: number;
   job_id: number;
+  share_slug: string | null;
   repo_snapshot_sha: string | null;
   detected_stack: {
     frontend: StackCategory;
