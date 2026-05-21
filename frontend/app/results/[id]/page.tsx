@@ -6,6 +6,8 @@ import { normalizeStackItems } from "@/lib/types";
 import DeveloperSummary from "@/components/DeveloperSummary";
 import HiringManagerSummary from "@/components/HiringManagerSummary";
 import DiagramPanel from "@/components/DiagramPanel";
+import KnowledgeGraph from "@/components/KnowledgeGraph";
+import AgentAnalysisSection from "@/components/AgentAnalysisSection";
 import WorkspaceSync from "@/components/workspace/WorkspaceSync";
 import WorkspaceRunSync from "@/components/workspace/WorkspaceRunSync";
 
@@ -244,6 +246,25 @@ export default async function ResultPage({ params }: Props) {
       <CodebaseGuideSection guide={guide} />
 
       {result.diagram_mermaid && <DiagramPanel mermaid={result.diagram_mermaid} />}
+
+      {/* Knowledge Graph — interactive dependency visualization */}
+      <section className="panel rounded-[28px] p-6">
+        <div className="mb-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#6d7f9f]">
+            Knowledge Graph
+          </p>
+          <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-[#f5f8ff]">
+            Dependency Graph
+          </h2>
+          <p className="mt-1 text-sm text-[#94a8cb]">
+            Interactive view of file relationships, dependency edges, and architectural clusters.
+          </p>
+        </div>
+        <KnowledgeGraph resultId={resultId} />
+      </section>
+
+      {/* Multi-agent deep analysis */}
+      <AgentAnalysisSection resultId={resultId} />
 
       <section id="developer-summary">
         <DeveloperSummary result={result} />

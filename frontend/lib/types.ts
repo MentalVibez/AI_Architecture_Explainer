@@ -202,6 +202,46 @@ export interface CodebaseGuide {
 
 export type OnboardingPlan = CodebaseGuide;
 
+export interface GraphFile {
+  path: string;
+  language: string;
+  role: string;
+  is_entrypoint: boolean;
+  is_on_critical_path: boolean;
+  loc: number;
+  complexity_score: number;
+  caller_count: number;
+  sensitive_operations: string[];
+  confidence: number;
+  was_truncated: boolean;
+}
+
+export interface GraphEdge {
+  source_path: string;
+  target_path: string | null;
+  raw_import: string;
+  kind: string;
+  confidence: string;
+  unresolved_reason: string | null;
+}
+
+export interface AgentStepTrace {
+  agent: string;
+  messages: unknown[];
+}
+
+export interface AgentRunResponse {
+  agent_run_id: number;
+  status: string;
+  architecture_narrative: string | null;
+  mermaid_diagram: string | null;
+  confidence: number | null;
+  agent_trace: AgentStepTrace[] | null;
+  created_at: string | null;
+  completed_at: string | null;
+  error: string | null;
+}
+
 /** Normalize a stack category to always return StackItem objects. */
 export function normalizeStackItems(items: StackCategory): StackItem[] {
   return items.map((item) =>

@@ -59,6 +59,39 @@ const TOOL_CARDS = [
   },
 ] as const;
 
+const HOW_IT_WORKS_STEPS = [
+  {
+    label: "GitHub Fetch",
+    sublabel: "File tree + priority manifests",
+    accent: "#4a5568",
+    tag: "I/O",
+  },
+  {
+    label: "DeepScan",
+    sublabel: "Imports, roles, complexity, entrypoints",
+    accent: "#4d7cff",
+    tag: "Deterministic",
+  },
+  {
+    label: "Knowledge Graph",
+    sublabel: "Dependency edges + critical path",
+    accent: "#35c58b",
+    tag: "Graph",
+  },
+  {
+    label: "Agent Pipeline",
+    sublabel: "Planner → Retrieval → Synthesis → Diagram",
+    accent: "#c5b3ff",
+    tag: "Agentic",
+  },
+  {
+    label: "Intelligence Report",
+    sublabel: "Evidence-backed findings + scorecard",
+    accent: "#f0a500",
+    tag: "Output",
+  },
+] as const;
+
 const DELIVERY_STEPS = [
   {
     number: "01",
@@ -90,15 +123,12 @@ export default function HomePage() {
             </div>
 
             <h1 className="hero-title max-w-4xl sm:max-w-[12ch] lg:max-w-[12ch]">
-              Code understanding
-              <br />
-              for real repository decisions.
+              AI Infrastructure for Engineering Knowledge
             </h1>
 
             <p className="hero-copy mt-6 max-w-2xl">
-              CodebaseAtlas turns repository sprawl into a usable workspace. Scout candidates,
-              explain architecture, map APIs, and review engineering risk without pretending
-              the LLM did the hard deterministic work.
+              CodebaseAtlas transforms repositories into structured engineering intelligence —
+              dependency graphs, multi-agent reasoning, and evidence-backed architecture analysis.
             </p>
 
             <div className="mt-8 panel-strong rounded-[28px] p-5 sm:p-6">
@@ -222,6 +252,32 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* How It Works — AI pipeline visualization */}
+      <section className="py-10">
+        <div className="mb-8">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#6d7f9f]">
+            How It Works
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[#f5f8ff]">
+            Deterministic extraction first, AI reasoning last.
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#94a8cb]">
+            Every analysis runs through a staged pipeline. Deterministic parsers build verified
+            evidence before any LLM is invoked — so the AI reasons over facts, not guesses.
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-5">
+          {HOW_IT_WORKS_STEPS.map((step, i) => (
+            <PipelineStep
+              key={step.label}
+              step={step}
+              isLast={i === HOW_IT_WORKS_STEPS.length - 1}
+            />
+          ))}
+        </div>
+      </section>
+
       <section className="py-10">
         <OpsSnapshot />
       </section>
@@ -303,6 +359,41 @@ function ToolCard({
         Open {name} →
       </div>
     </Link>
+  );
+}
+
+function PipelineStep({
+  step,
+  isLast,
+}: {
+  step: { label: string; sublabel: string; accent: string; tag: string };
+  isLast: boolean;
+}) {
+  return (
+    <div className="relative flex flex-col gap-2">
+      <div
+        className="panel rounded-[20px] p-4 flex flex-col gap-2"
+        style={{ borderColor: `${step.accent}25` }}
+      >
+        <span
+          className="self-start rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em]"
+          style={{
+            color: step.accent,
+            backgroundColor: `${step.accent}15`,
+            border: `1px solid ${step.accent}30`,
+          }}
+        >
+          {step.tag}
+        </span>
+        <p className="font-mono text-xs font-semibold text-[#f5f8ff]">{step.label}</p>
+        <p className="font-mono text-[10px] text-[#6d7f9f] leading-relaxed">{step.sublabel}</p>
+      </div>
+      {!isLast && (
+        <div className="hidden md:flex absolute -right-1.5 top-1/2 -translate-y-1/2 z-10 items-center justify-center">
+          <span className="font-mono text-[#4a5568] text-xs">→</span>
+        </div>
+      )}
+    </div>
   );
 }
 

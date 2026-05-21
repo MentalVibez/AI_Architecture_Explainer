@@ -1,7 +1,10 @@
 import type {
+  AgentRunResponse,
   AnalyzeResponse,
   AnalysisResult,
   CodebaseGuide,
+  GraphEdge,
+  GraphFile,
   JobStatusResponse,
   OpsSnapshotResponse,
   RecentRunsResponse,
@@ -84,4 +87,25 @@ export async function getReviewStatus(jobId: string): Promise<ReviewStatusRespon
 
 export async function getReviewResult(resultId: string): Promise<ReviewResult> {
   return apiFetch<ReviewResult>(`/api/review/results/${resultId}`);
+}
+
+export async function getGraphFiles(resultId: number): Promise<GraphFile[]> {
+  return apiFetch<GraphFile[]>(`/api/results/${resultId}/files?limit=1000`);
+}
+
+export async function getGraphEdges(resultId: number): Promise<GraphEdge[]> {
+  return apiFetch<GraphEdge[]>(`/api/results/${resultId}/edges?limit=5000`);
+}
+
+export async function triggerAgentAnalysis(
+  resultId: number
+): Promise<{ agent_run_id: number; status: string }> {
+  return apiFetch<{ agent_run_id: number; status: string }>(
+    `/api/results/${resultId}/agent-analysis`,
+    { method: "POST" }
+  );
+}
+
+export async function getAgentAnalysis(resultId: number): Promise<AgentRunResponse> {
+  return apiFetch<AgentRunResponse>(`/api/results/${resultId}/agent-analysis`);
 }

@@ -20,9 +20,10 @@ Integration with existing routes:
 
 from __future__ import annotations
 
-from typing import Optional
+from datetime import datetime
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -430,6 +431,112 @@ def _edge_to_out(e) -> EdgeOut:
         confidence=e.confidence,
         unresolved_reason=e.unresolved_reason,
         truth_label=_truth_label_to_out(e.truth_label),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Agent analysis response models
+# ---------------------------------------------------------------------------
+
+class AgentRunOut(BaseModel):
+    agent_run_id: int
+    status: str
+    architecture_narrative: str | None = None
+    mermaid_diagram: str | None = None
+    confidence: float | None = None
+    agent_trace: list[Any] | None = None
+    created_at: datetime | None = None
+    completed_at: datetime | None = None
+    error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Agent analysis endpoints
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/results/{result_id}/agent-analysis",
+    response_model=AgentRunOut,
+    summary="Trigger multi-agent analysis",
+    description=(
+        "Starts a 4-agent analysis pipeline (Planner → Retrieval → Synthesis → Diagram). "
+        "Returns immediately with agent_run_id. Poll GET /agent-analysis for status."
+    ),
+)
+async def trigger_agent_analysis(
+    result_id: str,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(_get_db),
+) -> AgentRunOut:
+    from app.models.agent_run import AgentRunORM
+    from app.services.agent_service import run_agent_pipeline
+
+    try:
+        result_id_int = int(result_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="result_id must be an integer")
+
+    # Verify the result exists before queuing
+    await _load_result(result_id, db)
+
+    run = AgentRunORM(result_id=result_id_int, status="queued")
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+
+    background_tasks.add_task(run_agent_pipeline, run.id, result_id_int)
+
+    return AgentRunOut(
+        agent_run_id=run.id,
+        status=run.status,
+        created_at=run.created_at,
+    )
+
+
+@router.get(
+    "/results/{result_id}/agent-analysis",
+    response_model=AgentRunOut,
+    summary="Get latest agent analysis status",
+    description=(
+        "Returns the latest agent analysis run for this result. "
+        "Poll until status is 'completed' or 'failed'."
+    ),
+)
+async def get_agent_analysis(
+    result_id: str,
+    db: AsyncSession = Depends(_get_db),
+) -> AgentRunOut:
+    from sqlalchemy import select
+
+    from app.models.agent_run import AgentRunORM
+
+    try:
+        result_id_int = int(result_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="result_id must be an integer")
+
+    run = (
+        await db.execute(
+            select(AgentRunORM)
+            .where(AgentRunORM.result_id == result_id_int)
+            .order_by(AgentRunORM.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if run is None:
+        raise HTTPException(status_code=404, detail="No agent analysis found for this result")
+
+    return AgentRunOut(
+        agent_run_id=run.id,
+        status=run.status,
+        architecture_narrative=run.architecture_narrative,
+        mermaid_diagram=run.mermaid_diagram,
+        confidence=run.confidence,
+        agent_trace=run.agent_trace if run.status == "completed" else None,
+        created_at=run.created_at,
+        completed_at=run.completed_at,
+        error=run.error,
     )
 
 
