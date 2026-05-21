@@ -42,6 +42,24 @@ class QueueGuardResponse(BaseModel):
     recommended_action: str | None = None
 
 
+class LLMStageMetrics(BaseModel):
+    stage: str
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    avg_duration_ms: int
+
+
+class LLMUsageStats(BaseModel):
+    window_hours: int
+    total_calls: int
+    total_input_tokens: int
+    total_output_tokens: int
+    estimated_cost_usd: float
+    avg_duration_ms: int | None = None
+    by_stage: list[LLMStageMetrics] = Field(default_factory=list)
+
+
 class OpsSnapshotResponse(BaseModel):
     status: str
     attention_message: str | None = None
@@ -50,4 +68,5 @@ class OpsSnapshotResponse(BaseModel):
     review: QueueMetricsResponse
     queue_guard: QueueGuardResponse
     recent_failures: list[RecentFailureResponse]
+    llm_usage: LLMUsageStats | None = None
     generated_at: datetime

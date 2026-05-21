@@ -484,7 +484,7 @@ class ContextReviewer:
         prompt = build_review_prompt(fi, ctx, file_content, repo_summary, existing_findings)
 
         try:
-            raw = await self._provider.generate_text(prompt, system=self._SYSTEM_PROMPT)
+            raw = await self._provider.generate_text(prompt, system=self._SYSTEM_PROMPT, stage="context_reviewer")
             return validate_llm_findings(raw, fi.path)
         except Exception as e:
             logger.error(f"LLM review failed for {fi.path}: {type(e).__name__}: {e}")

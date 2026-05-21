@@ -176,6 +176,7 @@ async def _run_planner(
         tools=tools,
         tool_executor=tool_executor,
         max_iterations=6,
+        stage="agent_planner",
     )
 
     plan = _parse_json_from_text(final_text) or {
@@ -253,6 +254,7 @@ async def _run_retrieval(
         tools=tools,
         tool_executor=tool_executor,
         max_iterations=_MAX_FILES_TO_FETCH + 2,
+        stage="agent_retrieval",
     )
 
     return fetched, _serialize_trace(trace)
@@ -319,7 +321,7 @@ async def _run_synthesis(
         "narrative explaining how the system is structured."
     )
 
-    result = await provider.generate_json(prompt, _SYNTHESIS_SCHEMA)
+    result = await provider.generate_json(prompt, _SYNTHESIS_SCHEMA, stage="agent_synthesis")
     # Return a minimal trace record (no tool calls in this stage)
     trace: list[dict[str, Any]] = [{"role": "user", "content": prompt[:200] + "..."}]
     return result, trace
@@ -356,7 +358,7 @@ async def _run_diagram(
         "You are an architecture diagram agent. Output only valid Mermaid diagram syntax. "
         "No markdown fences, no explanation."
     )
-    diagram = await provider.generate_text(prompt, system=system)
+    diagram = await provider.generate_text(prompt, system=system, stage="agent_diagram")
     # Strip ```mermaid fences if the model included them
     diagram = diagram.strip()
     if diagram.startswith("```"):

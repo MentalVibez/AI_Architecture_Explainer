@@ -46,12 +46,31 @@ export interface RecentFailureItem {
   completed_at: string | null;
 }
 
+export interface LLMStageMetrics {
+  stage: string;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  avg_duration_ms: number;
+}
+
+export interface LLMUsageStats {
+  window_hours: number;
+  total_calls: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  estimated_cost_usd: number;
+  avg_duration_ms: number | null;
+  by_stage: LLMStageMetrics[];
+}
+
 export interface OpsSnapshotResponse {
   status: "steady" | "active" | "watch";
   attention_message: string | null;
   atlas: QueueMetrics;
   review: QueueMetrics;
   recent_failures: RecentFailureItem[];
+  llm_usage: LLMUsageStats | null;
   generated_at: string;
 }
 

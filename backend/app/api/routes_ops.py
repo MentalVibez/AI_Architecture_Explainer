@@ -15,6 +15,8 @@ from app.models.review import Review
 from app.models.review_job import ReviewJob
 from app.schemas.ops_response import (
     ExternalServiceStatusResponse,
+    LLMStageMetrics,
+    LLMUsageStats,
     OpsSnapshotResponse,
     QueuedJobResponse,
     QueueGuardResponse,
@@ -66,6 +68,7 @@ async def get_ops_summary(
         _github_attention_message(github),
         _attention_message(atlas_metrics, review_metrics),
     )
+    llm_usage = await _llm_usage_stats(db, window_hours=24)
 
     return OpsSnapshotResponse(
         status=_ops_status(atlas_metrics, review_metrics, github),
@@ -81,6 +84,7 @@ async def get_ops_summary(
             recommended_action=guard_summary.recommended_action,
         ),
         recent_failures=recent_failures[:5],
+        llm_usage=llm_usage,
         generated_at=now,
     )
 
@@ -356,3 +360,66 @@ def _aware_datetime(value: datetime | None) -> datetime | None:
     if not value:
         return None
     return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+
+async def _llm_usage_stats(db: AsyncSession, window_hours: int = 24) -> LLMUsageStats | None:
+    """Query llm_usage rows for the given window and return aggregated stats."""
+    try:
+        from sqlalchemy import func as sqlfunc
+
+        from app.models.llm_usage import LLMUsageORM
+        from app.services.metrics_service import estimate_cost_usd
+
+        cutoff = datetime.now(UTC) - timedelta(hours=window_hours)
+
+        rows = (
+            await db.execute(
+                select(LLMUsageORM).where(LLMUsageORM.created_at >= cutoff)
+            )
+        ).scalars().all()
+
+        if not rows:
+            return LLMUsageStats(
+                window_hours=window_hours,
+                total_calls=0,
+                total_input_tokens=0,
+                total_output_tokens=0,
+                estimated_cost_usd=0.0,
+            )
+
+        total_input = sum(r.input_tokens for r in rows)
+        total_output = sum(r.output_tokens for r in rows)
+        total_ms = sum(r.duration_ms for r in rows)
+        avg_ms = total_ms // len(rows) if rows else None
+
+        # Per-stage breakdown
+        stage_map: dict[str, dict] = {}
+        for r in rows:
+            s = stage_map.setdefault(r.stage, {"calls": 0, "input": 0, "output": 0, "ms": 0})
+            s["calls"] += 1
+            s["input"] += r.input_tokens
+            s["output"] += r.output_tokens
+            s["ms"] += r.duration_ms
+
+        by_stage = [
+            LLMStageMetrics(
+                stage=stage,
+                calls=v["calls"],
+                input_tokens=v["input"],
+                output_tokens=v["output"],
+                avg_duration_ms=v["ms"] // v["calls"],
+            )
+            for stage, v in sorted(stage_map.items(), key=lambda x: -x[1]["calls"])
+        ]
+
+        return LLMUsageStats(
+            window_hours=window_hours,
+            total_calls=len(rows),
+            total_input_tokens=total_input,
+            total_output_tokens=total_output,
+            estimated_cost_usd=round(estimate_cost_usd(total_input, total_output), 4),
+            avg_duration_ms=avg_ms,
+            by_stage=by_stage,
+        )
+    except Exception:
+        return None

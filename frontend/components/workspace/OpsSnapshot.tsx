@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { getOpsSnapshot } from "@/lib/api";
-import type { OpsSnapshotResponse, QueueMetrics } from "@/lib/types";
+import type { LLMUsageStats, OpsSnapshotResponse, QueueMetrics } from "@/lib/types";
 
 const STATUS_LABELS = {
   steady: "Steady",
@@ -85,6 +85,10 @@ export default function OpsSnapshot() {
         </div>
       )}
 
+      {snapshot.llm_usage && snapshot.llm_usage.total_calls > 0 && (
+        <LLMUsagePanel usage={snapshot.llm_usage} />
+      )}
+
       {snapshot.recent_failures.length > 0 && (
         <div className="mt-5 border-t border-white/10 pt-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#ffd98f]">
@@ -157,4 +161,68 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-lg font-semibold text-[#edf4ff]">{value}</p>
     </div>
   );
+}
+
+function LLMUsagePanel({ usage }: { usage: LLMUsageStats }) {
+  const totalTokens = usage.total_input_tokens + usage.total_output_tokens;
+
+  return (
+    <div className="mt-5 border-t border-white/10 pt-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#c5b3ff]">
+          LLM Usage · last {usage.window_hours}h
+        </p>
+        <span className="font-mono text-[10px] text-[#6d7f9f]">
+          ~${usage.estimated_cost_usd.toFixed(4)} estimated
+        </span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-4 mb-4">
+        <Metric label="Total calls" value={String(usage.total_calls)} />
+        <Metric label="Total tokens" value={fmtTokens(totalTokens)} />
+        <Metric label="Input tokens" value={fmtTokens(usage.total_input_tokens)} />
+        <Metric label="Output tokens" value={fmtTokens(usage.total_output_tokens)} />
+      </div>
+
+      {usage.by_stage.length > 0 && (
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#6d7f9f] mb-3">
+            By stage
+          </p>
+          <div className="space-y-2">
+            {usage.by_stage.slice(0, 6).map((s) => {
+              const stagePct = totalTokens > 0
+                ? Math.round(((s.input_tokens + s.output_tokens) / totalTokens) * 100)
+                : 0;
+              return (
+                <div key={s.stage} className="flex items-center gap-3">
+                  <span className="font-mono text-[10px] text-[#8a9bbf] w-36 shrink-0 truncate">
+                    {s.stage}
+                  </span>
+                  <div className="flex-1 h-1.5 bg-[#1a1a2e] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#c5b3ff] rounded-full"
+                      style={{ width: `${stagePct}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[10px] text-[#6d7f9f] w-12 text-right shrink-0">
+                    {fmtTokens(s.input_tokens + s.output_tokens)}
+                  </span>
+                  <span className="font-mono text-[10px] text-[#4a5568] w-10 text-right shrink-0">
+                    {s.calls}×
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
 }

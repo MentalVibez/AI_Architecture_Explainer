@@ -1,5 +1,6 @@
 
 import asyncio
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -30,8 +31,18 @@ class AnthropicProvider:
             kwargs["default_headers"] = _parse_custom_headers(settings.anthropic_custom_headers)
         self._client = anthropic.AsyncAnthropic(**kwargs)
 
-    async def generate_json(self, prompt: str, schema: dict) -> dict:
+    async def generate_json(
+        self,
+        prompt: str,
+        schema: dict,
+        *,
+        stage: str = "unknown",
+        result_id: int | None = None,
+    ) -> dict:
         """Use tool-use to enforce structured JSON output matching the given schema."""
+        from app.services.metrics_service import schedule_record
+
+        t0 = time.monotonic()
         response = await self._client.messages.create(
             model=MODEL,
             max_tokens=4096,
@@ -44,6 +55,14 @@ class AnthropicProvider:
             ],
             tool_choice={"type": "tool", "name": "structured_output"},
             messages=[{"role": "user", "content": prompt}],
+        )
+        schedule_record(
+            stage=stage,
+            model=MODEL,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            duration_ms=int((time.monotonic() - t0) * 1000),
+            result_id=result_id,
         )
 
         for block in response.content:
@@ -59,21 +78,35 @@ class AnthropicProvider:
         tools: list[dict[str, Any]],
         tool_executor: Callable[[str, dict[str, Any]], Awaitable[str]],
         max_iterations: int = 10,
+        *,
+        stage: str = "unknown",
+        result_id: int | None = None,
     ) -> tuple[list[dict[str, Any]], str]:
         """Run an iterative tool-use loop until the model stops calling tools.
 
         Returns (full_message_trace, final_text_output).
         """
+        from app.services.metrics_service import schedule_record
+
         trace: list[dict[str, Any]] = list(messages)
         final_text = ""
 
         for _ in range(max_iterations):
+            t0 = time.monotonic()
             response = await self._client.messages.create(
                 model=MODEL,
                 max_tokens=4096,
                 system=system,
                 tools=tools,
                 messages=trace,
+            )
+            schedule_record(
+                stage=stage,
+                model=MODEL,
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens,
+                duration_ms=int((time.monotonic() - t0) * 1000),
+                result_id=result_id,
             )
 
             # Collect text from this turn
@@ -108,7 +141,16 @@ class AnthropicProvider:
 
         return trace, final_text
 
-    async def generate_text(self, prompt: str, system: str | None = None) -> str:
+    async def generate_text(
+        self,
+        prompt: str,
+        system: str | None = None,
+        *,
+        stage: str = "unknown",
+        result_id: int | None = None,
+    ) -> str:
+        from app.services.metrics_service import schedule_record
+
         kwargs: dict = {
             "model": MODEL,
             "max_tokens": 4096,
@@ -116,5 +158,14 @@ class AnthropicProvider:
         }
         if system:
             kwargs["system"] = system
+        t0 = time.monotonic()
         response = await self._client.messages.create(**kwargs)
+        schedule_record(
+            stage=stage,
+            model=MODEL,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            duration_ms=int((time.monotonic() - t0) * 1000),
+            result_id=result_id,
+        )
         return response.content[0].text  # type: ignore[union-attr]

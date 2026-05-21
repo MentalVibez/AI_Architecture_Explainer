@@ -99,7 +99,7 @@ async def enrich_endpoint_map(endpoint_map: EndpointMap, insights: str = "") -> 
         }
 
     provider = _get_provider()
-    text = await provider.generate_text(_build_prompt(endpoint_map, insights))
+    text = await provider.generate_text(_build_prompt(endpoint_map, insights), stage="endpoint_enricher")
     cleaned = text.strip().replace("```json", "").replace("```", "").strip()
 
     try:
