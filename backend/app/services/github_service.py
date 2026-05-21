@@ -143,7 +143,7 @@ async def get_repo_tree(
     repo: str,
     branch: str = "HEAD",
     client: httpx.AsyncClient | None = None,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], str | None]:
     if client is None:
         async with create_github_client() as new_client:
             return await get_repo_tree(owner, repo, branch=branch, client=new_client)
@@ -156,7 +156,7 @@ async def get_repo_tree(
     )
     _handle_response(response, f"{owner}/{repo} tree")
     data = response.json()
-    return data.get("tree", [])
+    return data.get("tree", []), data.get("sha")
 
 
 async def get_file_content(

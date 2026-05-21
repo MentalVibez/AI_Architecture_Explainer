@@ -298,7 +298,7 @@ async def extract_endpoints(
     try:
         async with github_service.create_github_client() as client:
             # Fetch the full recursive tree via github_service (uses GITHUB_TOKEN)
-            tree = await github_service.get_repo_tree(owner, repo, client=client)
+            tree, _ = await github_service.get_repo_tree(owner, repo, client=client)
             candidate_paths = _select_candidate_paths(tree, use_framework)
 
             # Fetch and parse files concurrently with the same pooled client

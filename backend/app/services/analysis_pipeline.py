@@ -38,7 +38,7 @@ async def _load_analysis_inputs(owner: str, repo: str) -> dict[str, Any]:
     async with github_service.create_github_client() as client:
         metadata = await github_service.get_repo_metadata(owner, repo, client=client)
         default_branch = metadata.get("default_branch", "HEAD")
-        tree = await github_service.get_repo_tree(owner, repo, default_branch, client=client)
+        tree, tree_sha = await github_service.get_repo_tree(owner, repo, default_branch, client=client)
         tree_paths = [item["path"] for item in tree if item["type"] == "blob"]
         file_contents = await _fetch_priority_files(owner, repo, tree_paths, client=client)
     npm_deps, python_deps = _parse_dependencies(file_contents)
@@ -46,6 +46,7 @@ async def _load_analysis_inputs(owner: str, repo: str) -> dict[str, Any]:
     return {
         "default_branch": default_branch,
         "tree": tree,
+        "tree_sha": tree_sha,
         "tree_paths": tree_paths,
         "file_contents": file_contents,
         "npm_dependencies": npm_deps,

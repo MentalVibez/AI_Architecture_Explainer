@@ -115,7 +115,7 @@ def _build_review_status_response(job: ReviewJob, review: Review | None) -> Revi
         status=job.status,
         phase=_phase_label(job.status),
         status_detail=_status_detail(job.status, error_code, duration_seconds),
-        result_id=str(review.id) if review else None,
+        result_id=str(review.id) if review else (str(job.cached_result_id) if job.cached_result_id else None),
         error_code=error_code,
         error_message=error_message,
         duration_seconds=duration_seconds,

@@ -116,7 +116,7 @@ async def get_job_status(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    result_id = job.result.id if job.result else None
+    result_id = job.result.id if job.result else (job.cached_result_id or None)
     duration_seconds = _duration_seconds(
         job.started_at or job.created_at,
         job.completed_at or datetime.now(UTC),

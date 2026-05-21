@@ -1,6 +1,8 @@
 import logging
 from datetime import UTC, datetime
 
+from sqlalchemy import select
+
 from app.core.database import AsyncSessionLocal
 from app.models.analysis_job import AnalysisJob
 from app.models.analysis_result import AnalysisResult
@@ -31,10 +33,29 @@ async def execute_analysis_job(
 
         try:
             evidence, intel_result = await run_analysis(owner, repo)
+
+            # Dedup: if this exact tree SHA was already analyzed, reuse the result
+            tree_sha: str | None = evidence.get("tree_sha")
+            if tree_sha:
+                existing_id = await db.scalar(
+                    select(AnalysisResult.id).where(AnalysisResult.repo_snapshot_sha == tree_sha)
+                )
+                if existing_id is not None:
+                    job.status = "completed"
+                    job.cached_result_id = existing_id
+                    job.completed_at = datetime.now(UTC)
+                    await db.commit()
+                    logger.info(
+                        "atlas_cache_hit job_id=%d cached_result_id=%d sha=%s",
+                        job_id, existing_id, tree_sha,
+                    )
+                    return
+
             summaries = await generate_summaries(evidence)
 
             result = AnalysisResult(
                 job_id=job_id,
+                repo_snapshot_sha=tree_sha,
                 detected_stack=evidence["detected_stack"],
                 dependencies={
                     "npm": evidence.get("npm_dependencies", []),

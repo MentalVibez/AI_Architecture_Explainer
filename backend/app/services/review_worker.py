@@ -13,6 +13,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -49,6 +50,27 @@ async def process_review_job(
         await db.commit()
 
     logger.info("review_job_started job_id=%s repo=%s branch=%s", job_id, repo_url, branch)
+
+    # Dedup: if this exact commit was already reviewed successfully, reuse the result
+    if commit:
+        existing_id = await db.scalar(
+            select(Review.id).where(
+                Review.repo_url == repo_url,
+                Review.commit == commit,
+                Review.branch == branch,
+                Review.error_code.is_(None),
+            )
+        )
+        if existing_id is not None:
+            job.status = "completed"
+            job.cached_result_id = existing_id
+            job.completed_at = _utcnow_naive()
+            await db.commit()
+            logger.info(
+                "review_cache_hit job_id=%s cached_result_id=%s commit=%s",
+                job_id, existing_id, commit,
+            )
+            return
 
     try:
         report = await run_review(repo_url=repo_url, branch=branch, commit=commit)

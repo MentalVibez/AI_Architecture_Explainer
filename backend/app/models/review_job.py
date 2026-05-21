@@ -26,6 +26,8 @@ class ReviewJob(Base):
     branch: Mapped[str] = mapped_column(String(255), server_default="main")
     commit: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
+    # Set on a cache hit — points to an existing Review.id; no FK to avoid cascade issues
+    cached_result_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # Set when the job was triggered by a GitHub PR webhook
     pr_number: Mapped[int | None] = mapped_column(nullable=True)
     pr_repo: Mapped[str | None] = mapped_column(String(255), nullable=True)
