@@ -8,7 +8,7 @@ from app.core.config import settings
 _database_url = settings.resolved_database_url
 _connect_args = (
     {"statement_cache_size": 0}
-    if "pgbouncer=true" in _database_url and _database_url.startswith("postgresql+asyncpg://")
+    if _database_url.startswith("postgresql+asyncpg://")
     else {}
 )
 
