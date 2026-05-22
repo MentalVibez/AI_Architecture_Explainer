@@ -58,7 +58,7 @@ class Settings(BaseSettings):
         """
         from urllib.parse import quote_plus, urlparse
 
-        raw = self.database_url.strip()
+        raw = self.database_url.strip().splitlines()[0].strip() if self.database_url.strip() else ""
         if raw:
             # Normalise scheme
             if raw.startswith("postgres://"):
