@@ -101,7 +101,7 @@ def _quote_url_password(url: str) -> str:
         return url
 
     username, password = userinfo.split(":", 1)
-    return f"{scheme}://{username}:{quote(password, safe='%')}@{host_and_path}"
+    return f"{scheme}://{username}:{quote(password, safe='')}@{host_and_path}"
 
 
 settings = Settings()
