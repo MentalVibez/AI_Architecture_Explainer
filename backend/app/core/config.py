@@ -65,6 +65,7 @@ class Settings(BaseSettings):
                 raw = "postgresql+asyncpg://" + raw[len("postgres://"):]
             elif raw.startswith("postgresql://") and "+asyncpg" not in raw:
                 raw = "postgresql+asyncpg://" + raw[len("postgresql://"):]
+            raw = _quote_url_password(raw)
             # Strip query params unsupported by asyncpg (e.g. pgbouncer=true)
             if "?" in raw:
                 raw = raw.split("?")[0]
@@ -85,6 +86,22 @@ class Settings(BaseSettings):
             )
 
         return "sqlite+aiosqlite:///./dev.db"
+
+
+def _quote_url_password(url: str) -> str:
+    """Percent-encode raw password characters before urlparse sees the netloc."""
+    from urllib.parse import quote
+
+    if "://" not in url or "@" not in url:
+        return url
+
+    scheme, rest = url.split("://", 1)
+    userinfo, host_and_path = rest.rsplit("@", 1)
+    if ":" not in userinfo:
+        return url
+
+    username, password = userinfo.split(":", 1)
+    return f"{scheme}://{username}:{quote(password, safe='%')}@{host_and_path}"
 
 
 settings = Settings()
