@@ -71,7 +71,9 @@ async def execute_analysis_job(
                 raw_evidence=[evidence],
             )
             db.add(result)
-            await db.flush()
+            job.status = "completed"
+            job.completed_at = datetime.now(UTC)
+            await db.commit()  # commit result + job status before intelligence so a rollback inside persist_intelligence can't undo the result
 
             if intel_result is not None:
                 from app.services.intelligence_persistence import persist_intelligence
@@ -85,10 +87,6 @@ async def execute_analysis_job(
                     intel_result=intel_result,
                     db=db,
                 )
-
-            job.status = "completed"
-            job.completed_at = datetime.now(UTC)
-            await db.commit()
 
         except Exception as exc:
             logger.exception("Analysis pipeline failed for job %d: %s", job_id, exc)

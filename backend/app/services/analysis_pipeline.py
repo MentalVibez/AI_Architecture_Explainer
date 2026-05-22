@@ -140,6 +140,7 @@ async def run_analysis(owner: str, repo: str) -> tuple[dict[str, Any], Any]:
 
     evidence = {
         "repo": {"owner": owner, "name": repo, "default_branch": default_branch},
+        "tree_sha": inputs["tree_sha"],
         "detected_stack": inputs["detected_stack"],
         "npm_dependencies": inputs["npm_dependencies"],
         "python_dependencies": inputs["python_dependencies"],
