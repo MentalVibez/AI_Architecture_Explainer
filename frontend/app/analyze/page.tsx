@@ -48,6 +48,10 @@ function AnalyzeInner() {
           router.push(`/results/${data.result_id}`);
           return;
         }
+        if (data.status === "completed" && !data.result_id) {
+          setError("Analysis finished, but Atlas could not attach a results workspace. Please start a fresh run.");
+          return;
+        }
         if (data.status === "failed") {
           setError(data.error_message ?? "Analysis failed");
           return;
