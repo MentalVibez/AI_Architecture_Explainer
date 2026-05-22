@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # Full URL takes precedence. Individual components are used when set,
     # allowing Railway to inject each value separately (avoids URL-parsing issues).
     database_url: str = ""
+    direct_url: str = ""
     db_host: str = ""
     db_port: int = 5432
     db_user: str = "postgres"
@@ -58,7 +59,16 @@ class Settings(BaseSettings):
         """
         from urllib.parse import quote_plus, urlparse
 
-        raw = self.database_url.strip().splitlines()[0].strip() if self.database_url.strip() else ""
+        return self._resolve_database_url(self.database_url)
+
+    @property
+    def resolved_migration_database_url(self) -> str:
+        return self._resolve_database_url(self.direct_url or self.database_url)
+
+    def _resolve_database_url(self, configured_url: str) -> str:
+        from urllib.parse import quote_plus, urlparse
+
+        raw = configured_url.strip().splitlines()[0].strip() if configured_url.strip() else ""
         if raw:
             # Normalise scheme
             if raw.startswith("postgres://"):

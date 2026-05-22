@@ -18,7 +18,10 @@ if config.config_file_name is not None:
 
 # Override the sqlalchemy.url from our settings. Alembic stores this in a
 # ConfigParser, so literal percent-encoded password bytes must be escaped.
-config.set_main_option("sqlalchemy.url", settings.resolved_database_url.replace("%", "%%"))
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.resolved_migration_database_url.replace("%", "%%"),
+)
 
 # Merge both metadata objects so autogenerate sees all tables.
 # CoreBase: core product models (analysis_job, analysis_result, repo, review, etc.)
