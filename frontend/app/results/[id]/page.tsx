@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { getCodebaseGuide, getResult } from "@/lib/api";
-import { normalizeStackItems } from "@/lib/types";
+import { normalizeStackItems, type AnalysisResult, type CodebaseGuide } from "@/lib/types";
 import DeveloperSummary from "@/components/DeveloperSummary";
 import HiringManagerSummary from "@/components/HiringManagerSummary";
 import DiagramPanel from "@/components/DiagramPanel";
@@ -45,10 +45,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ResultPage({ params }: Props) {
   const { id } = await params;
   const resultId = Number(id);
-  const [result, guide] = await Promise.all([
-    getResult(resultId),
-    getCodebaseGuide(resultId),
-  ]);
+  const result = await getResult(resultId);
+  const guide = await getCodebaseGuide(resultId).catch(() => buildFallbackGuide(result));
 
   const evidence = (result.raw_evidence?.[0] as Record<string, unknown>) ?? {};
   const repo = (evidence.repo as Record<string, string>) ?? {};
@@ -284,7 +282,7 @@ function CodebaseGuideSection({
   guide,
   repoLabel,
 }: {
-  guide: Awaited<ReturnType<typeof getCodebaseGuide>>;
+  guide: CodebaseGuide;
   repoLabel?: string | null;
 }) {
   return (
@@ -433,6 +431,62 @@ function CodebaseGuideSection({
       )}
     </section>
   );
+}
+
+function buildFallbackGuide(result: AnalysisResult): CodebaseGuide {
+  const evidence = (result.raw_evidence?.[0] as Record<string, unknown>) ?? {};
+  const repo = (evidence.repo as Record<string, string>) ?? {};
+  const repoLabel = repo.owner && repo.name ? `${repo.owner}/${repo.name}` : null;
+  const readingPaths = [
+    ...result.entry_points,
+    ...result.folder_map.map((item) => item.path),
+  ].filter(Boolean).slice(0, 6);
+
+  return {
+    result_id: result.id,
+    repo_label: repoLabel,
+    overview:
+      "Atlas completed the architecture report. The guided onboarding panel is using fallback evidence while the detailed guide endpoint is unavailable.",
+    week_plan: [
+      {
+        phase: "System map",
+        title: "Start with the generated architecture",
+        goal: "Use the diagram, stack signals, and summaries to understand the repo shape.",
+        actions: [
+          "Review the architecture diagram.",
+          "Scan the key takeaways.",
+          ...readingPaths.slice(0, 2).map((path) => `Open ${path}.`),
+        ],
+      },
+      {
+        phase: "Validation",
+        title: "Verify the highest-signal paths",
+        goal: "Confirm Atlas evidence against the repository before making changes.",
+        actions: [
+          "Check the detected entry points.",
+          "Confirm any missing setup or test commands with the project owner.",
+        ],
+      },
+    ],
+    reading_path: readingPaths.map((path) => ({
+      path,
+      reason: "High-signal path from the completed Atlas result.",
+      confidence: result.confidence_score ?? 0.6,
+    })),
+    concepts: [],
+    starter_tasks: [],
+    risk_notes: [],
+    mentor_questions: [],
+    team_questions: ["Which path owns the primary runtime flow?"],
+    setup_blockers: [],
+    evidence_summary: {
+      fallback: true,
+      entry_point_count: result.entry_points.length,
+      folder_signal_count: result.folder_map.length,
+      caveat_count: result.caveats.length,
+      confidence_score: result.confidence_score,
+    },
+  };
 }
 
 function CodebaseGuideList({
