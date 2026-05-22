@@ -36,12 +36,14 @@ Codebase Atlas deploys across three services:
 2. Select the `AI_Architecture_Explainer` repo
 3. Create the first service as the **web** service:
    - set **Root Directory** to `backend`
-   - use the repo `Procfile` or set the start command to `sh ./docker-entrypoint.sh`
+   - leave `ATLAS_PROCESS` unset, or set `ATLAS_PROCESS=web`
 4. Duplicate that service or create a second backend service from the same repo for the **worker**:
    - set **Root Directory** to `backend`
-   - set the start command to `sh ./docker-entrypoint.sh python -m app.worker`
+   - set `ATLAS_PROCESS=worker`
 5. Point both backend services at the same environment variables and database
 6. Deploy the web and worker together. The shared entrypoint runs `alembic upgrade head` before either process starts.
+   In worker mode, `railway-start.sh` also starts a lightweight `/health` responder so
+   the shared Railway healthcheck can pass while `python -m app.worker` drains jobs.
 
 ### Environment variables
 
@@ -61,6 +63,7 @@ In Railway → both backend services → **Variables**, add:
 | `WORKER_REVIEW_CONCURRENCY` | Optional — default `1` |
 | `WORKER_QUEUE_GUARD_SECONDS` | Optional — default `180`; queued jobs older than this are failed with a user-facing reason |
 | `OPS_WORKER_QUEUE_ALERT_SECONDS` | Optional — default `120` |
+| `ATLAS_PROCESS` | `web` for the web service, `worker` for the worker service |
 
 > After adding variables, Railway will redeploy automatically.
 
