@@ -14,7 +14,6 @@ import hmac
 import logging
 
 from fastapi import APIRouter, Header, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal

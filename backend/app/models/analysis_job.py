@@ -14,7 +14,7 @@ class AtlasJob(Base):
     # queued | running | completed | failed
     status: Mapped[str] = mapped_column(String(50), default="queued")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Set on a cache hit — points to an existing AtlasResult; no FK so the cached result is never cascade-deleted
+    # Set on cache hit; no FK so cached results are never cascade-deleted.
     cached_result_id: Mapped[int | None] = mapped_column(nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

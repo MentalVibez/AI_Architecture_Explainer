@@ -32,7 +32,9 @@ jobs:
           script: |
             cd /srv/atlas
             git pull origin main
-            docker compose up --build -d
+            docker compose --env-file .env.staging up --build -d
+            docker compose ps
+            docker compose exec -T worker python -c "import os; os.kill(1, 0)"
             docker image prune -f
 
       - name: Smoke test
@@ -41,11 +43,25 @@ jobs:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
         run: |
           for i in $(seq 1 12); do
-            if curl -sf "http://${STAGING_HOST}:8000/health" > /dev/null; then
+            if curl -sf "http://${STAGING_HOST}:8000/ready" > /dev/null; then
               echo "Backend healthy after attempt $i"
-              exit 0
+              break
             fi
             echo "Attempt $i: not ready, retrying in 5s..."
             sleep 5
+            if [ "$i" = "12" ]; then
+              echo "Backend failed to become ready after 60s" && exit 1
+            fi
           done
-          echo "Backend failed to become healthy after 60s" && exit 1
+
+          for i in $(seq 1 12); do
+            if curl -sf "http://${STAGING_HOST}:3000/health" > /dev/null; then
+              echo "Frontend proxy healthy after attempt $i"
+              exit 0
+            fi
+            echo "Attempt $i: frontend not ready, retrying in 5s..."
+            sleep 5
+            if [ "$i" = "12" ]; then
+              echo "Frontend failed to become healthy after 60s" && exit 1
+            fi
+          done

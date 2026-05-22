@@ -36,7 +36,8 @@ These decisions were made deliberately — do not revert them.
 
 - **Non-root containers** — both Docker images run as unprivileged users (`appuser` / `nextjs`). Never switch back to root.
 - **Exec-form CMD/ENTRYPOINT always** — shell form swallows signals, causing force-kills on `docker stop`. Always use `["uvicorn", ...]` not `"uvicorn ..."`.
-- **Healthchecks on every container** — backend probes `/health`, frontend probes `/`. Required for `depends_on: service_healthy` in compose and any future orchestration.
+- **Healthchecks on every container** — backend liveness probes `/live`, compose readiness probes `/ready`, frontend probes `/`. Required for `depends_on: service_healthy` in compose and any future orchestration.
+- **Worker heartbeats are the ops source of truth** — worker processes upsert `worker_heartbeats`; `/api/ops/summary` uses freshness to separate inactive workers from saturated queues.
 - **Migrations before server start** — `backend/docker-entrypoint.sh` runs `alembic upgrade head` then `exec "$@"`. Never remove this or bake migrations into the image build.
 - **Secrets never in images** — env vars come from `.env.staging` on the server at runtime, never `COPY`-ed into the image. `.dockerignore` enforces this.
 - **Job execution is worker-owned** — the web process only creates queued jobs. A separate worker process (`python -m app.worker`) claims Atlas/Review/public jobs from the database and runs them out-of-band.
@@ -62,7 +63,7 @@ npm run dev
 
 # Both services via Docker (staging stack)
 cp .env.staging.example .env.staging  # fill in values
-docker compose up --build
+docker compose --env-file .env.staging up --build
 ```
 
 ---
@@ -119,8 +120,10 @@ Run the backend web service and the worker as separate processes in production.
 
 ### Compose
 `docker-compose.yml` at repo root wires both services for staging:
-- Frontend waits for backend healthcheck before starting
-- Both restart automatically on crash
+- Backend, worker, and frontend run as separate services to mirror production
+- Frontend waits for backend readiness before starting
+- Backend and worker share a named `backend-data` volume for durable staging SQLite data
+- All services restart automatically on crash
 - Secrets injected from `.env.staging` (never committed)
 
 ### Staging server one-time setup
@@ -128,7 +131,7 @@ Run the backend web service and the worker as separate processes in production.
 git clone <repo> /srv/atlas
 cp /srv/atlas/.env.staging.example /srv/atlas/.env.staging
 # fill in real values
-cd /srv/atlas && docker compose up --build -d
+cd /srv/atlas && docker compose --env-file .env.staging up --build -d
 ```
 
 After that, every push to `main` auto-deploys via `.github/workflows/staging.yml`.
@@ -174,6 +177,7 @@ After that, every push to `main` auto-deploys via `.github/workflows/staging.yml
 | `backend/app/services/summary_service.py` | All LLM calls live here |
 | `backend/app/api/routes_review.py` | Review submission, polling, and report retrieval |
 | `backend/app/api/routes_map.py` | API surface mapping endpoint |
+| `backend/app/api/routes_ops.py` | Admin ops snapshot, queue health, worker heartbeat status |
 | `backend/app/core/config.py` | Pydantic Settings — all env vars defined here |
 | `backend/docker-entrypoint.sh` | Runs migrations then starts uvicorn |
 | `docker-compose.yml` | Staging stack — wires backend + frontend |

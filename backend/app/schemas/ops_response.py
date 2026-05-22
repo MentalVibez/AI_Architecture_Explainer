@@ -42,6 +42,27 @@ class QueueGuardResponse(BaseModel):
     recommended_action: str | None = None
 
 
+class WorkerHeartbeatResponse(BaseModel):
+    worker_id: str
+    hostname: str
+    process_id: int
+    queues: list[str]
+    status: str
+    started_at: datetime
+    last_seen_at: datetime
+    age_seconds: int
+    fresh: bool
+
+
+class WorkerStatusResponse(BaseModel):
+    status: str
+    fresh_count: int
+    stale_count: int
+    stale_after_seconds: int
+    active_queues: list[str] = Field(default_factory=list)
+    workers: list[WorkerHeartbeatResponse] = Field(default_factory=list)
+
+
 class LLMStageMetrics(BaseModel):
     stage: str
     calls: int
@@ -66,6 +87,7 @@ class OpsSnapshotResponse(BaseModel):
     github: ExternalServiceStatusResponse
     atlas: QueueMetricsResponse
     review: QueueMetricsResponse
+    workers: WorkerStatusResponse
     queue_guard: QueueGuardResponse
     recent_failures: list[RecentFailureResponse]
     llm_usage: LLMUsageStats | None = None

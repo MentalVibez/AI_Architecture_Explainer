@@ -20,10 +20,26 @@ async def _check_database(db: AsyncSession) -> str:
 
 @router.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    return await readiness_check(db)
+
+
+@router.get("/live")
+async def liveness_check() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": "codebase-atlas-backend",
+    }
+
+
+@router.get("/ready")
+async def readiness_check(db: AsyncSession = Depends(get_db)) -> JSONResponse:
     db_status = await _check_database(db)
     is_healthy = db_status == "ok"
 
     return JSONResponse(status_code=200 if is_healthy else 503, content={
         "status": "ok" if is_healthy else "degraded",
         "service": "codebase-atlas-backend",
+        "checks": {
+            "database": db_status,
+        },
     })

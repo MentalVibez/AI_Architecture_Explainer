@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     worker_atlas_concurrency: int = 2
     worker_review_concurrency: int = 1
     worker_queue_guard_seconds: int = 180
+    worker_heartbeat_interval_seconds: float = 15.0
+    worker_heartbeat_stale_seconds: int = 90
     ops_worker_queue_alert_seconds: int = 120
 
     @property
@@ -57,7 +59,6 @@ class Settings(BaseSettings):
         2. Individual DB_* components if DB_HOST is set (password is url-encoded)
         3. SQLite dev fallback
         """
-        from urllib.parse import quote_plus, urlparse
 
         return self._resolve_database_url(self.database_url)
 
@@ -111,7 +112,7 @@ def _quote_url_password(url: str) -> str:
         return url
 
     username, password = userinfo.split(":", 1)
-    return f"{scheme}://{username}:{quote(password, safe='')}@{host_and_path}"
+    return f"{scheme}://{username}:{quote(password, safe='%')}@{host_and_path}"
 
 
 settings = Settings()

@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 
 import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 
 from app.api.routes_webhook import _verify_signature
 from app.services.pr_comment_service import build_comment, build_error_comment
-
 
 # ---------------------------------------------------------------------------
 # Signature verification

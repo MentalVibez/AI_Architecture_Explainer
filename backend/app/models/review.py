@@ -37,7 +37,12 @@ class Review(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    share_slug: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, default=_gen_slug)
+    share_slug: Mapped[str | None] = mapped_column(
+        String(20),
+        unique=True,
+        nullable=True,
+        default=_gen_slug,
+    )
     job_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("review_jobs.id", ondelete="CASCADE"),

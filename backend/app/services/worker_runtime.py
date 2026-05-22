@@ -17,6 +17,7 @@ from app.models.review_job import ReviewJob
 from app.services.atlas_worker import execute_analysis_job
 from app.services.job_recovery import recover_stale_jobs
 from app.services.review_worker import run_review_job
+from app.services.worker_heartbeat import WorkerIdentity, record_worker_heartbeat
 
 logger = logging.getLogger(__name__)
 RECOVERY_INTERVAL_SECONDS = 60
@@ -39,15 +40,18 @@ class ReviewClaim:
 
 async def run_worker_loop() -> None:
     queue_order = _queue_order()
+    identity = WorkerIdentity()
     await _recover_stale_jobs()
     queue_concurrency = _queue_concurrency(queue_order)
     logger.info(
-        "worker_started queues=%s concurrency=%s",
+        "worker_started worker_id=%s queues=%s concurrency=%s",
+        identity.worker_id,
         ",".join(queue_order),
         ",".join(f"{queue}:{count}" for queue, count in queue_concurrency.items()),
     )
 
     tasks = [
+        asyncio.create_task(_heartbeat_loop(identity, queue_order), name="worker-heartbeat"),
         asyncio.create_task(_recovery_loop(), name="worker-recovery"),
     ]
     for queue_name in queue_order:
@@ -59,7 +63,23 @@ async def run_worker_loop() -> None:
                 )
             )
 
-    await asyncio.gather(*tasks)
+    try:
+        await asyncio.gather(*tasks)
+    finally:
+        await record_worker_heartbeat(
+            identity=identity,
+            queues=queue_order,
+            status="stopping",
+        )
+
+
+async def _heartbeat_loop(identity: WorkerIdentity, queue_order: tuple[str, ...]) -> None:
+    while True:
+        try:
+            await record_worker_heartbeat(identity=identity, queues=queue_order)
+        except Exception:
+            logger.exception("worker_heartbeat_failed worker_id=%s", identity.worker_id)
+        await asyncio.sleep(settings.worker_heartbeat_interval_seconds)
 
 
 async def _run_queue_loop(queue_name: str, slot: int) -> None:

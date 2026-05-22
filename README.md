@@ -201,7 +201,9 @@ App: `http://localhost:3000`
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/health` | Health check |
+| `GET` | `/live` | Process liveness check |
+| `GET` | `/ready` | Readiness check, including database connectivity |
+| `GET` | `/health` | Backward-compatible alias for `/ready` |
 
 ---
 

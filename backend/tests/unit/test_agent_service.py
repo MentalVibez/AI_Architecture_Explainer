@@ -6,7 +6,7 @@ All LLM calls and external I/O are mocked — no real API calls.
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -16,7 +16,6 @@ from app.services.agent_service import (
     _run_synthesis,
     _serialize_trace,
 )
-
 
 # ---------------------------------------------------------------------------
 # _parse_json_from_text

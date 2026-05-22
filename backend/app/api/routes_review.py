@@ -109,13 +109,16 @@ def _build_review_status_response(job: ReviewJob, review: Review | None) -> Revi
     duration_seconds = _duration_seconds(job.created_at, job.completed_at or _utcnow_naive())
     error_code = review.error_code if review and review.error_code else job.error_code
     error_message = review.error_message if review and review.error_message else job.error_message
+    result_id = str(review.id) if review else None
+    if result_id is None and job.cached_result_id:
+        result_id = str(job.cached_result_id)
 
     return ReviewStatusResponse(
         job_id=str(job.id),
         status=job.status,
         phase=_phase_label(job.status),
         status_detail=_status_detail(job.status, error_code, duration_seconds),
-        result_id=str(review.id) if review else (str(job.cached_result_id) if job.cached_result_id else None),
+        result_id=result_id,
         error_code=error_code,
         error_message=error_message,
         duration_seconds=duration_seconds,

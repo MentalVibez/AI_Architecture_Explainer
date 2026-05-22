@@ -80,6 +80,10 @@ export default function OpsSnapshot() {
         <OpsCard label="Review" metrics={snapshot.review} accent="#c5b3ff" />
       </div>
 
+      <div className="mt-4">
+        <WorkerCard snapshot={snapshot} />
+      </div>
+
       {snapshot.attention_message && (
         <div className="mt-5 rounded-2xl border border-[#ffcb6b]/30 bg-[#ffcb6b]/8 px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#ffcb6b]">
@@ -116,6 +120,41 @@ export default function OpsSnapshot() {
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function WorkerCard({ snapshot }: { snapshot: OpsSnapshotResponse }) {
+  const workers = snapshot.workers;
+  const statusText = workers.status === "ok"
+    ? `${workers.fresh_count} fresh`
+    : workers.status === "stale"
+      ? `${workers.stale_count} stale`
+      : "No heartbeat";
+
+  return (
+    <div className="surface-note">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#35c58b]">
+            Workers
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-[#94a8cb]">
+            {workers.active_queues.length > 0
+              ? `Active queues: ${workers.active_queues.join(", ")}.`
+              : "No active worker queues reported."}
+          </p>
+        </div>
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#b7c8e8]">
+          {statusText}
+        </span>
+      </div>
+      {workers.workers[0] && (
+        <p className="mt-3 text-sm leading-relaxed text-[#7f94b8]">
+          Latest heartbeat: {workers.workers[0].age_seconds}s ago from{" "}
+          {workers.workers[0].hostname}.
+        </p>
       )}
     </div>
   );

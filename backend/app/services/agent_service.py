@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -74,13 +74,13 @@ async def run_agent_pipeline(run_id: int, result_id: int) -> None:
             run.architecture_narrative = synthesis_result.get("narrative", "")
             run.mermaid_diagram = mermaid
             run.confidence = float(synthesis_result.get("confidence", 0.7))
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
 
         except Exception as exc:
             logger.exception("agent_run %s failed: %s", run_id, exc)
             run.status = "failed"
             run.error = str(exc)
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
 
         await db.commit()
 

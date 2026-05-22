@@ -22,9 +22,12 @@ from app.schemas.ops_response import (
     QueueGuardResponse,
     QueueMetricsResponse,
     RecentFailureResponse,
+    WorkerHeartbeatResponse,
+    WorkerStatusResponse,
 )
 from app.services.github_service import github_auth_snapshot
 from app.services.queue_guardian import clear_expired_queued_jobs
+from app.services.worker_heartbeat import list_worker_heartbeats
 
 router = APIRouter(prefix="/api/ops", tags=["ops"])
 
@@ -54,6 +57,10 @@ async def get_ops_summary(
     review_results_result = await db.execute(select(Review))
     review_results = review_results_result.scalars().all()
     review_results_by_job = {str(review.job_id): review for review in review_results}
+    workers = _worker_status(
+        await list_worker_heartbeats(session=db),
+        now=now,
+    )
 
     atlas_metrics = _atlas_metrics(atlas_jobs, recent_cutoff)
     review_metrics = _review_metrics(review_jobs, recent_cutoff)
@@ -66,16 +73,17 @@ async def get_ops_summary(
     github = ExternalServiceStatusResponse(**github_auth_snapshot())
     attention_message = _combine_attention_messages(
         _github_attention_message(github),
-        _attention_message(atlas_metrics, review_metrics),
+        _attention_message(atlas_metrics, review_metrics, workers),
     )
     llm_usage = await _llm_usage_stats(db, window_hours=24)
 
     return OpsSnapshotResponse(
-        status=_ops_status(atlas_metrics, review_metrics, github),
+        status=_ops_status(atlas_metrics, review_metrics, github, workers),
         attention_message=attention_message,
         github=github,
         atlas=atlas_metrics,
         review=review_metrics,
+        workers=workers,
         queue_guard=QueueGuardResponse(
             guard_after_seconds=settings.worker_queue_guard_seconds,
             cleared_atlas=guard_summary.atlas_cleared,
@@ -268,16 +276,75 @@ def _age_seconds(value: datetime | None) -> int:
     return max(0, int((datetime.now(UTC) - timestamp).total_seconds()))
 
 
+def _worker_status(heartbeats: list[object], *, now: datetime) -> WorkerStatusResponse:
+    stale_after = settings.worker_heartbeat_stale_seconds
+    workers: list[WorkerHeartbeatResponse] = []
+    active_queues: set[str] = set()
+
+    for heartbeat in heartbeats:
+        last_seen = _aware_datetime(getattr(heartbeat, "last_seen_at", None))
+        age_seconds = (
+            max(0, int((now - last_seen).total_seconds()))
+            if last_seen
+            else stale_after + 1
+        )
+        queues = [
+            item.strip()
+            for item in getattr(heartbeat, "queues", "").split(",")
+            if item.strip()
+        ]
+        fresh = (
+            getattr(heartbeat, "status", "") == "running"
+            and age_seconds < stale_after
+        )
+        if fresh:
+            active_queues.update(queues)
+
+        workers.append(
+            WorkerHeartbeatResponse(
+                worker_id=getattr(heartbeat, "worker_id"),
+                hostname=getattr(heartbeat, "hostname"),
+                process_id=getattr(heartbeat, "process_id"),
+                queues=queues,
+                status=getattr(heartbeat, "status"),
+                started_at=_aware_datetime(getattr(heartbeat, "started_at")) or now,
+                last_seen_at=last_seen or now,
+                age_seconds=age_seconds,
+                fresh=fresh,
+            )
+        )
+
+    fresh_count = sum(1 for worker in workers if worker.fresh)
+    stale_count = len(workers) - fresh_count
+
+    if fresh_count:
+        status = "ok"
+    elif workers:
+        status = "stale"
+    else:
+        status = "missing"
+
+    return WorkerStatusResponse(
+        status=status,
+        fresh_count=fresh_count,
+        stale_count=stale_count,
+        stale_after_seconds=stale_after,
+        active_queues=sorted(active_queues),
+        workers=workers,
+    )
+
+
 def _ops_status(
     atlas: QueueMetricsResponse,
     review: QueueMetricsResponse,
     github: ExternalServiceStatusResponse,
+    workers: WorkerStatusResponse,
 ) -> str:
     total_running = atlas.running + review.running
     total_queued = atlas.queued + review.queued
     total_failed = atlas.failed_last_24h + review.failed_last_24h
 
-    if github.status != "ok" or total_failed >= 3 or _attention_message(atlas, review):
+    if github.status != "ok" or total_failed >= 3 or _attention_message(atlas, review, workers):
         return "watch"
     if total_running > 0 or total_queued > 0:
         return "active"
@@ -287,22 +354,34 @@ def _ops_status(
 def _attention_message(
     atlas: QueueMetricsResponse,
     review: QueueMetricsResponse,
+    workers: WorkerStatusResponse,
 ) -> str | None:
     queue_threshold = settings.ops_worker_queue_alert_seconds
     running_threshold = settings.worker_stale_job_seconds
 
-    stuck_queue_names = [
-        name
-        for name, metrics in (("Atlas", atlas), ("Review", review))
+    stuck_queues = [
+        (name, queue_name)
+        for name, queue_name, metrics in (("Atlas", "atlas", atlas), ("Review", "review", review))
         if metrics.queued > 0
         and metrics.running == 0
         and (metrics.oldest_queued_seconds or 0) >= queue_threshold
     ]
-    if stuck_queue_names:
-        joined = " and ".join(stuck_queue_names)
+    if stuck_queues:
+        joined = " and ".join(name for name, _queue_name in stuck_queues)
+        missing_workers = [
+            name
+            for name, queue_name in stuck_queues
+            if queue_name not in workers.active_queues
+        ]
+        if missing_workers:
+            missing = " and ".join(missing_workers)
+            return (
+                f"{missing} has queued jobs waiting and no fresh worker heartbeat. "
+                "Check that the worker service is deployed, healthy, and pointed at this database."
+            )
         return (
             f"{joined} has queued jobs waiting without an active worker. "
-            "Check that the worker service is deployed and healthy."
+            "A worker heartbeat is fresh, so inspect worker capacity and logs."
         )
 
     slow_queue_names = [
@@ -365,8 +444,6 @@ def _aware_datetime(value: datetime | None) -> datetime | None:
 async def _llm_usage_stats(db: AsyncSession, window_hours: int = 24) -> LLMUsageStats | None:
     """Query llm_usage rows for the given window and return aggregated stats."""
     try:
-        from sqlalchemy import func as sqlfunc
-
         from app.models.llm_usage import LLMUsageORM
         from app.services.metrics_service import estimate_cost_usd
 

@@ -27,7 +27,7 @@ _SEVERITY_ICONS = {
 _FRONTEND_BASE = "https://codebaseatlas.com"
 
 
-def _verdict_line(review: "Review") -> str:
+def _verdict_line(review: Review) -> str:
     icon = "✅" if review.production_suitable else "⚠️"
     parts = [icon]
     if review.verdict_label:
@@ -51,7 +51,7 @@ def _findings_section(findings: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_comment(review: "Review", result_url: str) -> str:
+def build_comment(review: Review, result_url: str) -> str:
     lines = ["## CodeBaseAtlas Review", ""]
     lines.append(f"**Verdict**: {_verdict_line(review)}")
 
@@ -80,8 +80,8 @@ async def post_pr_comment(
     *,
     pr_repo: str,
     pr_number: int,
-    review: "Review",
-    job: "ReviewJob",
+    review: Review,
+    job: ReviewJob,
 ) -> None:
     """Post a review summary comment on the GitHub PR. Never raises."""
     from app.core.config import settings

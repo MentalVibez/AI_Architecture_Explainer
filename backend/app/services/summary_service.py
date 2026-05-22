@@ -15,7 +15,10 @@ async def generate_summaries(evidence: dict[str, Any]) -> dict[str, str]:
 
     developer_summary, hiring_manager_summary, diagram_mermaid = await asyncio.gather(
         provider.generate_text(build_developer_summary_prompt(evidence), stage="developer_summary"),
-        provider.generate_text(build_hiring_manager_summary_prompt(evidence), stage="hiring_manager_summary"),
+        provider.generate_text(
+            build_hiring_manager_summary_prompt(evidence),
+            stage="hiring_manager_summary",
+        ),
         provider.generate_text(build_diagram_prompt(evidence), stage="atlas_diagram"),
     )
 

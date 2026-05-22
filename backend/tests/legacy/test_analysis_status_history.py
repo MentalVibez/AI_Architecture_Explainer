@@ -8,6 +8,7 @@ from app.models.analysis_result import AnalysisResult
 from app.models.repo import Repo
 from app.models.review import Review
 from app.models.review_job import ReviewJob
+from app.models.worker_heartbeat import WorkerHeartbeat
 from tests.legacy.conftest import TestSessionLocal
 
 
@@ -148,7 +149,16 @@ async def test_ops_summary_reports_queue_counts_and_recent_failures(client, monk
             started_at=_utcnow_naive() - timedelta(minutes=1),
             created_at=_utcnow_naive() - timedelta(minutes=1),
         )
-        session.add_all([atlas_failed, atlas_running, review_running])
+        worker = WorkerHeartbeat(
+            worker_id="test-worker",
+            hostname="test-host",
+            process_id=123,
+            queues="atlas,review",
+            status="running",
+            started_at=_utcnow() - timedelta(minutes=3),
+            last_seen_at=_utcnow() - timedelta(seconds=5),
+        )
+        session.add_all([atlas_failed, atlas_running, review_running, worker])
         await session.commit()
 
     response = await client.get("/api/ops/summary", headers={"x-atlas-admin-key": "test-admin-key"})
@@ -166,6 +176,9 @@ async def test_ops_summary_reports_queue_counts_and_recent_failures(client, monk
     assert payload["atlas"]["running"] == 1
     assert payload["atlas"]["failed_last_24h"] == 1
     assert payload["review"]["running"] == 1
+    assert payload["workers"]["status"] == "ok"
+    assert payload["workers"]["fresh_count"] == 1
+    assert payload["workers"]["active_queues"] == ["atlas", "review"]
     assert payload["recent_failures"][0]["kind"] == "atlas"
     assert payload["recent_failures"][0]["repo"] == "fastapi/fastapi"
     assert payload["atlas"]["oldest_running_seconds"] >= 60
@@ -209,7 +222,8 @@ async def test_ops_summary_detects_worker_backlog_without_runner(client, monkeyp
         "tiangolo/full-stack-fastapi-postgresql"
     )
     assert payload["atlas"]["oldest_queued_jobs"][0]["age_seconds"] >= 120
-    assert "without an active worker" in payload["attention_message"]
+    assert payload["workers"]["status"] == "missing"
+    assert "no fresh worker heartbeat" in payload["attention_message"]
     assert payload["queue_guard"]["cleared_atlas"] == 0
 
 
@@ -284,7 +298,11 @@ async def test_analysis_poll_notifies_user_when_queue_guard_clears_job(client):
 
 def test_ops_summary_marks_github_degradation_as_attention() -> None:
     from app.api.routes_ops import _github_attention_message, _ops_status
-    from app.schemas.ops_response import ExternalServiceStatusResponse, QueueMetricsResponse
+    from app.schemas.ops_response import (
+        ExternalServiceStatusResponse,
+        QueueMetricsResponse,
+        WorkerStatusResponse,
+    )
 
     idle = QueueMetricsResponse(
         queued=0,
@@ -300,6 +318,12 @@ def test_ops_summary_marks_github_degradation_as_attention() -> None:
             "requests are falling back to public API limits."
         ),
     )
+    workers = WorkerStatusResponse(
+        status="missing",
+        fresh_count=0,
+        stale_count=0,
+        stale_after_seconds=90,
+    )
 
-    assert _ops_status(idle, idle, github) == "watch"
+    assert _ops_status(idle, idle, github, workers) == "watch"
     assert "GitHub API authentication is degraded" in _github_attention_message(github)

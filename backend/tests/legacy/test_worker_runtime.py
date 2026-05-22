@@ -7,6 +7,7 @@ from app.models.analysis_job import AnalysisJob
 from app.models.repo import Repo
 from app.models.review_job import ReviewJob
 from app.services.job_recovery import recover_stale_jobs
+from app.services.worker_heartbeat import WorkerIdentity, record_worker_heartbeat
 from app.services.worker_runtime import (
     _queue_concurrency,
     claim_next_atlas_job,
@@ -132,6 +133,39 @@ async def test_recover_stale_jobs_marks_atlas_and_review_failures():
         assert "Worker stopped" in refreshed_atlas.error_message
         assert refreshed_review.status == "failed"
         assert refreshed_review.error_code == "WORKER_RESTARTED"
+
+
+@pytest.mark.asyncio
+async def test_record_worker_heartbeat_upserts_worker_status():
+    identity = WorkerIdentity(
+        worker_id="worker-test-1",
+        hostname="test-host",
+        process_id=123,
+        started_at=datetime.now(UTC),
+    )
+
+    await record_worker_heartbeat(
+        identity=identity,
+        queues=("atlas", "review"),
+        session_factory=TestSessionLocal,
+    )
+    await record_worker_heartbeat(
+        identity=identity,
+        queues=("review",),
+        status="stopping",
+        session_factory=TestSessionLocal,
+    )
+
+    async with TestSessionLocal() as session:
+        from app.models.worker_heartbeat import WorkerHeartbeat
+
+        heartbeat = await session.get(WorkerHeartbeat, identity.worker_id)
+        assert heartbeat is not None
+        assert heartbeat.hostname == "test-host"
+        assert heartbeat.process_id == 123
+        assert heartbeat.queues == "review"
+        assert heartbeat.status == "stopping"
+        assert heartbeat.last_seen_at is not None
 
 
 def test_queue_concurrency_uses_per_queue_settings(monkeypatch):

@@ -64,11 +64,33 @@ export interface LLMUsageStats {
   by_stage: LLMStageMetrics[];
 }
 
+export interface WorkerHeartbeat {
+  worker_id: string;
+  hostname: string;
+  process_id: number;
+  queues: string[];
+  status: string;
+  started_at: string;
+  last_seen_at: string;
+  age_seconds: number;
+  fresh: boolean;
+}
+
+export interface WorkerStatus {
+  status: "ok" | "stale" | "missing";
+  fresh_count: number;
+  stale_count: number;
+  stale_after_seconds: number;
+  active_queues: string[];
+  workers: WorkerHeartbeat[];
+}
+
 export interface OpsSnapshotResponse {
   status: "steady" | "active" | "watch";
   attention_message: string | null;
   atlas: QueueMetrics;
   review: QueueMetrics;
+  workers: WorkerStatus;
   recent_failures: RecentFailureItem[];
   llm_usage: LLMUsageStats | null;
   generated_at: string;
