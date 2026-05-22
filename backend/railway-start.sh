@@ -4,7 +4,8 @@ set -e
 case "${ATLAS_PROCESS:-web}" in
   worker)
     python -m app.worker_health &
-    exec sh ./docker-entrypoint.sh python -m app.worker
+    echo "Starting worker..."
+    exec python -m app.worker
     ;;
   web)
     exec sh ./docker-entrypoint.sh
