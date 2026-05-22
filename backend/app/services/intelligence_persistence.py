@@ -266,6 +266,7 @@ async def load_intelligence(
         files.append(fi)
 
         contexts[row.path] = CodeContext(
+            file_path=row.path,
             is_on_critical_path=row.is_on_critical_path,
             caller_count=row.caller_count,
         )
