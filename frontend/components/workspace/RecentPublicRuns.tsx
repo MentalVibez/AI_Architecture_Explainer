@@ -11,11 +11,17 @@ const KIND_LABELS = {
   review: "Review",
 } as const;
 
+const SHOW_PUBLIC_HISTORY = process.env.NEXT_PUBLIC_SHOW_PUBLIC_HISTORY === "true";
+
 export default function RecentPublicRuns() {
   const [items, setItems] = useState<RecentRunItem[]>([]);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (!SHOW_PUBLIC_HISTORY) {
+      return;
+    }
+
     let cancelled = false;
 
     async function load() {
@@ -38,7 +44,7 @@ export default function RecentPublicRuns() {
     };
   }, []);
 
-  if (error || items.length === 0) {
+  if (!SHOW_PUBLIC_HISTORY || error || items.length === 0) {
     return null;
   }
 

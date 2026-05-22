@@ -92,9 +92,14 @@ In Vercel → your project → **Settings → Environment Variables**, add:
 |----------|-------|-------------|
 | `NEXT_PUBLIC_API_URL` | `https://your-railway-web.up.railway.app` | Production, Preview, Development |
 | `API_URL` | `https://your-railway-web.up.railway.app` | Production, Preview |
+| `NEXT_PUBLIC_SHOW_PUBLIC_HISTORY` | `false` | Production, Preview, Development |
+| `NEXT_PUBLIC_SHOW_OPS_SNAPSHOT` | `false` | Production, Preview, Development |
 
 > `NEXT_PUBLIC_API_URL` is exposed to the browser (client components).
 > `API_URL` is used only by Next.js server components and can point to an internal URL if needed.
+> Keep the public history and ops snapshot flags disabled unless `EXPOSE_PUBLIC_HISTORY=true`
+> is set on the backend or you have an authenticated admin surface. Protected backend routes
+> intentionally return `404` without the required admin header.
 
 ### Verify
 

@@ -17,11 +17,17 @@ const STATUS_COLORS = {
   watch: "#ffcb6b",
 } as const;
 
+const SHOW_OPS_SNAPSHOT = process.env.NEXT_PUBLIC_SHOW_OPS_SNAPSHOT === "true";
+
 export default function OpsSnapshot() {
   const [snapshot, setSnapshot] = useState<OpsSnapshotResponse | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (!SHOW_OPS_SNAPSHOT) {
+      return;
+    }
+
     let cancelled = false;
 
     async function load() {
@@ -44,7 +50,7 @@ export default function OpsSnapshot() {
     };
   }, []);
 
-  if (error || !snapshot) {
+  if (!SHOW_OPS_SNAPSHOT || error || !snapshot) {
     return null;
   }
 
