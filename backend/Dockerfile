@@ -31,7 +31,8 @@ COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
 COPY docker-entrypoint.sh .
-RUN chmod +x docker-entrypoint.sh
+COPY railway-start.sh .
+RUN chmod +x docker-entrypoint.sh railway-start.sh
 
 # Give appuser ownership of the workdir (needed for SQLite dev.db writes)
 RUN chown -R appuser:appuser /app
