@@ -13,6 +13,7 @@ function AnalyzeInner() {
   const router = useRouter();
   const params = useSearchParams();
   const jobId = Number(params.get("job_id"));
+  const requestedTab = params.get("tab");
   const [status, setStatus] = useState<string>("queued");
   const [error, setError] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
@@ -45,7 +46,10 @@ function AnalyzeInner() {
         }
 
         if (data.status === "completed" && data.result_id) {
-          router.push(`/results/${data.result_id}`);
+          const tabQuery = ["setup", "debug", "change"].includes(requestedTab ?? "")
+            ? `?tab=${requestedTab}`
+            : "";
+          router.push(`/results/${data.result_id}${tabQuery}`);
           return;
         }
         if (data.status === "completed" && !data.result_id) {
@@ -64,7 +68,7 @@ function AnalyzeInner() {
 
     poll();
     return () => clearTimeout(timeoutId);
-  }, [jobId, router]);
+  }, [jobId, requestedTab, router]);
 
   if (!jobId) {
     return (

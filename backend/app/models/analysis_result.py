@@ -33,6 +33,9 @@ class AtlasResult(Base):
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     caveats: Mapped[list] = mapped_column(JSON, default=list)
     raw_evidence: Mapped[list] = mapped_column(JSON, default=list)
+    setup_risk: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    debug_readiness: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    change_risk: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     job = relationship("AtlasJob", back_populates="result")

@@ -191,7 +191,7 @@ function RepoCard({ repo, rank }: { repo: Repo; rank: number }) {
 
     try {
       const { job_id } = await submitAnalysis(repo.url);
-      router.push(`/analyze?job_id=${job_id}`);
+      router.push(`/analyze?job_id=${job_id}&tab=setup`);
     } catch (error) {
       setAnalyzeErr(error instanceof Error ? error.message : "Failed to submit to Atlas.");
       setAnalyzing(false);

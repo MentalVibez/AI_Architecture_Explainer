@@ -159,6 +159,83 @@ export interface StackItem {
   confidence: number;
 }
 
+export type AtlasScanState = "found" | "not_found" | "scan_failed";
+export type AtlasRiskLevel = "low" | "medium" | "high";
+
+export interface AtlasEvidenceSignal {
+  source_file: string;
+  rule: string;
+  detail?: string | null;
+}
+
+export interface AtlasRiskItem {
+  category: string;
+  reason: string;
+  rule: string;
+  evidence: AtlasEvidenceSignal[];
+}
+
+export interface AtlasSetupRisk {
+  scan_state: AtlasScanState;
+  score: number | null;
+  level: AtlasRiskLevel | null;
+  confidence: number;
+  missing_env_vars: string[];
+  env_example_present: boolean;
+  likely_start_commands: string[];
+  required_services: string[];
+  detected_manifests: string[];
+  risks: AtlasRiskItem[];
+  scan_errors: string[];
+}
+
+export interface AtlasSubSignal {
+  scan_state: AtlasScanState;
+  framework?: string | null;
+  frameworks?: string[];
+  routes_found?: string[];
+  sentry_found?: boolean;
+  otel_found?: boolean;
+  print_only_detected?: boolean;
+}
+
+export interface AtlasDebugReadiness {
+  scan_state: AtlasScanState;
+  score: number | null;
+  level: AtlasRiskLevel | null;
+  confidence: number;
+  logging: AtlasSubSignal;
+  error_handling: AtlasSubSignal;
+  health_checks: AtlasSubSignal;
+  tracing: AtlasSubSignal;
+  test_harness: AtlasSubSignal;
+  risks: AtlasRiskItem[];
+  scan_errors: string[];
+}
+
+export interface AtlasChangeRisk {
+  scan_state: AtlasScanState;
+  score: number | null;
+  level: AtlasRiskLevel | null;
+  confidence: number;
+  ci: {
+    scan_state: AtlasScanState;
+    platforms: string[];
+    has_test_gate: boolean;
+    has_lint_gate: boolean;
+  };
+  test_gates: AtlasSubSignal & { has_coverage?: boolean };
+  migration_risk: {
+    scan_state: AtlasScanState;
+    migration_paths: string[];
+    has_migration_tests: boolean;
+  };
+  blast_radius_hotspots: Array<{ path: string; category: string; reason: string }>;
+  risky_to_change: string[];
+  risks: AtlasRiskItem[];
+  scan_errors: string[];
+}
+
 // detected_stack supports both the new rich format and legacy string format
 // (old DB records may have string[] entries)
 type StackCategory = (StackItem | string)[];
@@ -187,6 +264,12 @@ export interface AnalysisResult {
   confidence_score: number | null;
   caveats: string[];
   raw_evidence: unknown[];
+  setup_risk: AtlasSetupRisk | null;
+  debug_readiness: AtlasDebugReadiness | null;
+  change_risk: AtlasChangeRisk | null;
+  analysis_tier: string;
+  runtime_verified: boolean;
+  tier_disclosure: string;
   created_at: string;
 }
 

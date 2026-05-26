@@ -6,6 +6,7 @@ import { normalizeStackItems, type AnalysisResult, type CodebaseGuide } from "@/
 import DeveloperSummary from "@/components/DeveloperSummary";
 import HiringManagerSummary from "@/components/HiringManagerSummary";
 import DiagramPanel from "@/components/DiagramPanel";
+import AnalysisTabs from "@/components/AnalysisTabs";
 import KnowledgeGraph from "@/components/KnowledgeGraph";
 import AgentAnalysisSection from "@/components/AgentAnalysisSection";
 import WorkspaceSync from "@/components/workspace/WorkspaceSync";
@@ -15,6 +16,7 @@ import DownloadGuideButton from "@/components/DownloadGuideButton";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ tab?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -42,8 +44,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ResultPage({ params }: Props) {
+export default async function ResultPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const query = searchParams ? await searchParams : {};
   const resultId = Number(id);
   const result = await getResult(resultId);
   const guide = await getCodebaseGuide(resultId).catch(() => buildFallbackGuide(result));
@@ -62,6 +65,7 @@ export default async function ResultPage({ params }: Props) {
     hasApiSurface: topStack.some((item) => item.category === "backend"),
     hasUnknowns: result.caveats.length > 0,
   });
+  const initialDiagnosticTab = normalizeDiagnosticTab(query.tab);
 
   return (
     <div className="page-shell pt-14 space-y-8">
@@ -246,6 +250,21 @@ export default async function ResultPage({ params }: Props) {
         </section>
       )}
 
+      <section id="diagnostics" className="panel rounded-[28px] p-6">
+        <div className="mb-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#6d7f9f]">
+            Atlas diagnostics
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#f5f8ff]">
+            Setup, debug, and change-readiness signals
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[#94a8cb]">
+            Static analysis only: these tabs surface likely repository risks and supporting evidence without making runtime claims.
+          </p>
+        </div>
+        <AnalysisTabs result={result} initialTab={initialDiagnosticTab} />
+      </section>
+
       <CodebaseGuideSection guide={guide} repoLabel={repoLabel} />
 
       {result.diagram_mermaid && <DiagramPanel mermaid={result.diagram_mermaid} />}
@@ -276,6 +295,12 @@ export default async function ResultPage({ params }: Props) {
       <HiringManagerSummary result={result} />
     </div>
   );
+}
+
+function normalizeDiagnosticTab(value?: string) {
+  if (value === "debug") return "Debug";
+  if (value === "change") return "Change";
+  return "Setup";
 }
 
 function CodebaseGuideSection({

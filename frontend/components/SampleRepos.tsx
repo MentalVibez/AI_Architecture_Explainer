@@ -19,7 +19,7 @@ export default function SampleRepos() {
     setLoading(label);
     try {
       const { job_id } = await submitAnalysis(url);
-      router.push(`/analyze?job_id=${job_id}`);
+      router.push(`/analyze?job_id=${job_id}&tab=setup`);
     } catch {
       setLoading(null);
     }

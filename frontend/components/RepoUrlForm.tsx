@@ -39,7 +39,7 @@ export default function RepoUrlForm() {
 
     try {
       const { job_id } = await submitAnalysis(submittedUrl);
-      router.push(`/analyze?job_id=${job_id}`);
+      router.push(`/analyze?job_id=${job_id}&tab=setup`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * components/AnalysisTabs.tsx
  *
@@ -55,7 +57,7 @@ interface SetupRisk {
 // Debug Readiness
 interface SubSignal {
   scan_state: ScanState;
-  framework?: string;
+  framework?: string | null;
   frameworks?: string[];
   routes_found?: string[];
   sentry_found?: boolean;
@@ -125,10 +127,10 @@ interface AnalysisResult {
 // ─────────────────────────────────────────────────────────
 
 const LEVEL_STYLES: Record<RiskLevel | "unknown", string> = {
-  low:     "bg-green-50 text-green-700 border border-green-200",
-  medium:  "bg-yellow-50 text-yellow-800 border border-yellow-200",
-  high:    "bg-red-50 text-red-700 border border-red-200",
-  unknown: "bg-gray-100 text-gray-500 border border-gray-200",
+  low:     "border border-[#35c58b]/25 bg-[#35c58b]/10 text-[#9ef0c7]",
+  medium:  "border border-[#ffd36e]/25 bg-[#ffd36e]/10 text-[#ffe4a3]",
+  high:    "border border-[#ff7a90]/25 bg-[#ff7a90]/10 text-[#ffb3c0]",
+  unknown: "border border-white/10 bg-white/[0.04] text-[#94a8cb]",
 };
 
 const STATE_LABEL: Record<ScanState, string> = {
@@ -148,10 +150,10 @@ function LevelBadge({ level }: { level: RiskLevel | null }) {
 
 function ScanFailedCard({ errors }: { errors: string[] }) {
   return (
-    <div className="rounded border border-amber-200 bg-amber-50 p-4">
-      <p className="text-sm font-medium text-amber-800">Analysis failed for this section</p>
+    <div className="rounded-2xl border border-[#ffd36e]/20 bg-[#ffd36e]/10 p-4">
+      <p className="text-sm font-medium text-[#ffe4a3]">Analysis failed for this section</p>
       {errors.length > 0 && (
-        <p className="mt-1 text-xs text-amber-700 font-mono">{errors[0]}</p>
+        <p className="mt-1 break-all font-mono text-xs text-[#dcbf80]">{errors[0]}</p>
       )}
     </div>
   );
@@ -159,8 +161,8 @@ function ScanFailedCard({ errors }: { errors: string[] }) {
 
 function NotAnalyzedCard() {
   return (
-    <div className="rounded border border-gray-200 bg-gray-50 p-4">
-      <p className="text-sm text-gray-500">Not yet analyzed</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <p className="text-sm text-[#94a8cb]">Not yet analyzed</p>
     </div>
   );
 }
@@ -172,11 +174,11 @@ function SectionHeader({ label, state, level }: {
 }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h3 className="text-base font-semibold text-gray-900">{label}</h3>
+      <h3 className="text-base font-semibold text-[#f5f8ff]">{label}</h3>
       <div className="flex items-center gap-2">
         {state === "found" && <LevelBadge level={level} />}
         {state !== "found" && (
-          <span className="text-xs text-gray-400">{STATE_LABEL[state]}</span>
+          <span className="text-xs text-[#7f95ba]">{STATE_LABEL[state]}</span>
         )}
       </div>
     </div>
@@ -184,11 +186,11 @@ function SectionHeader({ label, state, level }: {
 }
 
 function FoundIcon() {
-  return <span className="text-green-500">✓</span>;
+  return <span className="text-[#35c58b]">✓</span>;
 }
 
 function MissingIcon() {
-  return <span className="text-red-400">✗</span>;
+  return <span className="text-[#ff7a90]">✗</span>;
 }
 
 function Row({ label, found, detail }: {
@@ -199,18 +201,18 @@ function Row({ label, found, detail }: {
   return (
     <div className="flex items-start gap-2 py-1.5 text-sm">
       <span className="mt-0.5 w-4 shrink-0">{found ? <FoundIcon /> : <MissingIcon />}</span>
-      <span className="text-gray-700">{label}</span>
-      {detail && <span className="ml-auto text-xs text-gray-400 font-mono">{detail}</span>}
+      <span className="text-[#d8e5ff]">{label}</span>
+      {detail && <span className="ml-auto font-mono text-xs text-[#7f95ba]">{detail}</span>}
     </div>
   );
 }
 
 function CodeList({ items, emptyLabel }: { items: string[]; emptyLabel: string }) {
-  if (items.length === 0) return <p className="text-xs text-gray-400">{emptyLabel}</p>;
+  if (items.length === 0) return <p className="text-xs text-[#7f95ba]">{emptyLabel}</p>;
   return (
     <ul className="space-y-1">
       {items.map((item, i) => (
-        <li key={i} className="font-mono text-xs bg-gray-100 rounded px-2 py-1 text-gray-700">
+        <li key={i} className="rounded bg-white/[0.05] px-2 py-1 font-mono text-xs text-[#dce8ff]">
           {item}
         </li>
       ))}
@@ -222,10 +224,10 @@ function RiskList({ risks }: { risks: RiskItem[] }) {
   if (risks.length === 0) return null;
   return (
     <div className="mt-4 space-y-2">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Risk signals</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-[#6d7f9f]">Risk signals</p>
       {risks.map((risk, i) => (
-        <div key={i} className="rounded border border-gray-200 bg-white px-3 py-2">
-          <p className="text-sm text-gray-800">{risk.reason}</p>
+        <div key={i} className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+          <p className="text-sm text-[#d8e5ff]">{risk.reason}</p>
         </div>
       ))}
     </div>
@@ -245,7 +247,7 @@ function SetupTab({ data }: { data: SetupRisk | null }) {
     <div className="space-y-5">
       <SectionHeader label="Setup Risk" state={data.scan_state} level={data.level} />
 
-      <div className="divide-y divide-gray-100 rounded border border-gray-200 bg-white">
+      <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
         <div className="px-4 py-3">
           <Row
             label=".env.example present"
@@ -264,7 +266,7 @@ function SetupTab({ data }: { data: SetupRisk | null }) {
 
       {data.likely_start_commands.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#6d7f9f]">
             Likely start commands
           </p>
           <CodeList items={data.likely_start_commands} emptyLabel="None detected" />
@@ -273,7 +275,7 @@ function SetupTab({ data }: { data: SetupRisk | null }) {
 
       {data.required_services.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#6d7f9f]">
             Required services
           </p>
           <CodeList items={data.required_services} emptyLabel="None detected" />
@@ -282,7 +284,7 @@ function SetupTab({ data }: { data: SetupRisk | null }) {
 
       {data.missing_env_vars.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#6d7f9f]">
             Env vars referenced but undocumented
           </p>
           <CodeList items={data.missing_env_vars} emptyLabel="" />
@@ -307,7 +309,7 @@ function DebugTab({ data }: { data: DebugReadiness | null }) {
     <div className="space-y-5">
       <SectionHeader label="Debug Readiness" state={data.scan_state} level={data.level} />
 
-      <div className="divide-y divide-gray-100 rounded border border-gray-200 bg-white px-4 py-2">
+      <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2">
         <Row
           label="Structured logging"
           found={data.logging.scan_state === "found"}
@@ -363,7 +365,7 @@ function ChangeTab({ data }: { data: ChangeRisk | null }) {
       <SectionHeader label="Change Risk" state={data.scan_state} level={data.level} />
 
       {/* CI and test gates */}
-      <div className="divide-y divide-gray-100 rounded border border-gray-200 bg-white px-4 py-2">
+      <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2">
         <Row
           label="CI pipeline"
           found={data.ci.scan_state === "found"}
@@ -393,17 +395,17 @@ function ChangeTab({ data }: { data: ChangeRisk | null }) {
       {/* Blast radius hotspots */}
       {data.blast_radius_hotspots.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#6d7f9f]">
             Blast radius hotspots
           </p>
           <div className="space-y-2">
             {data.blast_radius_hotspots.map((h, i) => (
               <div
                 key={i}
-                className="rounded border border-gray-200 bg-white px-3 py-2"
+                className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2"
               >
-                <p className="font-mono text-xs text-gray-700 mb-0.5">{h.path}</p>
-                <p className="text-xs text-gray-500">{h.reason}</p>
+                <p className="mb-0.5 font-mono text-xs text-[#dce8ff]">{h.path}</p>
+                <p className="text-xs text-[#94a8cb]">{h.reason}</p>
               </div>
             ))}
           </div>
@@ -421,8 +423,8 @@ function ChangeTab({ data }: { data: ChangeRisk | null }) {
 
 function TierDisclosure({ disclosure, tier }: { disclosure: string; tier: string }) {
   return (
-    <div className="rounded border border-blue-100 bg-blue-50 px-4 py-3 mt-6">
-      <p className="text-xs text-blue-700">
+    <div className="mt-6 rounded-2xl border border-[#4d7cff]/20 bg-[#4d7cff]/10 px-4 py-3">
+      <p className="text-xs text-[#b8ccff]">
         <span className="font-medium">Analysis type: </span>
         {tier} — {disclosure}
       </p>
@@ -437,13 +439,19 @@ function TierDisclosure({ disclosure, tier }: { disclosure: string; tier: string
 const TAB_LABELS = ["Setup", "Debug", "Change"] as const;
 type TabLabel = (typeof TAB_LABELS)[number];
 
-export default function AnalysisTabs({ result }: { result: AnalysisResult }) {
-  const [active, setActive] = useState<TabLabel>("Setup");
+export default function AnalysisTabs({
+  result,
+  initialTab = "Setup",
+}: {
+  result: AnalysisResult;
+  initialTab?: TabLabel;
+}) {
+  const [active, setActive] = useState<TabLabel>(initialTab);
 
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex border-b border-gray-200 mb-4">
+      <div className="mb-4 flex border-b border-white/10">
         {TAB_LABELS.map((tab) => (
           <button
             key={tab}
@@ -451,8 +459,8 @@ export default function AnalysisTabs({ result }: { result: AnalysisResult }) {
             className={[
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
               active === tab
-                ? "border-gray-900 text-gray-900"
-                : "border-transparent text-gray-500 hover:text-gray-700",
+                ? "border-[#4d7cff] text-[#f5f8ff]"
+                : "border-transparent text-[#7f95ba] hover:text-[#dce8ff]",
             ].join(" ")}
           >
             {tab}

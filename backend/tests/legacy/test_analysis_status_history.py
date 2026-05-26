@@ -49,6 +49,54 @@ async def test_analysis_status_includes_metadata(client):
 
 
 @pytest.mark.asyncio
+async def test_result_response_includes_diagnostic_tabs_and_static_disclosure(client):
+    async with TestSessionLocal() as session:
+        repo = Repo(
+            github_owner="vercel",
+            github_repo="next.js",
+            github_url="https://github.com/vercel/next.js",
+        )
+        session.add(repo)
+        await session.flush()
+
+        job = AnalysisJob(repo_id=repo.id, status="completed")
+        session.add(job)
+        await session.flush()
+
+        result = AnalysisResult(
+            job_id=job.id,
+            detected_stack={
+                "frontend": [],
+                "backend": [],
+                "database": [],
+                "infra": [],
+                "testing": [],
+            },
+            dependencies={"npm": [], "python": []},
+            entry_points=[],
+            folder_map=[],
+            raw_evidence=[{"repo": {"owner": "vercel", "name": "next.js"}}],
+            setup_risk={"scan_state": "found"},
+            debug_readiness={"scan_state": "found"},
+            change_risk={"scan_state": "scan_failed", "scan_errors": ["boom"]},
+        )
+        session.add(result)
+        await session.commit()
+        result_id = result.id
+
+    response = await client.get(f"/api/results/{result_id}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["setup_risk"]["scan_state"] == "found"
+    assert payload["debug_readiness"]["scan_state"] == "found"
+    assert payload["change_risk"]["scan_state"] == "scan_failed"
+    assert payload["analysis_tier"] == "static"
+    assert payload["runtime_verified"] is False
+    assert "static code inspection" in payload["tier_disclosure"]
+
+
+@pytest.mark.asyncio
 async def test_recent_runs_returns_atlas_and_review_history(client, monkeypatch):
     from app.core import config as config_module
     monkeypatch.setattr(config_module.settings, "expose_public_history", True)

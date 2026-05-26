@@ -95,6 +95,75 @@ const result = {
       ],
     },
   ],
+  setup_risk: {
+    scan_state: "found",
+    score: 24,
+    level: "low",
+    confidence: 0.86,
+    missing_env_vars: [],
+    env_example_present: true,
+    likely_start_commands: ["npm run dev", "uvicorn app.main:app"],
+    required_services: ["postgres"],
+    detected_manifests: ["package.json", "pyproject.toml"],
+    risks: [],
+    scan_errors: [],
+  },
+  debug_readiness: {
+    scan_state: "found",
+    score: 35,
+    level: "medium",
+    confidence: 0.82,
+    logging: { scan_state: "found", framework: "stdlib_logging", print_only_detected: false },
+    error_handling: { scan_state: "found", framework: "fastapi" },
+    health_checks: { scan_state: "found", routes_found: ["/health"] },
+    tracing: { scan_state: "not_found", sentry_found: false, otel_found: false },
+    test_harness: { scan_state: "found", frameworks: ["pytest", "playwright"] },
+    risks: [
+      {
+        category: "observability",
+        reason: "Tracing was not detected in the mocked repository.",
+        rule: "tracing_not_detected",
+        evidence: [{ source_file: "<repo_root>", rule: "tracing_not_detected" }],
+      },
+    ],
+    scan_errors: [],
+  },
+  change_risk: {
+    scan_state: "found",
+    score: 42,
+    level: "medium",
+    confidence: 0.81,
+    ci: {
+      scan_state: "found",
+      platforms: ["github_actions"],
+      has_test_gate: true,
+      has_lint_gate: true,
+    },
+    test_gates: {
+      scan_state: "found",
+      frameworks: ["pytest", "playwright"],
+      has_coverage: false,
+    },
+    migration_risk: {
+      scan_state: "not_found",
+      migration_paths: [],
+      has_migration_tests: false,
+    },
+    blast_radius_hotspots: [
+      {
+        path: "backend/app/services/analysis_pipeline.py",
+        category: "core",
+        reason: "Central analysis orchestration affects Atlas result generation.",
+      },
+    ],
+    risky_to_change: ["backend/app/services/analysis_pipeline.py"],
+    risks: [],
+    scan_errors: [],
+  },
+  analysis_tier: "static",
+  runtime_verified: false,
+  tier_disclosure:
+    "This analysis is based on static code inspection only. It detects structure, configuration, and likely risk signals from files and manifests. It does not execute code, run tests, or verify runtime behavior. Findings represent likely conditions, not confirmed facts.",
   created_at: new Date().toISOString(),
 };
 
@@ -216,8 +285,14 @@ const server = createServer((req, res) => {
       sendJson(res, 200, {
         job_id: 123,
         status: "running",
+        phase: "analysis",
+        status_detail: "Collecting repository evidence and assembling the Atlas workspace.",
         result_id: null,
         error_message: null,
+        duration_seconds: 1,
+        next_poll_seconds: 2,
+        created_at: new Date().toISOString(),
+        completed_at: null,
       });
       return;
     }
@@ -225,8 +300,14 @@ const server = createServer((req, res) => {
     sendJson(res, 200, {
       job_id: 123,
       status: "completed",
+      phase: "complete",
+      status_detail: "Completed successfully.",
       result_id: 456,
       error_message: null,
+      duration_seconds: 2,
+      next_poll_seconds: null,
+      created_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
     });
     return;
   }

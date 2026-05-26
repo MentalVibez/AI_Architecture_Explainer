@@ -25,8 +25,8 @@ test("submits a repo URL and renders the mocked results report", async ({ page }
   await submitButton.click();
   await expect.poll(() => apiRequests.length).toBeGreaterThan(0);
 
-  await page.waitForURL(/\/analyze\?job_id=123$/, { timeout: 20_000 });
-  await page.waitForURL(/\/results\/456$/, { timeout: 60_000 });
+  await page.waitForURL(/\/analyze\?job_id=123&tab=setup$/, { timeout: 20_000 });
+  await page.waitForURL(/\/results\/456\?tab=setup$/, { timeout: 60_000 });
 
   await expect(
     page.getByRole("heading", { name: "MentalVibez/ai-agent-orchestrator" }),
@@ -42,4 +42,11 @@ test("submits a repo URL and renders the mocked results report", async ({ page }
   await expect(
     page.getByText("Mocked backend response used for Playwright smoke coverage."),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Setup, debug, and change-readiness signals" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Setup" })).toHaveClass(/border-\[#4d7cff\]/);
+  await expect(page.getByText(".env.example present")).toBeVisible();
+  await page.getByRole("button", { name: "Debug" }).click();
+  await expect(page.getByText("Error tracking (Sentry / OpenTelemetry)")).toBeVisible();
+  await page.getByRole("button", { name: "Change" }).click();
+  await expect(page.getByText("Blast radius hotspots")).toBeVisible();
 });

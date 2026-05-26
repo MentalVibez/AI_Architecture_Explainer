@@ -2,10 +2,13 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
+from sqlalchemy import select
 
 from app.models.analysis_job import AnalysisJob
+from app.models.analysis_result import AnalysisResult
 from app.models.repo import Repo
 from app.models.review_job import ReviewJob
+from app.services import atlas_worker
 from app.services.job_recovery import recover_stale_jobs
 from app.services.worker_heartbeat import WorkerIdentity, record_worker_heartbeat
 from app.services.worker_runtime import (
@@ -18,6 +21,33 @@ from tests.legacy.conftest import TestSessionLocal
 
 def _utcnow_naive() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _atlas_evidence(owner: str = "encode", repo: str = "starlette") -> dict:
+    return {
+        "repo": {"owner": owner, "name": repo, "default_branch": "main"},
+        "tree_sha": f"{owner}-{repo}-sha",
+        "detected_stack": {
+            "frontend": [],
+            "backend": [],
+            "database": [],
+            "infra": [],
+            "testing": [],
+        },
+        "npm_dependencies": [],
+        "python_dependencies": [],
+        "tree_paths": [],
+        "fetched_files": [],
+        "readme": "",
+    }
+
+
+def _summaries() -> dict:
+    return {
+        "diagram_mermaid": "flowchart TD\n  A --> B",
+        "developer_summary": "Developer summary",
+        "hiring_manager_summary": "Hiring summary",
+    }
 
 
 @pytest.mark.asyncio
@@ -45,6 +75,157 @@ async def test_claim_next_atlas_job_marks_job_running():
         claimed_job = await session.get(AnalysisJob, job.id)
         assert claimed_job.status == "running"
         assert claimed_job.started_at is not None
+
+
+@pytest.mark.asyncio
+async def test_execute_atlas_job_persists_diagnostic_tabs(monkeypatch):
+    monkeypatch.setattr(atlas_worker, "AsyncSessionLocal", TestSessionLocal)
+
+    async def fake_run_analysis(owner, repo):
+        return _atlas_evidence(owner, repo), None
+
+    async def fake_generate_summaries(evidence):
+        return _summaries()
+
+    async def fake_clone(owner, repo, branch, dest):
+        return None
+
+    monkeypatch.setattr(atlas_worker, "run_analysis", fake_run_analysis)
+    monkeypatch.setattr(atlas_worker, "generate_summaries", fake_generate_summaries)
+    monkeypatch.setattr(atlas_worker, "_clone_repo_for_diagnostics", fake_clone)
+
+    async with TestSessionLocal() as session:
+        repo = Repo(
+            github_owner="encode",
+            github_repo="starlette",
+            github_url="https://github.com/encode/starlette",
+        )
+        session.add(repo)
+        await session.flush()
+        job = AnalysisJob(repo_id=repo.id, status="queued")
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+
+    await atlas_worker.execute_analysis_job(job_id, "encode", "starlette")
+
+    async with TestSessionLocal() as session:
+        job = await session.get(AnalysisJob, job_id)
+        result = (
+            await session.execute(
+                select(AnalysisResult).where(AnalysisResult.job_id == job_id)
+            )
+        ).scalar_one()
+
+    assert job.status == "completed"
+    assert result.setup_risk is not None
+    assert result.debug_readiness is not None
+    assert result.change_risk is not None
+    assert "scan_state" in result.setup_risk
+
+
+@pytest.mark.asyncio
+async def test_execute_atlas_job_marks_diagnostic_tabs_failed_without_failing_job(monkeypatch):
+    monkeypatch.setattr(atlas_worker, "AsyncSessionLocal", TestSessionLocal)
+
+    async def fake_run_analysis(owner, repo):
+        return _atlas_evidence(owner, repo), None
+
+    async def fake_generate_summaries(evidence):
+        return _summaries()
+
+    async def fake_clone(owner, repo, branch, dest):
+        raise RuntimeError("clone unavailable")
+
+    monkeypatch.setattr(atlas_worker, "run_analysis", fake_run_analysis)
+    monkeypatch.setattr(atlas_worker, "generate_summaries", fake_generate_summaries)
+    monkeypatch.setattr(atlas_worker, "_clone_repo_for_diagnostics", fake_clone)
+
+    async with TestSessionLocal() as session:
+        repo = Repo(
+            github_owner="encode",
+            github_repo="starlette",
+            github_url="https://github.com/encode/starlette",
+        )
+        session.add(repo)
+        await session.flush()
+        job = AnalysisJob(repo_id=repo.id, status="queued")
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+
+    await atlas_worker.execute_analysis_job(job_id, "encode", "starlette")
+
+    async with TestSessionLocal() as session:
+        job = await session.get(AnalysisJob, job_id)
+        result = (
+            await session.execute(
+                select(AnalysisResult).where(AnalysisResult.job_id == job_id)
+            )
+        ).scalar_one()
+
+    assert job.status == "completed"
+    assert result.setup_risk["scan_state"] == "scan_failed"
+    assert result.debug_readiness["scan_state"] == "scan_failed"
+    assert result.change_risk["scan_state"] == "scan_failed"
+
+
+@pytest.mark.asyncio
+async def test_execute_atlas_job_backfills_missing_tabs_on_cache_hit(monkeypatch):
+    monkeypatch.setattr(atlas_worker, "AsyncSessionLocal", TestSessionLocal)
+
+    async def fake_run_analysis(owner, repo):
+        return _atlas_evidence(owner, repo), None
+
+    async def fake_clone(owner, repo, branch, dest):
+        return None
+
+    monkeypatch.setattr(atlas_worker, "run_analysis", fake_run_analysis)
+    monkeypatch.setattr(atlas_worker, "_clone_repo_for_diagnostics", fake_clone)
+
+    async with TestSessionLocal() as session:
+        repo = Repo(
+            github_owner="encode",
+            github_repo="starlette",
+            github_url="https://github.com/encode/starlette",
+        )
+        session.add(repo)
+        await session.flush()
+        original_job = AnalysisJob(repo_id=repo.id, status="completed")
+        new_job = AnalysisJob(repo_id=repo.id, status="queued")
+        session.add_all([original_job, new_job])
+        await session.flush()
+        cached_result = AnalysisResult(
+            job_id=original_job.id,
+            repo_snapshot_sha="encode-starlette-sha",
+            detected_stack={
+                "frontend": [],
+                "backend": [],
+                "database": [],
+                "infra": [],
+                "testing": [],
+            },
+            dependencies={"npm": [], "python": []},
+            entry_points=[],
+            folder_map=[],
+            raw_evidence=[],
+        )
+        session.add(cached_result)
+        await session.commit()
+        new_job_id = new_job.id
+        cached_result_id = cached_result.id
+
+    await atlas_worker.execute_analysis_job(new_job_id, "encode", "starlette")
+
+    async with TestSessionLocal() as session:
+        job = await session.get(AnalysisJob, new_job_id)
+        result = await session.get(AnalysisResult, cached_result_id)
+
+    assert job.status == "completed"
+    assert job.cached_result_id == cached_result_id
+    assert result.setup_risk is not None
+    assert result.debug_readiness is not None
+    assert result.change_risk is not None
 
 
 @pytest.mark.asyncio
