@@ -166,6 +166,30 @@ class PublicRouteLimiter:
 public_route_limiter = PublicRouteLimiter()
 
 
+class ContentSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject request bodies larger than max_bytes before any route handler runs.
+
+    Prevents large payloads from consuming memory or reaching the GitHub fetch
+    pipeline. 64 KB is more than enough for any JSON body this API accepts.
+    """
+
+    def __init__(self, app, max_bytes: int = 65_536) -> None:
+        super().__init__(app)
+        self.max_bytes = max_bytes
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > self.max_bytes:
+            from starlette.responses import PlainTextResponse
+
+            return PlainTextResponse(status_code=413, content="Request body too large")
+        return await call_next(request)
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
@@ -183,5 +207,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        )
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=63072000; includeSubDomains",
         )
         return response

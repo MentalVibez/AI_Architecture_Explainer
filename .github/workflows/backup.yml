@@ -1,0 +1,58 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: "0 2 * * *"  # 02:00 UTC daily
+  workflow_dispatch:       # allow manual trigger from GitHub Actions UI
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Dump database
+        env:
+          # Add SUPABASE_DB_URL to GitHub Actions secrets.
+          # Use the direct (non-pooled) connection string from:
+          #   Supabase dashboard → Project Settings → Database → Connection string → URI
+          # It looks like: postgresql://postgres.[ref]:[password]@db.[ref].supabase.co:5432/postgres
+          PGPASSWORD_DUMMY: set_in_secrets
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          FILENAME="atlas-backup-${DATE}.dump"
+
+          pg_dump \
+            "$DATABASE_URL" \
+            --format=custom \
+            --compress=9 \
+            --no-password \
+            --file="$FILENAME"
+
+          SIZE=$(du -sh "$FILENAME" | cut -f1)
+          echo "Backup complete: $FILENAME ($SIZE)"
+          echo "BACKUP_FILE=$FILENAME" >> "$GITHUB_ENV"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: "*.dump"
+          # 30-day retention — adjust to match your recovery requirements.
+          # Note: GitHub artifacts are not a substitute for off-site backups.
+          # When on Supabase Pro, enable PITR there and treat this as a secondary copy.
+          retention-days: 30
+
+      - name: Report result
+        run: |
+          echo "Backup uploaded as artifact 'db-backup-${{ github.run_id }}'"
+          echo "Retained for 30 days. Download from: Actions → this run → Artifacts"

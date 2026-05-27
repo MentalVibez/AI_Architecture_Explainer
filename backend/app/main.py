@@ -19,7 +19,7 @@ from app.api.routes_webhook import router as webhook_router
 from app.api.scout import router as scout_router
 from app.core.config import settings
 from app.core.logging_config import configure_logging
-from app.core.security import SecurityHeadersMiddleware
+from app.core.security import ContentSizeLimitMiddleware, SecurityHeadersMiddleware
 
 try:
     import sentry_sdk
@@ -32,6 +32,37 @@ except ImportError:
 
 configure_logging(settings.environment)
 logger = logging.getLogger(__name__)
+
+
+def _validate_production_config() -> None:
+    """Log warnings for missing critical env vars at startup.
+
+    Only fires in production so dev/test environments stay noise-free.
+    """
+    if settings.environment != "production":
+        return
+
+    if not settings.redis_url:
+        logger.warning(
+            "REDIS_URL is not set. Rate limiting falls back to in-process counters "
+            "that do not survive restarts and are not shared across multiple instances. "
+            "Add a Redis add-on in Railway and set REDIS_URL."
+        )
+
+    if not settings.sentry_dsn:
+        logger.warning(
+            "SENTRY_DSN is not set. Unhandled exceptions will not be captured. "
+            "Create a Sentry project and set SENTRY_DSN in Railway."
+        )
+
+    if not settings.admin_api_key.strip():
+        logger.warning(
+            "ADMIN_API_KEY is not set. All /api/ops/* routes will return 404. "
+            "Set ADMIN_API_KEY in Railway to enable the ops dashboard."
+        )
+
+
+_validate_production_config()
 
 if settings.sentry_dsn and sentry_sdk:
     sentry_sdk.init(
@@ -64,6 +95,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Outermost layer: reject oversized bodies before rate limiting or route handlers run.
+app.add_middleware(ContentSizeLimitMiddleware)
 
 app.include_router(health_router)
 app.include_router(analysis_router)

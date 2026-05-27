@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select
@@ -102,14 +102,14 @@ async def create_analysis(
 @router.get("/analyze/{job_id}", response_model=JobStatusResponse)
 @limiter.limit("30/minute")
 async def get_job_status(
-    request: Request, job_id: int, db: AsyncSession = Depends(get_db)
+    request: Request, job_id: int, response: Response, db: AsyncSession = Depends(get_db)
 ) -> JobStatusResponse:
     await clear_expired_queued_jobs(db, settings.worker_queue_guard_seconds)
 
     result = await db.execute(
         select(AnalysisJob)
         .where(AnalysisJob.id == job_id)
-        .options(selectinload(AnalysisJob.result))
+        .options(selectinload(AnalysisJob.result), selectinload(AnalysisJob.repo))
     )
     job = result.scalar_one_or_none()
 
@@ -117,10 +117,16 @@ async def get_job_status(
         raise HTTPException(status_code=404, detail="Job not found")
 
     result_id = job.result.id if job.result else (job.cached_result_id or None)
+    repo_url = job.repo.github_url if job.repo else None
     duration_seconds = _duration_seconds(
-        job.started_at or job.created_at,
-        job.completed_at or datetime.now(UTC),
+        job.started_at,
+        job.completed_at or (datetime.now(UTC) if job.started_at else None),
     )
+
+    if job.status in {"completed", "failed"}:
+        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+    else:
+        response.headers["Cache-Control"] = "no-store"
 
     return JobStatusResponse(
         job_id=job.id,
@@ -128,6 +134,7 @@ async def get_job_status(
         phase=_phase_label(job.status),
         status_detail=_status_detail(job.status, duration_seconds),
         result_id=result_id,
+        repo_url=repo_url,
         error_message=job.error_message,
         duration_seconds=duration_seconds,
         next_poll_seconds=(
