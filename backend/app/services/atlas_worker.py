@@ -159,14 +159,6 @@ async def execute_analysis_job(
                     )
                 ).scalar_one_or_none()
                 if existing_result is not None:
-                    await _populate_diagnostic_tabs(
-                        job_id=job_id,
-                        owner=owner,
-                        repo=repo,
-                        default_branch=evidence.get("repo", {}).get("default_branch") or "HEAD",
-                        result=existing_result,
-                        db=db,
-                    )
                     existing_id = existing_result.id
                     job.status = "completed"
                     job.cached_result_id = existing_id
@@ -176,6 +168,26 @@ async def execute_analysis_job(
                         "atlas_cache_hit job_id=%d cached_result_id=%d sha=%s",
                         job_id, existing_id, tree_sha,
                     )
+                    try:
+                        await _populate_diagnostic_tabs(
+                            job_id=job_id,
+                            owner=owner,
+                            repo=repo,
+                            default_branch=evidence.get("repo", {}).get("default_branch") or "HEAD",
+                            result=existing_result,
+                            db=db,
+                        )
+                        await db.commit()
+                    except Exception:
+                        logger.warning(
+                            "Diagnostic tabs failed for cache-hit job %d, skipping",
+                            job_id,
+                            exc_info=True,
+                        )
+                        try:
+                            await db.rollback()
+                        except Exception:
+                            pass
                     return
 
             summaries = await generate_summaries(evidence)
@@ -198,19 +210,32 @@ async def execute_analysis_job(
                 raw_evidence=[evidence],
             )
             db.add(result)
-            await db.flush()
-            await _populate_diagnostic_tabs(
-                job_id=job_id,
-                owner=owner,
-                repo=repo,
-                default_branch=evidence.get("repo", {}).get("default_branch") or "HEAD",
-                result=result,
-                db=db,
-            )
             job.status = "completed"
             job.completed_at = datetime.now(UTC)
-            # Commit the Atlas result before intelligence persistence, which is best-effort.
+            # Commit result + job status NOW, before diagnostic tabs.  Any session
+            # corruption inside _populate_diagnostic_tabs cannot erase this commit.
             await db.commit()
+
+            try:
+                await _populate_diagnostic_tabs(
+                    job_id=job_id,
+                    owner=owner,
+                    repo=repo,
+                    default_branch=evidence.get("repo", {}).get("default_branch") or "HEAD",
+                    result=result,
+                    db=db,
+                )
+                await db.commit()
+            except Exception:
+                logger.warning(
+                    "Diagnostic tabs failed for job %d, result is still committed",
+                    job_id,
+                    exc_info=True,
+                )
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
 
             if intel_result is not None:
                 from app.services.intelligence_persistence import persist_intelligence

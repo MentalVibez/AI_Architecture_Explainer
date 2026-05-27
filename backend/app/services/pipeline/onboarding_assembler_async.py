@@ -142,6 +142,11 @@ async def _write_section_failed(
             "%s_sentinel_write_failed job_id=%s: %s",
             section, job_id, db_exc,
         )
+        # Reset session so subsequent sections can still write.
+        try:
+            await db.rollback()
+        except Exception:
+            pass
         # Do not re-raise — other sections must still run
 
 
