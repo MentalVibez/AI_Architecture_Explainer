@@ -16,6 +16,7 @@ function AnalyzeInner() {
   const requestedTab = params.get("tab");
   const [status, setStatus] = useState<string>("queued");
   const [error, setError] = useState<string | null>(null);
+  const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [slow, setSlow] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [statusDetail, setStatusDetail] = useState("");
@@ -41,8 +42,10 @@ function AnalyzeInner() {
         const data = await getJobStatus(jobId);
         setStatus(data.status);
         setStatusDetail(data.status_detail);
+        if (data.repo_url) setRepoUrl(data.repo_url);
         if (data.duration_seconds > 0) {
           setElapsedSeconds(data.duration_seconds);
+          if (data.duration_seconds > 30) setSlow(true);
         }
 
         if (data.status === "completed" && data.result_id) {
@@ -60,7 +63,7 @@ function AnalyzeInner() {
           setError(data.error_message ?? "Analysis failed");
           return;
         }
-        timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
+        timeoutId = setTimeout(poll, (data.next_poll_seconds ?? 2) * 1000);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       }
@@ -101,6 +104,9 @@ function AnalyzeInner() {
   }
 
   if (error) {
+    const retryHref = repoUrl
+      ? `/?repo=${encodeURIComponent(repoUrl)}`
+      : "/";
     return (
       <div className="panel mx-auto max-w-2xl rounded-[28px] p-8 text-center">
         <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#ff8d8d]">
@@ -110,10 +116,10 @@ function AnalyzeInner() {
         <p className="mt-4 text-sm leading-relaxed text-[#94a8cb]">{error}</p>
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
-            href="/"
+            href={retryHref}
             className="rounded-full bg-[#4d7cff] px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-white"
           >
-            Try again
+            Re-analyze this repo
           </Link>
           <Link
             href="/review"

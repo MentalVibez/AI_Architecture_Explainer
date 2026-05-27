@@ -14,6 +14,7 @@ class JobStatusResponse(BaseModel):
     phase: str = "unknown"
     status_detail: str = ""
     result_id: int | None = None
+    repo_url: str | None = None
     error_message: str | None = None
     duration_seconds: int = 0
     next_poll_seconds: int | None = None

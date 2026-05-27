@@ -8,7 +8,6 @@ Key things verified:
   - analyzer failure → SCAN_FAILED sentinel written, other sections continue
   - all-fail path → three sentinels, no unhandled exception
   - flush is called per section (progressive writes)
-  - mark_onboarding_failed_if_needed writes sentinels only to NULL sections
   - deserialize_section handles None / valid / malformed correctly
 
 These tests use asyncio.run / pytest-asyncio or plain asyncio.run().
@@ -112,7 +111,6 @@ from app.services.pipeline.onboarding_assembler_async import (
     deserialize_change_risk,
     deserialize_debug_readiness,
     deserialize_setup_risk,
-    mark_onboarding_failed_if_needed,
     run_onboarding_analysis,
 )
 
@@ -255,45 +253,7 @@ class TestSectionIsolation:
 
 
 # ─────────────────────────────────────────────────────────
-# 3. mark_onboarding_failed_if_needed
-# ─────────────────────────────────────────────────────────
-
-class TestMarkOnboardingFailed:
-    def test_writes_sentinels_to_null_sections(self, tmp_path):
-        db = FakeAsyncDB()
-        result = FakeResult()
-        result.setup_risk = {"scan_state": "found"}  # already written
-        # debug_readiness and change_risk are None — should get sentinels
-        db.scalar_return = result
-
-        _run(mark_onboarding_failed_if_needed("job-6", "worker died", db))
-
-        assert result.setup_risk["scan_state"]      == "found"   # unchanged
-        assert result.debug_readiness["scan_state"] == "scan_failed"
-        assert result.change_risk["scan_state"]     == "scan_failed"
-
-    def test_noop_when_result_not_found(self):
-        db = FakeAsyncDB()
-        db.scalar_return = None
-        # Must not raise
-        _run(mark_onboarding_failed_if_needed("no-such-job", "error", db))
-
-    def test_noop_when_all_sections_already_written(self):
-        db = FakeAsyncDB()
-        result = FakeResult()
-        result.setup_risk      = {"scan_state": "found"}
-        result.debug_readiness = {"scan_state": "found"}
-        result.change_risk     = {"scan_state": "found"}
-        db.scalar_return = result
-        initial_flushes = db.flushed
-
-        _run(mark_onboarding_failed_if_needed("job-7", "error", db))
-
-        assert db.flushed == initial_flushes  # no new flush
-
-
-# ─────────────────────────────────────────────────────────
-# 4. Deserialization helpers
+# 3. Deserialization helpers
 # ─────────────────────────────────────────────────────────
 
 class TestDeserialization:

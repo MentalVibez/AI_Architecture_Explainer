@@ -9,6 +9,7 @@ export interface JobStatusResponse {
   phase: "queue" | "analysis" | "complete" | "failed" | "unknown";
   status_detail: string;
   result_id: number | null;
+  repo_url: string | null;
   error_message: string | null;
   duration_seconds: number;
   next_poll_seconds: number | null;

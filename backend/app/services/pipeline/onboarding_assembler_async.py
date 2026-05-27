@@ -146,62 +146,6 @@ async def _write_section_failed(
 
 
 # ─────────────────────────────────────────────────────────
-# Outer failure guard — called from the worker's except block
-# ─────────────────────────────────────────────────────────
-
-async def mark_onboarding_failed_if_needed(
-    job_id: str,
-    error:  str,
-    db:     AsyncSession,
-) -> None:
-    """
-    Write SCAN_FAILED sentinels to any section still NULL after a worker crash.
-
-    Call this from the outer except block in your worker BEFORE committing
-    the job failure state. It is best-effort — errors here are logged, not raised.
-
-    Usage:
-        except Exception as exc:
-            await mark_onboarding_failed_if_needed(str(job_id), str(exc), db)
-            job.status = "failed"
-            await db.commit()
-            raise
-    """
-    try:
-        from sqlalchemy import select
-
-        from app.models.analysis import AnalysisResult
-
-        row = await db.scalar(
-            select(AnalysisResult).where(AnalysisResult.job_id == job_id)
-        )
-        if row is None:
-            return
-
-        sentinel = {
-            "scan_state":  ScanState.SCAN_FAILED.value,
-            "score":       None,
-            "level":       None,
-            "confidence":  0.0,
-            "scan_errors": [f"worker_failure:{error[:200]}"],
-        }
-
-        changed = False
-        for section in ("setup_risk", "debug_readiness", "change_risk"):
-            if getattr(row, section) is None:
-                setattr(row, section, sentinel)
-                changed = True
-
-        if changed:
-            db.add(row)
-            await db.flush()
-
-    except Exception as guard_exc:
-        log.error("mark_onboarding_failed_if_needed_error job_id=%s: %s", job_id, guard_exc)
-        # Best-effort only — never mask the original exception
-
-
-# ─────────────────────────────────────────────────────────
 # Deserialization helpers — used by the API route
 # ─────────────────────────────────────────────────────────
 
