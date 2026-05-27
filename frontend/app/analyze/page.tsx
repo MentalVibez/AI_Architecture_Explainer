@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getJobStatus } from "@/lib/api";
+import { getJobStatus, submitAnalysis } from "@/lib/api";
 import LoadingAnalysis from "@/components/LoadingAnalysis";
 
 const POLL_INTERVAL_MS = 2000;
@@ -56,7 +56,20 @@ function AnalyzeInner() {
           return;
         }
         if (data.status === "completed" && !data.result_id) {
-          setError("Analysis finished, but Atlas could not attach a results workspace. Please start a fresh run.");
+          if (data.repo_url) {
+            // Result was lost — silently resubmit so the user doesn't have to.
+            try {
+              const retry = await submitAnalysis(data.repo_url);
+              const tabQuery = ["setup", "debug", "change"].includes(requestedTab ?? "")
+                ? `&tab=${requestedTab}`
+                : "";
+              router.replace(`/analyze?job_id=${retry.job_id}${tabQuery}`);
+            } catch {
+              setError("Analysis finished, but the result was not saved. Please try submitting the repo again.");
+            }
+          } else {
+            setError("Analysis finished, but the result was not saved. Please try submitting the repo again.");
+          }
           return;
         }
         if (data.status === "failed") {
