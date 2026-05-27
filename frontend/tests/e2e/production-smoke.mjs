@@ -35,7 +35,12 @@ async function run() {
 
   page.on("console", (msg) => {
     if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
+      const text = msg.text();
+      // Browser-level resource loading failures (e.g. from admin-gated 404 fetches) are
+      // tracked via homeChecks status codes — don't double-count them as JS errors.
+      if (!text.startsWith("Failed to load resource:")) {
+        consoleErrors.push(text);
+      }
     }
   });
 
