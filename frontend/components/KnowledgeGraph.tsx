@@ -81,6 +81,35 @@ interface Props {
 
 type RoleFilter = "all" | string;
 
+async function fetchGraphJson<T>(url: string): Promise<T> {
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+  });
+  const body = await response.text();
+  let parsed: unknown = null;
+
+  if (body) {
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      const preview = body.replace(/\s+/g, " ").slice(0, 180);
+      throw new Error(
+        `Graph API returned non-JSON response (${response.status}). ${preview || "No response body."}`
+      );
+    }
+  }
+
+  if (!response.ok) {
+    const detail =
+      parsed && typeof parsed === "object" && "detail" in parsed
+        ? String((parsed as { detail: unknown }).detail)
+        : body || response.statusText;
+    throw new Error(`Graph API ${response.status}: ${detail}`);
+  }
+
+  return parsed as T;
+}
+
 export default function KnowledgeGraph({ resultId }: Props) {
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [links, setLinks] = useState<GraphLink[]>([]);
@@ -116,11 +145,14 @@ export default function KnowledgeGraph({ resultId }: Props) {
         : process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
     Promise.all([
-      fetch(`${baseUrl}/api/results/${resultId}/files?limit=1000`).then((r) => r.json()),
-      fetch(`${baseUrl}/api/results/${resultId}/edges?limit=5000`).then((r) => r.json()),
+      fetchGraphJson<FileNode[]>(`${baseUrl}/api/results/${resultId}/files?limit=1000`),
+      fetchGraphJson<DepEdge[]>(`${baseUrl}/api/results/${resultId}/edges?limit=5000`),
     ])
       .then(([files, edges]: [FileNode[], DepEdge[]]) => {
         if (cancelled) return;
+        if (!Array.isArray(files) || !Array.isArray(edges)) {
+          throw new Error("Graph API returned an unexpected payload shape.");
+        }
         const nodeMap = new Set(files.map((f) => f.path));
         setNodes(files.map((f) => ({ ...f, id: f.path })));
         setLinks(
