@@ -241,14 +241,17 @@ async def execute_analysis_job(
                 from app.services.intelligence_persistence import persist_intelligence
 
                 repo_info = evidence.get("repo", {})
-                await persist_intelligence(
-                    result_id=result.id,
-                    repo_url=f"https://github.com/{owner}/{repo}",
-                    repo_owner=repo_info.get("owner", owner),
-                    repo_name=repo_info.get("name", repo),
-                    intel_result=intel_result,
-                    db=db,
-                )
+                # Use a separate session so persist_intelligence's rollback-on-failure
+                # cannot touch the committed atlas_results / atlas_jobs rows.
+                async with AsyncSessionLocal() as intel_db:
+                    await persist_intelligence(
+                        result_id=result.id,
+                        repo_url=f"https://github.com/{owner}/{repo}",
+                        repo_owner=repo_info.get("owner", owner),
+                        repo_name=repo_info.get("name", repo),
+                        intel_result=intel_result,
+                        db=intel_db,
+                    )
 
         except Exception as exc:
             logger.exception("Analysis pipeline failed for job %d: %s", job_id, exc)
