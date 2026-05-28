@@ -81,6 +81,9 @@ interface Props {
 
 type RoleFilter = "all" | string;
 
+const GRAPH_FILE_LIMIT = 300;
+const GRAPH_EDGE_LIMIT = 1200;
+
 async function fetchGraphJson<T>(url: string): Promise<T> {
   const response = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -113,7 +116,8 @@ async function fetchGraphJson<T>(url: string): Promise<T> {
 export default function KnowledgeGraph({ resultId }: Props) {
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [links, setLinks] = useState<GraphLink[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<GraphNode | null>(null);
   const [search, setSearch] = useState("");
@@ -135,6 +139,10 @@ export default function KnowledgeGraph({ resultId }: Props) {
 
   // Fetch graph data
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -145,8 +153,12 @@ export default function KnowledgeGraph({ resultId }: Props) {
         : process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
     Promise.all([
-      fetchGraphJson<FileNode[]>(`${baseUrl}/api/results/${resultId}/files?limit=1000`),
-      fetchGraphJson<DepEdge[]>(`${baseUrl}/api/results/${resultId}/edges?limit=5000`),
+      fetchGraphJson<FileNode[]>(
+        `${baseUrl}/api/results/${resultId}/files?limit=${GRAPH_FILE_LIMIT}`
+      ),
+      fetchGraphJson<DepEdge[]>(
+        `${baseUrl}/api/results/${resultId}/edges?limit=${GRAPH_EDGE_LIMIT}`
+      ),
     ])
       .then(([files, edges]: [FileNode[], DepEdge[]]) => {
         if (cancelled) return;
@@ -174,7 +186,7 @@ export default function KnowledgeGraph({ resultId }: Props) {
       });
 
     return () => { cancelled = true; };
-  }, [resultId]);
+  }, [enabled, resultId]);
 
   const handleNodeClick = useCallback((node: object) => {
     setSelected(node as GraphNode);
@@ -199,6 +211,30 @@ export default function KnowledgeGraph({ resultId }: Props) {
     ),
   };
 
+  if (!enabled) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6d7f9f]">
+              Deferred for page responsiveness
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[#94a8cb]">
+              Load the interactive graph when you need it. Large repositories can be heavy to render.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEnabled(true)}
+            className="rounded-full bg-[#4d7cff] px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-white hover:bg-[#6794ff]"
+          >
+            Load graph
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-[#6d7f9f] font-mono text-xs">
@@ -209,8 +245,22 @@ export default function KnowledgeGraph({ resultId }: Props) {
 
   if (error) {
     return (
-      <div className="font-mono text-xs text-[#c84b4b] p-4">
-        Failed to load graph: {error}
+      <div className="rounded-2xl border border-[#ff8d8d]/20 bg-[#ff8d8d]/10 p-4">
+        <p className="font-mono text-xs text-[#ffb3b3]">
+          Failed to load graph: {error}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setNodes([]);
+            setLinks([]);
+            setError(null);
+            setEnabled(false);
+          }}
+          className="mt-3 rounded-full border border-white/10 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[#c2d3f2] hover:text-white"
+        >
+          Reset graph
+        </button>
       </div>
     );
   }
