@@ -73,10 +73,10 @@ const VERDICT_MAP: Record<Verdict, { label: string; color: string }> = {
 };
 
 const SAMPLE_QUERIES = [
+  "MentalVibez/ai-agent-orchestrator",
   "nextjs starter auth",
   "rag pipeline langchain",
   "fastapi saas starter",
-  "aws cdk infrastructure",
 ] as const;
 
 const WORKFLOW_POINTS = [
@@ -87,9 +87,22 @@ const WORKFLOW_POINTS = [
 ] as const;
 const EMPTY_STATE_HINTS = [
   "Try broader technology terms instead of project names.",
+  "For a known GitHub repo, use owner/repo or paste the full GitHub URL.",
   "Enable both GitHub and GitLab when the search space is thin.",
-  "If you already know the repo, skip Scout and go straight to Atlas.",
 ] as const;
+
+function scoutErrorMessage(status: number, body: unknown) {
+  if (body && typeof body === "object" && "detail" in body) {
+    const detail = (body as { detail: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    if (detail && typeof detail === "object" && "message" in detail) {
+      return String((detail as { message: unknown }).message);
+    }
+  }
+  if (status === 429) return "Scout is rate limited. Please wait and retry.";
+  if (status >= 500) return "Scout hit a backend error while searching. Retry in a moment.";
+  return `Scout API error ${status}`;
+}
 
 function fmtNum(n: number) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
@@ -354,7 +367,7 @@ export default function ScoutPage() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail ?? `Error ${res.status}`);
+        throw new Error(scoutErrorMessage(res.status, body));
       }
 
       const data: ScoutResponse = await res.json();
@@ -411,7 +424,7 @@ export default function ScoutPage() {
                   RepoScout Query
                 </p>
                 <p className="mt-2 max-w-md text-sm leading-relaxed text-[#8ea3c7]">
-                  Search both platforms, tune ranking, and pass the best result into Atlas.
+                  Search both platforms, or paste a known GitHub repository for an exact lookup.
                 </p>
               </div>
               <Link
@@ -427,7 +440,7 @@ export default function ScoutPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => event.key === "Enter" && !loading && void handleScan()}
-                placeholder="e.g. nextjs auth starter or rag pipeline langchain"
+                placeholder="owner/repo, GitHub URL, or e.g. rag pipeline langchain"
                 className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#07101d] px-4 py-3.5 font-mono text-[13px] text-[#f5f8ff] placeholder-[#7082a5] focus:border-[#35c58b]/40 focus:outline-none"
               />
               <button

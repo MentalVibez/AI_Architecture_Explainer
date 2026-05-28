@@ -14,13 +14,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from app.schemas.scout import SignalType
+from app.llm.scout_prompts import LLMRepoScore, LLMScoutOutput
+from app.schemas.scout import Platform, ScoutRequest, SignalType, SortBy
 from app.services.repo_scout import (
     _classify_intent,
     _deduplicate,
     _noise_flags,
+    _parse_exact_github_repo_query,
     _quality_score,
     _should_exclude,
+    run_scout,
 )
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
@@ -451,3 +454,83 @@ class TestIntentClassifier:
     def test_word_boundary_prevents_partial_keyword_match(self):
         """'learning' should not match the 'learn' keyword."""
         assert _classify_intent("best repos for learning") == "general"
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Exact GitHub repository lookup
+# ═════════════════════════════════════════════════════════════════════════════
+
+class TestExactGitHubRepoLookup:
+    def test_exact_repo_parser_accepts_supported_input_shapes(self):
+        expected = ("MentalVibez", "ai-agent-orchestrator")
+
+        assert _parse_exact_github_repo_query("MentalVibez/ai-agent-orchestrator") == expected
+        assert _parse_exact_github_repo_query("repo:MentalVibez/ai-agent-orchestrator") == expected
+        assert (
+            _parse_exact_github_repo_query(
+                "https://github.com/MentalVibez/ai-agent-orchestrator"
+            )
+            == expected
+        )
+        assert _parse_exact_github_repo_query("MentalVibez ai-agent-orchestrator") == expected
+
+    def test_exact_repo_parser_ignores_general_queries(self):
+        assert _parse_exact_github_repo_query("nextjs starter auth") is None
+
+    async def test_run_scout_uses_exact_github_lookup_before_search(self, monkeypatch):
+        repo = {
+            **_repo(
+                id="gh_1097895983",
+                full_name="MentalVibez/ai-agent-orchestrator",
+                stars=0,
+                forks=0,
+                license_name="NOASSERTION",
+                topics=["ai-agents", "fastapi"],
+                description="Multi-agent AI orchestrator",
+            ),
+            "owner": "MentalVibez",
+            "url": "https://github.com/MentalVibez/ai-agent-orchestrator",
+        }
+        calls = {"exact": 0, "search": 0}
+
+        async def fake_exact(owner, name, token):
+            calls["exact"] += 1
+            assert (owner, name) == ("MentalVibez", "ai-agent-orchestrator")
+            return repo
+
+        async def fake_search(*args, **kwargs):
+            calls["search"] += 1
+            return []
+
+        async def fake_llm(user_query, repos, llm, intent_class="general"):
+            return LLMScoutOutput(
+                scores={
+                    "gh_1097895983": LLMRepoScore(
+                        relevance_score=95,
+                        verdict="RECOMMENDED",
+                        insight="Exact repository match for the requested AI agent orchestrator.",
+                        risks=[],
+                    )
+                },
+                tldr="Exact repository match found and ranked with deterministic quality signals.",
+            )
+
+        monkeypatch.setattr(
+            "app.services.repo_scout._fetch_github_repo_exact",
+            fake_exact,
+        )
+        monkeypatch.setattr("app.services.repo_scout._fetch_github", fake_search)
+        monkeypatch.setattr("app.services.repo_scout._score_with_llm", fake_llm)
+
+        response = await run_scout(
+            ScoutRequest(
+                query="MentalVibez ai-agent-orchestrator",
+                platforms=[Platform.GITHUB],
+                sort_by=SortBy.BEST_MATCH,
+            ),
+            llm=object(),
+        )
+
+        assert calls == {"exact": 1, "search": 0}
+        assert response.total == 1
+        assert response.repos[0].full_name == "MentalVibez/ai-agent-orchestrator"

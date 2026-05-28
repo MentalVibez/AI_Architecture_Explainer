@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getJobStatus, submitAnalysis } from "@/lib/api";
 import LoadingAnalysis from "@/components/LoadingAnalysis";
 
-const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
 function AnalyzeInner() {

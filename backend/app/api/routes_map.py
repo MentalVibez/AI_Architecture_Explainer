@@ -14,6 +14,7 @@ service call required.
 import logging
 import re
 import time
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -31,7 +32,7 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/map", tags=["map"])
 _GITHUB_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$")
 
-# Maps framework_detector output strings → FRAMEWORK_PATTERNS keys
+# Maps framework_detector output names to FRAMEWORK_PATTERNS keys.
 _FRAMEWORK_MAP: dict[str, str] = {
     "fastapi": "fastapi",
     "flask": "flask",
@@ -62,6 +63,30 @@ class MapResponse(BaseModel):
     duration_ms: int
 
 
+def _stack_item_name(item: Any) -> str:
+    """Return a display/framework name from rich or legacy stack entries."""
+    if isinstance(item, str):
+        return item
+    if isinstance(item, dict):
+        value = item.get("name")
+        return value if isinstance(value, str) else ""
+    return ""
+
+
+def _stack_names(items: Any) -> list[str]:
+    if isinstance(items, str):
+        items = [items]
+    if not isinstance(items, list):
+        return []
+
+    names: list[str] = []
+    for item in items:
+        name = _stack_item_name(item).strip()
+        if name:
+            names.append(name)
+    return names
+
+
 def _build_profile(detected_stack: dict) -> tuple[str, str]:
     """
     Derive (framework_key, confidence) from detect_stack() output.
@@ -70,8 +95,8 @@ def _build_profile(detected_stack: dict) -> tuple[str, str]:
     or falls back to nextjs if present in frontend,
     or "unknown" (generic scan).
     """
-    backend: list[str] = detected_stack.get("backend", [])
-    frontend: list[str] = detected_stack.get("frontend", [])
+    backend = _stack_names(detected_stack.get("backend", []))
+    frontend = _stack_names(detected_stack.get("frontend", []))
 
     for fw in backend:
         key = _FRAMEWORK_MAP.get(fw.lower())
@@ -123,21 +148,38 @@ async def map_endpoints(
 
     detected_stack: dict = evidence.get("detected_stack", {})
 
+    detected_backend = _stack_names(detected_stack.get("backend", []))
+    detected_frontend = _stack_names(detected_stack.get("frontend", []))
+
     # Step 2: determine framework
-    if force_framework:
-        framework = force_framework.lower()
-        confidence = "high"
-        from_profile = False
-    else:
-        framework, confidence = _build_profile(detected_stack)
-        from_profile = True
+    try:
+        if force_framework:
+            framework = force_framework.lower()
+            confidence = "high"
+            from_profile = False
+        else:
+            framework, confidence = _build_profile(detected_stack)
+            from_profile = True
+    except Exception:
+        logger.exception("Profile build failed for %s/%s", owner, repo)
+        raise HTTPException(status_code=502, detail="Could not build repository stack profile.")
+
+    logger.info(
+        "map_profile_built repo=%s/%s framework=%s confidence=%s backend=%s frontend=%s",
+        owner,
+        repo,
+        framework,
+        confidence,
+        detected_backend,
+        detected_frontend,
+    )
 
     profile_used = ProfileUsed(
         framework=framework,
         framework_confidence=confidence,
         from_profile=from_profile,
-        detected_backend=detected_stack.get("backend", []),
-        detected_frontend=detected_stack.get("frontend", []),
+        detected_backend=detected_backend,
+        detected_frontend=detected_frontend,
     )
 
     # Step 3: extract routes with targeted patterns

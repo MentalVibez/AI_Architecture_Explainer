@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -8,6 +8,9 @@ from app.core.database import Base
 
 class AtlasJob(Base):
     __tablename__ = "atlas_jobs"
+    __table_args__ = (
+        Index("ix_atlas_jobs_status_created_at", "status", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     repo_id: Mapped[int] = mapped_column(ForeignKey("repos.id"))

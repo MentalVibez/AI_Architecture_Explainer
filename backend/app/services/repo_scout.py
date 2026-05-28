@@ -19,6 +19,7 @@ import logging
 import math
 import re
 from datetime import UTC
+from urllib.parse import urlparse
 
 import httpx
 
@@ -46,6 +47,7 @@ logger = logging.getLogger(__name__)
 # ── constants ─────────────────────────────────────────────────────────────────
 
 GITHUB_SEARCH_URL = "https://api.github.com/search/repositories"
+GITHUB_REPO_URL = "https://api.github.com/repos/{owner}/{repo}"
 GITLAB_SEARCH_URL = "https://gitlab.com/api/v4/projects"
 
 # Valid GitHub sort values (best-match = omit param entirely)
@@ -59,6 +61,8 @@ _GH_SORT_MAP: dict[SortBy, str | None] = {
 _MIRROR_PATTERNS = re.compile(
     r"\b(mirror|clone|fork|backup|copy|archived|deprecated)\b", re.I
 )
+_GITHUB_OWNER_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
+_GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]{1,100}$")
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -79,6 +83,41 @@ def _find_term_matches(query: str, text: str) -> list[str]:
     """Return query tokens found in text (case-insensitive)."""
     tokens = [t.lower() for t in re.split(r"\W+", query) if len(t) > 2]
     return [t for t in tokens if t in text.lower()]
+
+
+def _parse_exact_github_repo_query(query: str) -> tuple[str, str] | None:
+    """Parse URL, repo:owner/repo, owner/repo, or owner repo exact lookups."""
+    cleaned = query.strip().strip("/")
+    if not cleaned:
+        return None
+
+    if cleaned.lower().startswith("repo:"):
+        cleaned = cleaned[5:].strip()
+
+    parsed = urlparse(cleaned if "://" in cleaned else f"https://{cleaned}")
+    if parsed.netloc.lower() in {"github.com", "www.github.com"}:
+        parts = [part for part in parsed.path.strip("/").split("/") if part]
+        if len(parts) >= 2:
+            return _valid_repo_pair(parts[0], parts[1].removesuffix(".git"))
+
+    slash_match = re.fullmatch(r"([A-Za-z0-9-]+)/([A-Za-z0-9_.-]+)", cleaned)
+    if slash_match:
+        return _valid_repo_pair(slash_match.group(1), slash_match.group(2).removesuffix(".git"))
+
+    spaced_match = re.fullmatch(r"([A-Za-z0-9-]+)\s+([A-Za-z0-9_.-]+)", cleaned)
+    if spaced_match:
+        return _valid_repo_pair(
+            spaced_match.group(1),
+            spaced_match.group(2).removesuffix(".git"),
+        )
+
+    return None
+
+
+def _valid_repo_pair(owner: str, repo: str) -> tuple[str, str] | None:
+    if _GITHUB_OWNER_RE.fullmatch(owner) and _GITHUB_REPO_RE.fullmatch(repo):
+        return owner, repo
+    return None
 
 
 # ── intent classifier ────────────────────────────────────────────────────────
@@ -365,6 +404,49 @@ async def _fetch_github(
     ]
 
 
+async def _fetch_github_repo_exact(
+    owner: str,
+    repo: str,
+    token: str | None,
+) -> dict | None:
+    headers = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            GITHUB_REPO_URL.format(owner=owner, repo=repo),
+            headers=headers,
+        )
+        if resp.status_code == 404:
+            return None
+        if resp.status_code == 403:
+            raise RuntimeError("github_rate_limit")
+        resp.raise_for_status()
+
+    r = resp.json()
+    return {
+        "id": f"gh_{r['id']}",
+        "platform": "github",
+        "full_name": r["full_name"],
+        "owner": r["owner"]["login"],
+        "description": (r.get("description") or "").strip(),
+        "url": r["html_url"],
+        "stars": r["stargazers_count"],
+        "forks": r["forks_count"],
+        "open_issues": r["open_issues_count"],
+        "language": r.get("language"),
+        "license_name": r["license"]["spdx_id"] if r.get("license") else None,
+        "updated_at": r.get("updated_at"),
+        "created_at": r.get("created_at"),
+        "readme_verified": False,
+        "topics": r.get("topics") or [],
+        "is_fork": r.get("fork", False),
+        "is_archived": r.get("archived", False),
+        "is_template": r.get("is_template", False),
+    }
+
+
 # ── GitLab fetcher ────────────────────────────────────────────────────────────
 
 async def _fetch_gitlab(query: str) -> list[dict]:
@@ -451,8 +533,17 @@ async def _score_with_llm(
 async def run_scout(req: ScoutRequest, llm) -> ScoutResponse:
     # 1. Fetch from selected platforms
     raw: list[dict] = []
+    exact_repo = _parse_exact_github_repo_query(req.query)
     if Platform.GITHUB in req.platforms:
-        raw.extend(await _fetch_github(req.query, req.sort_by, req.github_token))
+        exact_match = None
+        if exact_repo:
+            owner, repo = exact_repo
+            logger.info("scout_exact_repo_lookup owner=%s repo=%s", owner, repo)
+            exact_match = await _fetch_github_repo_exact(owner, repo, req.github_token)
+        if exact_match:
+            raw.append(exact_match)
+        else:
+            raw.extend(await _fetch_github(req.query, req.sort_by, req.github_token))
     if Platform.GITLAB in req.platforms:
         raw.extend(await _fetch_gitlab(req.query))
 

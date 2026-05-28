@@ -88,6 +88,29 @@ function confidenceColor(value: string) {
   return "#8ea3c7";
 }
 
+function mapErrorMessage(status: number, body: string) {
+  try {
+    const parsed = JSON.parse(body) as { detail?: unknown };
+    const detail = parsed.detail;
+    if (typeof detail === "string") {
+      return `Map API ${status}: ${detail}`;
+    }
+    if (detail && typeof detail === "object" && "message" in detail) {
+      return `Map API ${status}: ${String((detail as { message: unknown }).message)}`;
+    }
+  } catch {
+    // Fall through to the plain body handling below.
+  }
+
+  if (status >= 500) {
+    return "Map hit a backend error while reading this repository. Try again, or open Atlas for the broader analysis path.";
+  }
+  if (status === 429) {
+    return "Map is rate limited for this repository right now. Wait a moment and retry.";
+  }
+  return body ? `Map API ${status}: ${body}` : `Map API ${status}`;
+}
+
 function MethodBadge({ method }: { method: string }) {
   const color = METHOD_COLORS[method.toUpperCase()] ?? METHOD_COLORS.ANY;
   return (
@@ -225,6 +248,10 @@ function MapPageContent() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    await runMap();
+  }
+
+  async function runMap() {
     setError(null);
     setResult(null);
 
@@ -247,7 +274,7 @@ function MapPageContent() {
       });
       if (!response.ok) {
         const body = await response.text();
-        throw new Error(`API error ${response.status}: ${body}`);
+        throw new Error(mapErrorMessage(response.status, body));
       }
       const data: MapResult = await response.json();
       setPhase(PHASES.length);
@@ -408,8 +435,15 @@ function MapPageContent() {
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={() => setError(null)}
+                onClick={() => void runMap()}
                 className="rounded-full bg-[#7ec8ff] px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#07131b]"
+              >
+                Retry Map
+              </button>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="rounded-full border border-white/10 px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-[#c2d3f2]"
               >
                 Try another repo
               </button>
