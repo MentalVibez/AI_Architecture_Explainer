@@ -13,13 +13,10 @@ Scenarios:
 
 from unittest.mock import patch
 
-import pytest
-
 from app.models.analysis_job import AnalysisJob
 from app.models.analysis_result import AnalysisResult
 from app.models.repo import Repo
 from tests.legacy.conftest import TestSessionLocal
-
 
 # ─────────────────────────────────────────────────────────
 # Helpers
@@ -138,7 +135,9 @@ async def test_refresh_diagnostics_populates_null_tabs(client):
 async def test_refresh_diagnostics_correct_owner_repo_passed(client):
     """Ensure the correct owner/repo/branch from raw_evidence reaches _populate_diagnostic_tabs."""
     result_id = await _make_result(
-        raw_evidence=[{"repo": {"owner": "django", "name": "django", "default_branch": "stable/4.2.x"}}]
+        raw_evidence=[
+            {"repo": {"owner": "django", "name": "django", "default_branch": "stable/4.2.x"}}
+        ]
     )
 
     captured: dict = {}

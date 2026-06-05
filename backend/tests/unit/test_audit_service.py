@@ -23,7 +23,6 @@ import app.models.analysis_result  # noqa: F401
 from app.core.database import Base
 from app.services.audit_service import AuditService
 
-
 # ── shared async in-memory DB fixture ────────────────────────────────────────
 
 @pytest.fixture
@@ -94,7 +93,7 @@ async def test_get_org_audit_logs_returns_only_own_org(db):
 
     logs, total = await AuditService.get_org_audit_logs(db, org_id="acme")
     assert total == 2
-    assert all(l.org_id == "acme" for l in logs)
+    assert all(log.org_id == "acme" for log in logs)
 
 
 async def test_get_org_audit_logs_pagination(db):
@@ -123,7 +122,7 @@ async def test_get_action_logs_filters_by_action(db):
 
     logs = await AuditService.get_action_logs(db, org_id="acme", action="generated_devcontainer")
     assert len(logs) == 2
-    assert all(l.action == "generated_devcontainer" for l in logs)
+    assert all(log.action == "generated_devcontainer" for log in logs)
 
 
 async def test_get_action_logs_does_not_cross_org(db):
@@ -145,7 +144,7 @@ async def test_get_user_activity_returns_only_that_user(db):
 
     logs = await AuditService.get_user_activity(db, org_id="acme", user_id="alice")
     assert len(logs) == 2
-    assert all(l.user_id == "alice" for l in logs)
+    assert all(log.user_id == "alice" for log in logs)
 
 
 async def test_get_user_activity_does_not_cross_org(db):

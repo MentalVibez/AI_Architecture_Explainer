@@ -18,7 +18,6 @@ from app.api.routes.devcontainer import (
     _languages_from_stack,
 )
 
-
 # ── _languages_from_stack ─────────────────────────────────────────────────────
 
 def test_languages_fastapi_maps_to_python():

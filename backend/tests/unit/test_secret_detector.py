@@ -5,7 +5,6 @@ Covers SecretDetector.detect_secrets, mask_all_secrets, and get_summary.
 """
 from app.utils.secret_detector import SecretDetector
 
-
 # ── detect_secrets ─────────────────────────────────────────────────────────────
 
 def test_detect_api_key_assignment():

@@ -10,17 +10,15 @@ Verifies encrypt_json / decrypt_json / is_encrypted behaviour:
 """
 from __future__ import annotations
 
-import pytest
 from cryptography.fernet import Fernet
 
 from app.utils.field_encryption import decrypt_json, encrypt_json, is_encrypted
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def _set_key(monkeypatch, key: str) -> None:
-    import app.utils.field_encryption as _mod
     import app.core.config as _cfg
+    import app.utils.field_encryption as _mod
     monkeypatch.setattr(_cfg.settings, "atlas_field_encryption_key", key)
     # Force _fernet() to re-evaluate the patched setting
     monkeypatch.setattr(_mod, "_fernet", lambda: (
@@ -114,8 +112,9 @@ def test_decrypt_with_wrong_key_returns_raw(monkeypatch):
     key_a = Fernet.generate_key().decode()
     key_b = Fernet.generate_key().decode()
 
-    import app.utils.field_encryption as _mod
     from cryptography.fernet import Fernet as _Fernet
+
+    import app.utils.field_encryption as _mod
 
     monkeypatch.setattr(_mod, "_fernet", lambda: _Fernet(key_a.encode()))
     encrypted = encrypt_json({"secret": "data"})

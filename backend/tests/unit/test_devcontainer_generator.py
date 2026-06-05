@@ -11,7 +11,6 @@ Covers the deterministic DevcontainerGenerator:
 """
 from app.services.devcontainer_generator import DevcontainerGenerator
 
-
 # ── image selection ───────────────────────────────────────────────────────────
 
 def test_python_language_picks_python_image():

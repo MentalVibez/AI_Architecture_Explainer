@@ -5,7 +5,6 @@ Pure unit tests for extract_chunks() — no DB, no LLM, no network.
 """
 from app.services.embedding_service import extract_chunks
 
-
 _FULL_STACK = {
     "backend": [{"name": "FastAPI", "confidence": 0.95}],
     "frontend": [{"name": "Next.js", "confidence": 0.85}],
