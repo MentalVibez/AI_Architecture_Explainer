@@ -9,8 +9,8 @@ from slowapi.util import get_remote_address
 from app.api.routes.audit import router as audit_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.devcontainer import router as devcontainer_router
-from app.api.routes.search import router as search_router
 from app.api.routes.intelligence import router as intelligence_router
+from app.api.routes.search import router as search_router
 from app.api.routes_analysis import router as analysis_router
 from app.api.routes_health import router as health_router
 from app.api.routes_history import router as history_router

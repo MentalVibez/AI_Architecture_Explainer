@@ -1,10 +1,9 @@
 """Pydantic schemas for devcontainer + audit APIs."""
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-
 
 # ============================================================================
 # DEVCONTAINER SCHEMAS
@@ -15,7 +14,7 @@ class DevcontainerFeature(BaseModel):
     """Individual devcontainer feature."""
 
     name: str = Field(..., description="Feature name (e.g., 'python:3.11')")
-    version: Optional[str] = Field(None, description="Feature version")
+    version: str | None = Field(None, description="Feature version")
 
 
 class DevcontainerService(BaseModel):
@@ -23,7 +22,7 @@ class DevcontainerService(BaseModel):
 
     name: str = Field(..., description="Service name")
     image: str = Field(..., description="Docker image")
-    ports: Optional[dict[str, int]] = Field(None, description="Port mappings")
+    ports: dict[str, int] | None = Field(None, description="Port mappings")
 
 
 class DevcontainerConfig(BaseModel):
@@ -33,7 +32,7 @@ class DevcontainerConfig(BaseModel):
     image: str = Field(..., description="Base image")
     features: list[str] = Field(default_factory=list, description="Features to install")
     services: dict[str, Any] = Field(default_factory=dict, description="Services (docker-compose)")
-    postCreateCommand: Optional[str] = Field(None, description="Command to run after creation")
+    postCreateCommand: str | None = Field(None, description="Command to run after creation")
     customizations: dict[str, Any] = Field(default_factory=dict, description="IDE customizations")
     mounts: list[str] = Field(default_factory=list, description="Volume mounts")
     remoteUser: str = Field(default="vscode", description="Remote user")
@@ -57,7 +56,7 @@ class DevcontainerResponse(BaseModel):
     version_number: int
     # Raw devcontainer.json dict — may include LLM-generated fields beyond the base schema
     config: dict[str, Any]
-    repo_url: Optional[str] = None
+    repo_url: str | None = None
     created_at: datetime
 
 
@@ -86,22 +85,22 @@ class AuditLogRequest(BaseModel):
     """Log an action (internal use)."""
 
     action: str = Field(..., description="Action performed")
-    resource_type: Optional[str] = Field(None, description="Resource type")
-    resource_id: Optional[UUID] = Field(None, description="Resource ID")
+    resource_type: str | None = Field(None, description="Resource type")
+    resource_id: UUID | None = Field(None, description="Resource ID")
     result: str = Field(default="success", description="Result (success, permission_denied, error)")
-    error_message: Optional[str] = Field(None, description="Error details if failed")
-    details: Optional[dict[str, Any]] = Field(None, description="Additional metadata")
+    error_message: str | None = Field(None, description="Error details if failed")
+    details: dict[str, Any] | None = Field(None, description="Additional metadata")
 
 
 class AuditLogResponse(BaseModel):
     """Audit log entry."""
 
     id: UUID
-    user_id: Optional[str]
+    user_id: str | None
     org_id: UUID
     action: str
-    resource_type: Optional[str]
-    resource_id: Optional[UUID]
+    resource_type: str | None
+    resource_id: UUID | None
     result: str
     created_at: datetime
 

@@ -7,7 +7,7 @@ import textwrap
 import zipfile
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

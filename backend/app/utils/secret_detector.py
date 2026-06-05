@@ -1,6 +1,5 @@
 """Utility for detecting and masking secrets in code."""
 import re
-from typing import Optional
 
 
 class SecretDetector:

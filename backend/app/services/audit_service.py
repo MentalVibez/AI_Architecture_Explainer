@@ -1,5 +1,5 @@
 """Audit logging service for SOC2 compliance."""
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,14 +14,14 @@ class AuditService:
         session: AsyncSession,
         action: str,
         org_id: str,
-        user_id: Optional[str] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        user_id: str | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
         result: str = "success",
-        error_message: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        error_message: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> AuditLog:
         """Log a user action.
 
@@ -82,7 +82,7 @@ class AuditService:
         Returns:
             Tuple of (logs, total_count)
         """
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
 
         # Enforce org isolation at application layer (RLS should also enforce)
         query = select(AuditLog).where(AuditLog.org_id == org_id).order_by(AuditLog.created_at.desc())
