@@ -1,6 +1,162 @@
 import { createServer } from "node:http";
 
 let pollCount = 0;
+let reviewPollCount = 0;
+
+const reviewResult = {
+  result_id: "review-result-789",
+  share_slug: "review-share-slug",
+  job_id: "review-job-789",
+  repo_url: "https://github.com/MentalVibez/ai-agent-orchestrator",
+  commit: "abcdef1",
+  branch: "main",
+  created_at: new Date().toISOString(),
+  completed_at: new Date().toISOString(),
+  duration_seconds: 18,
+  ruleset_version: "test-ruleset",
+  depth_level: "structural_plus",
+  confidence_label: "high",
+  overall_score: 84,
+  verdict_label: "Promising foundation",
+  production_suitable: true,
+  anti_gaming_verdict: "likely_honest",
+  scores: {
+    security: 82,
+    testing: 80,
+    maintainability: 88,
+    reliability: 83,
+    operations: 79,
+    developer_experience: 90,
+  },
+  findings: [
+    {
+      id: "finding-1",
+      rule_id: "ops-healthcheck",
+      title: "Healthchecks are present but tracing is still missing",
+      category: "operations",
+      severity: "medium",
+      summary: "The repo exposes health endpoints but does not show tracing coverage.",
+      why_it_matters: "Incident diagnosis will take longer without request-level traces.",
+      suggested_fix: "Add Sentry or OpenTelemetry tracing for the critical request path.",
+    },
+    {
+      id: "finding-2",
+      rule_id: "tests-ci",
+      title: "CI verifies the backend path",
+      category: "testing",
+      severity: "low",
+      summary: "Pytest coverage is wired into CI for the backend changes.",
+      why_it_matters: "Regression risk is lower when route protection is covered in CI.",
+      suggested_fix: "Extend the suite with user-facing flow tests for Scout, Map, and Review.",
+    },
+  ],
+  summary: {
+    developer: "The repository has a solid baseline with clear route coverage and deploy hygiene.",
+    manager: "This project shows good operational discipline with a few observability gaps left to close.",
+    hiring: "Strong signal for product-minded full-stack engineering work.",
+  },
+  error_code: null,
+  error_message: null,
+};
+
+const scoutResult = {
+  query: "MentalVibez/ai-agent-orchestrator",
+  total: 1,
+  tldr: "One strong repository matched the query with high quality and relevance.",
+  repos: [
+    {
+      id: "repo-1",
+      platform: "github",
+      full_name: "MentalVibez/ai-agent-orchestrator",
+      owner: "MentalVibez",
+      description: "Agent orchestration framework for coordinating AI workflows.",
+      url: "https://github.com/MentalVibez/ai-agent-orchestrator",
+      language: "TypeScript",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2026-01-15T00:00:00Z",
+      scores: { quality_score: 86, relevance_score: 91, overall_score: 89 },
+      verdict: "HIGHLY_RECOMMENDED",
+      ai_insight: "Strong fit for multi-agent workflow exploration with an active maintenance profile.",
+      risks: ["Tracing not detected"],
+      signals: [
+        { label: "README verified", type: "good", verified: true },
+        { label: "Recent updates", type: "good", verified: true },
+      ],
+      evidence: {
+        stars: 4200,
+        forks: 380,
+        days_since_update: 7,
+        has_license: true,
+        license_name: "MIT",
+        readme_verified: true,
+        is_fork: false,
+        is_archived: false,
+        is_template: false,
+        open_issues: 12,
+        topic_matches: ["agents", "orchestration"],
+        matched_terms: ["ai", "agent"],
+        noise_flags: [],
+      },
+    },
+  ],
+};
+
+const mapResult = {
+  repo: "MentalVibez/ai-agent-orchestrator",
+  profile_used: {
+    framework: "fastapi",
+    framework_confidence: "high",
+    from_profile: true,
+    detected_backend: ["FastAPI"],
+    detected_frontend: ["Next.js"],
+  },
+  groups: [
+    {
+      name: "Health & Status",
+      description: "Operational endpoints for liveness and readiness.",
+      endpoints: [
+        {
+          method: "GET",
+          path: "/health",
+          description: "Returns overall API health.",
+          params: [],
+          auth_likely: false,
+        },
+        {
+          method: "GET",
+          path: "/ready",
+          description: "Returns readiness for the serving path.",
+          params: [],
+          auth_likely: false,
+        },
+      ],
+    },
+  ],
+  summary: "The API surface is centered on operational status and analysis workflows.",
+  api_style: "REST",
+  auth_pattern: "Bearer or session cookie",
+  files_scanned: ["backend/app/main.py", "backend/app/api/routes_health.py"],
+  raw_endpoint_count: 2,
+  warnings: [],
+  duration_ms: 142,
+};
+
+const devcontainerResponse = {
+  devcontainer_id: "devcontainer-123",
+  job_id: 123,
+  version_number: 1,
+  config: {
+    name: "atlas-dev-python",
+    image: "mcr.microsoft.com/devcontainers/python:3.11",
+    features: {
+      "ghcr.io/devcontainers/features/github-cli:1": {},
+    },
+    postCreateCommand: "pip install -r requirements.txt",
+    remoteUser: "vscode",
+  },
+  repo_url: "https://github.com/MentalVibez/ai-agent-orchestrator",
+  created_at: new Date().toISOString(),
+};
 
 const result = {
   id: 456,
@@ -324,6 +480,75 @@ const server = createServer((req, res) => {
 
   if (req.method === "GET" && path === "/api/results/456/guide") {
     sendJson(res, 200, codebaseGuide);
+    return;
+  }
+
+  if (req.method === "POST" && path === "/api/devcontainer/123/generate") {
+    sendJson(res, 200, devcontainerResponse);
+    return;
+  }
+
+  if (req.method === "POST" && path === "/api/review/") {
+    reviewPollCount = 0;
+    sendJson(res, 202, {
+      job_id: "review-job-789",
+      status: "queued",
+      message: "Review queued. Poll for status.",
+    });
+    return;
+  }
+
+  if (req.method === "GET" && path === "/api/review/review-job-789") {
+    reviewPollCount += 1;
+    if (reviewPollCount < 2) {
+      sendJson(res, 200, {
+        job_id: "review-job-789",
+        status: "running",
+        phase: "analysis",
+        status_detail: "Gathering evidence and building the scorecard.",
+        result_id: null,
+        error_code: null,
+        error_message: null,
+        duration_seconds: 5,
+        next_poll_seconds: 1,
+        retryable: null,
+        suggested_action: "Keep polling until the report is ready.",
+        created_at: new Date().toISOString(),
+        completed_at: null,
+      });
+      return;
+    }
+
+    sendJson(res, 200, {
+      job_id: "review-job-789",
+      status: "completed",
+      phase: "complete",
+      status_detail: "Completed successfully in about 18 seconds.",
+      result_id: "review-result-789",
+      error_code: null,
+      error_message: null,
+      duration_seconds: 18,
+      next_poll_seconds: null,
+      retryable: null,
+      suggested_action: null,
+      created_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (req.method === "GET" && path === "/api/review/results/review-result-789") {
+    sendJson(res, 200, reviewResult);
+    return;
+  }
+
+  if (req.method === "POST" && path === "/api/scout/search") {
+    sendJson(res, 200, scoutResult);
+    return;
+  }
+
+  if (req.method === "GET" && path === "/api/map/MentalVibez/ai-agent-orchestrator") {
+    sendJson(res, 200, mapResult);
     return;
   }
 

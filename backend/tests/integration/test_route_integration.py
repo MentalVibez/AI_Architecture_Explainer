@@ -21,10 +21,12 @@ from __future__ import annotations
 
 import os
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -38,6 +40,7 @@ os.environ.setdefault("SENTRY_DSN", "")
 os.environ["ADMIN_API_KEY"] = "super-secret-admin-key"
 
 _TEST_ADMIN_KEY = "super-secret-admin-key"
+_TEST_JWT_SECRET = os.environ["ATLAS_JWT_SECRET"]
 
 
 @pytest.fixture(scope="module")
@@ -62,6 +65,7 @@ async def setup_database(app):  # noqa: F811 — `app` here is the fixture, not 
         await conn.run_sync(Base.metadata.create_all)
 
     factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    app.state.test_session_factory = factory
 
     async def _override_get_db():
         async with factory() as session:
@@ -70,6 +74,7 @@ async def setup_database(app):  # noqa: F811 — `app` here is the fixture, not 
     app.dependency_overrides[get_db] = _override_get_db
     yield
     app.dependency_overrides.clear()
+    del app.state.test_session_factory
     await engine.dispose()
 
 
@@ -77,6 +82,20 @@ async def setup_database(app):  # noqa: F811 — `app` here is the fixture, not 
 def client(app, setup_database):
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
+
+
+def _issue_session_cookie(login: str, github_id: int = 1) -> str:
+    now = int(datetime.now(UTC).timestamp())
+    return jwt.encode(
+        {
+            "sub": str(github_id),
+            "login": login,
+            "iat": now,
+            "exp": now + int(timedelta(hours=1).total_seconds()),
+        },
+        _TEST_JWT_SECRET,
+        algorithm="HS256",
+    )
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -130,6 +149,22 @@ class TestAnalyze:
         r = client.get("/api/results/999999")
         assert r.status_code == 404
 
+    def test_analyze_uses_shared_public_rate_limiter(self, client):
+        async def _allow(*args, **kwargs):
+            return None
+
+        with patch(
+            "app.api.routes_analysis.public_route_limiter.check",
+            new=AsyncMock(side_effect=_allow),
+        ) as mocked_check:
+            response = client.post(
+                "/api/analyze",
+                json={"repo_url": "https://github.com/vercel/next.js"},
+            )
+
+        assert response.status_code in (200, 201, 202)
+        mocked_check.assert_awaited_once()
+
 
 # ─────────────────────────────────────────────────────────────────
 # Review
@@ -170,6 +205,22 @@ class TestReview:
         if r.status_code == 200:
             assert "status" in r.json()
 
+    def test_submit_review_uses_shared_public_rate_limiter(self, client):
+        async def _allow(*args, **kwargs):
+            return None
+
+        with patch(
+            "app.api.routes_review.public_route_limiter.check",
+            new=AsyncMock(side_effect=_allow),
+        ) as mocked_check:
+            response = client.post(
+                "/api/review/",
+                json={"repo_url": "https://github.com/vercel/next.js"},
+            )
+
+        assert response.status_code == 202
+        mocked_check.assert_awaited_once()
+
 
 # ─────────────────────────────────────────────────────────────────
 # Scout
@@ -204,6 +255,30 @@ class TestScout:
         body = r.json()
         assert body["query"] == "AI agent orchestration"
         assert "repos" in body
+
+    def test_scout_search_uses_shared_public_rate_limiter(self, client):
+        from app.schemas.scout import ScoutResponse
+
+        stub = ScoutResponse(
+            query="AI agent orchestration",
+            total=0,
+            repos=[],
+            tldr="No results found in test environment.",
+        )
+        with (
+            patch(
+                "app.api.scout.public_route_limiter.check",
+                new=AsyncMock(return_value=None),
+            ) as mocked_check,
+            patch("app.api.scout.run_scout", new=AsyncMock(return_value=stub)),
+        ):
+            response = client.post(
+                "/api/scout/search",
+                json={"query": "AI agent orchestration"},
+            )
+
+        assert response.status_code == 200
+        mocked_check.assert_awaited_once()
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -253,6 +328,49 @@ class TestMap:
             r = client.get("/api/map/MentalVibez/ai-agent-orchestrator?force_framework=fastapi")
         assert r.status_code in (200, 404, 500)
 
+    def test_map_uses_shared_public_rate_limiter(self, client):
+        mock_evidence = {
+            "detected_stack": {
+                "backend": [{"name": "FastAPI", "confidence": 0.95}],
+                "frontend": [],
+            }
+        }
+
+        class _EndpointMap:
+            files_scanned = ["app/main.py"]
+            endpoints = [{"method": "GET", "path": "/"}]
+
+        with (
+            patch(
+                "app.api.routes_map.public_route_limiter.check",
+                new=AsyncMock(return_value=None),
+            ) as mocked_check,
+            patch(
+                "app.api.routes_map.run_stack_analysis",
+                new=AsyncMock(return_value=mock_evidence),
+            ),
+            patch(
+                "app.api.routes_map.extract_endpoints",
+                new=AsyncMock(return_value=_EndpointMap()),
+            ),
+            patch(
+                "app.api.routes_map.enrich_endpoint_map",
+                new=AsyncMock(
+                    return_value={
+                        "groups": [],
+                        "summary": "",
+                        "api_style": "Unknown",
+                        "auth_pattern": "Unknown",
+                        "warnings": [],
+                    }
+                ),
+            ),
+        ):
+            response = client.get("/api/map/vercel/next.js?force_framework=fastapi")
+
+        assert response.status_code == 200
+        mocked_check.assert_awaited_once()
+
 
 # ─────────────────────────────────────────────────────────────────
 # DevContainer (auth-gated)
@@ -275,6 +393,114 @@ class TestDevcontainer:
         r = client.put("/api/devcontainer/1/versions/1", json={"config": {}})
         assert r.status_code == 401
 
+    @pytest.mark.asyncio
+    async def test_versions_are_scoped_to_current_user(self, client, app):
+        from app.models.analysis_job import AtlasJob
+        from app.models.devcontainer import Devcontainer
+        from app.models.repo import Repo
+
+        async with app.state.test_session_factory() as session:
+            repo = Repo(
+                github_owner="encode",
+                github_repo="starlette",
+                github_url="https://github.com/encode/starlette",
+            )
+            session.add(repo)
+            await session.flush()
+
+            job = AtlasJob(repo_id=repo.id, status="completed")
+            session.add(job)
+            await session.flush()
+
+            session.add(
+                Devcontainer(
+                    job_id=job.id,
+                    org_id="alice",
+                    version_number=1,
+                    config={"name": "alice-only"},
+                    features=[],
+                )
+            )
+            await session.commit()
+
+        client.cookies.set("atlas_session", _issue_session_cookie("bob"))
+        response = client.get(f"/api/devcontainer/{job.id}/versions")
+        client.cookies.clear()
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_download_is_scoped_to_current_user(self, client, app):
+        from app.models.analysis_job import AtlasJob
+        from app.models.devcontainer import Devcontainer
+        from app.models.repo import Repo
+
+        async with app.state.test_session_factory() as session:
+            repo = Repo(
+                github_owner="pallets",
+                github_repo="flask",
+                github_url="https://github.com/pallets/flask",
+            )
+            session.add(repo)
+            await session.flush()
+
+            job = AtlasJob(repo_id=repo.id, status="completed")
+            session.add(job)
+            await session.flush()
+
+            session.add(
+                Devcontainer(
+                    job_id=job.id,
+                    org_id="alice",
+                    version_number=1,
+                    config={"name": "alice-only"},
+                    features=[],
+                )
+            )
+            await session.commit()
+
+        client.cookies.set("atlas_session", _issue_session_cookie("bob", github_id=2))
+        response = client.get(f"/api/devcontainer/{job.id}/download")
+        client.cookies.clear()
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_update_version_is_scoped_to_current_user(self, client, app):
+        from app.models.analysis_job import AtlasJob
+        from app.models.devcontainer import Devcontainer
+        from app.models.repo import Repo
+
+        async with app.state.test_session_factory() as session:
+            repo = Repo(
+                github_owner="tiangolo",
+                github_repo="fastapi",
+                github_url="https://github.com/tiangolo/fastapi",
+            )
+            session.add(repo)
+            await session.flush()
+
+            job = AtlasJob(repo_id=repo.id, status="completed")
+            session.add(job)
+            await session.flush()
+
+            session.add(
+                Devcontainer(
+                    job_id=job.id,
+                    org_id="alice",
+                    version_number=1,
+                    config={"name": "alice-only"},
+                    features=[],
+                )
+            )
+            await session.commit()
+
+        client.cookies.set("atlas_session", _issue_session_cookie("bob", github_id=2))
+        response = client.put(
+            f"/api/devcontainer/{job.id}/versions/1",
+            json={"languages": ["python"], "services": [], "features": [], "customize": True},
+        )
+        client.cookies.clear()
+        assert response.status_code == 404
+
 
 # ─────────────────────────────────────────────────────────────────
 # Auth
@@ -290,7 +516,36 @@ class TestAuth:
         # Without GitHub OAuth credentials, returns 503
         assert r.status_code in (503, 200, 302)
 
+    def test_login_sets_oauth_state_cookie(self, client):
+        with patch("app.api.routes.auth.settings.github_client_id", new="test-client-id"):
+            response = client.get("/api/auth/login", follow_redirects=False)
+
+        assert response.status_code == 307
+        assert "state=" in response.headers["location"]
+        assert "atlas_oauth_state" in response.headers.get("set-cookie", "")
+
+    def test_callback_missing_state_returns_400(self, client):
+        with (
+            patch("app.api.routes.auth.settings.github_client_id", new="test-client-id"),
+            patch("app.api.routes.auth.settings.github_client_secret", new="test-client-secret"),
+        ):
+            response = client.get("/api/auth/callback?code=test-code")
+
+        assert response.status_code == 400
+
+    def test_callback_mismatched_state_returns_400(self, client):
+        client.cookies.set("atlas_oauth_state", "expected-state")
+        with (
+            patch("app.api.routes.auth.settings.github_client_id", new="test-client-id"),
+            patch("app.api.routes.auth.settings.github_client_secret", new="test-client-secret"),
+        ):
+            response = client.get("/api/auth/callback?code=test-code&state=wrong-state")
+
+        client.cookies.clear()
+        assert response.status_code == 400
+
     def test_me_without_token_returns_401(self, client):
+        client.cookies.clear()
         r = client.get("/api/auth/me")
         assert r.status_code == 401
 

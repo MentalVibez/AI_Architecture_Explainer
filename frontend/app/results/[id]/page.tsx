@@ -166,7 +166,7 @@ export default async function ResultPage({ params, searchParams }: Props) {
       </header>
 
       {repoLabel && (
-        <DevcontainerPanel jobId={result.id} repoLabel={repoLabel} />
+        <DevcontainerPanel jobId={result.job_id} repoLabel={repoLabel} />
       )}
 
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">

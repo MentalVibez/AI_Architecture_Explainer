@@ -2,11 +2,13 @@ import os
 
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("SENTRY_DSN", "")
+os.environ.setdefault("ADMIN_API_KEY", "test-admin-key")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.core.config import settings
 from app.core.database import Base, get_db
 from app.main import app
 
@@ -18,6 +20,7 @@ TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
+    settings.admin_api_key = "test-admin-key"
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
