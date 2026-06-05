@@ -8,6 +8,7 @@ from app.models.analysis_result import AnalysisResult
 from app.schemas.onboarding import CodebaseGuideResponse, OnboardingPlanResponse
 from app.schemas.result_response import AnalysisResultResponse
 from app.services.onboarding_plan import build_codebase_guide, build_onboarding_plan
+from app.utils.field_encryption import decrypt_json
 
 router = APIRouter(prefix="/api")
 
@@ -31,6 +32,10 @@ async def get_result(
 
     if not analysis:
         raise HTTPException(status_code=404, detail="Result not found")
+
+    # Decrypt raw_evidence in-place before serialising — the ORM object is
+    # not committed here so this mutation is safe and doesn't hit the DB.
+    analysis.raw_evidence = decrypt_json(analysis.raw_evidence)
 
     response.headers["Cache-Control"] = _RESULT_CACHE_CONTROL
     return AnalysisResultResponse.model_validate(analysis)

@@ -12,6 +12,14 @@ from app.models.analysis_job import AnalysisJob
 from app.models.analysis_result import AnalysisResult
 from app.services.analysis_pipeline import run_analysis
 from app.services.summary_service import generate_summaries
+from app.utils.cache import FileCache
+from app.utils.field_encryption import decrypt_json, encrypt_json
+from app.utils.secret_detector import SecretDetector
+
+_summary_cache = FileCache(
+    cache_dir="/app/cache/summaries",
+    fallback_dir="/tmp/atlas-cache/summaries",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +167,8 @@ async def execute_analysis_job(
                     )
                 ).scalar_one_or_none()
                 if existing_result is not None:
+                    # Ensure raw_evidence is decrypted for any downstream readers
+                    existing_result.raw_evidence = decrypt_json(existing_result.raw_evidence)
                     existing_id = existing_result.id
                     job.status = "completed"
                     job.cached_result_id = existing_id
@@ -190,7 +200,22 @@ async def execute_analysis_job(
                             pass
                     return
 
-            summaries = await generate_summaries(evidence)
+            # Use tree SHA as a content-addressed cache key so identical repo
+            # snapshots skip the Claude API call (saves ~50% of LLM spend).
+            _cache_key = tree_sha or f"{owner}/{repo}"
+            summaries = _summary_cache.get(_cache_key)
+            if summaries is None:
+                summaries = await generate_summaries(evidence)
+                _summary_cache.set(_cache_key, summaries)
+                logger.debug("summary_cache_miss repo=%s/%s sha=%s", owner, repo, _cache_key)
+            else:
+                logger.info("summary_cache_hit repo=%s/%s sha=%s", owner, repo, _cache_key)
+
+            # Mask any secrets that Claude may have reproduced verbatim from
+            # source files before we persist LLM output to the database.
+            for _field in ("developer_summary", "hiring_manager_summary", "diagram_mermaid"):
+                if summaries.get(_field):
+                    summaries[_field] = SecretDetector.mask_all_secrets(summaries[_field])
 
             result = AnalysisResult(
                 job_id=job_id,
@@ -207,7 +232,8 @@ async def execute_analysis_job(
                 hiring_manager_summary=summaries["hiring_manager_summary"],
                 confidence_score=None,
                 caveats=[],
-                raw_evidence=[evidence],
+                # Encrypt raw file evidence at rest; decrypt happens at read time.
+                raw_evidence=encrypt_json([evidence]),
             )
             db.add(result)
             job.status = "completed"
@@ -252,6 +278,31 @@ async def execute_analysis_job(
                         intel_result=intel_result,
                         db=intel_db,
                     )
+
+            # Store searchable text chunks in a fire-and-forget session.
+            # Failures here never affect the committed analysis result.
+            try:
+                from app.services.embedding_service import EmbeddingService
+
+                repo_info = evidence.get("repo", {})
+                async with AsyncSessionLocal() as embed_db:
+                    await EmbeddingService.generate_embeddings(
+                        session=embed_db,
+                        job_id=job_id,
+                        org_id="public",  # public analyses have no org; searchable by all
+                        detected_stack=result.detected_stack or {},
+                        dependencies=result.dependencies or {},
+                        developer_summary=result.developer_summary,
+                        repo_owner=repo_info.get("owner", owner),
+                        repo_name=repo_info.get("name", repo),
+                    )
+                    await embed_db.commit()
+            except Exception:
+                logger.warning(
+                    "Embedding storage failed for job %d — search index not updated",
+                    job_id,
+                    exc_info=True,
+                )
 
         except Exception as exc:
             logger.exception("Analysis pipeline failed for job %d: %s", job_id, exc)

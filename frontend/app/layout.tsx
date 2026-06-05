@@ -82,12 +82,20 @@ export default function RootLayout({
             }}
           />
 
+          {/* ── Skip to main content (WCAG 2.4.1) ───────────────────────── */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:left-4 focus:top-4 focus:rounded-full focus:bg-[#4d7cff] focus:px-4 focus:py-2 focus:text-sm focus:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
+          >
+            Skip to main content
+          </a>
+
           {/* ── Platform nav ─────────────────────────────────────────────── */}
           <Nav />
           <WorkspaceBar />
 
           {/* ── Page content ─────────────────────────────────────────────── */}
-          <main>{children}</main>
+          <main id="main-content">{children}</main>
 
           {/* ── Platform footer ───────────────────────────────────────────── */}
           <footer className="mt-24 border-t border-white/10 bg-[#08111f]/80">

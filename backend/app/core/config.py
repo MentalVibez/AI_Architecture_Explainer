@@ -24,6 +24,17 @@ class Settings(BaseSettings):
     admin_api_key: str = ""
     redis_url: str = ""
 
+    # GitHub OAuth + JWT
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    atlas_jwt_secret: str = ""
+    # Column-level encryption for raw_evidence (opt-in)
+    # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    atlas_field_encryption_key: str = ""
+    atlas_oauth_redirect_uri: str = "http://localhost:3000/auth/callback"
+    # JWT lifetime in seconds (default 8 hours)
+    atlas_jwt_ttl_seconds: int = 28800
+
     environment: str = "development"
     cors_origins: str = "http://localhost:3000"
     trusted_proxy_hosts: str = "127.0.0.1,::1"

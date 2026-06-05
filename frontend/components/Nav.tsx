@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Logo from "@/components/Logo";
+import UserButton from "@/components/UserButton";
 
 export default function Nav() {
   const pathname = usePathname();
@@ -49,18 +50,20 @@ export default function Nav() {
             href="https://github.com/MentalVibez/AI_Architecture_Explainer"
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-mono tracking-[0.18em] text-[#9fb0cf] hover:border-[#4d7cff]/40 hover:bg-white/[0.03] hover:text-white"
-            aria-label="GitHub"
+            className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-mono tracking-[0.18em] text-[#9fb0cf] hover:border-[#4d7cff]/40 hover:bg-white/[0.03] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d7cff]"
+            aria-label="CodebaseAtlas on GitHub (opens in new tab)"
           >
             GitHub ↗
           </a>
+          <UserButton />
         </div>
 
         <button
-          className="sm:hidden flex flex-col justify-center gap-[5px] w-8 h-8 shrink-0"
+          className="sm:hidden flex flex-col justify-center gap-[5px] w-8 h-8 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d7cff] rounded"
           onClick={() => setOpen((o) => !o)}
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
+          aria-controls="mobile-nav-menu"
         >
           <span className={`block h-px bg-[#9fb0cf] transition-all duration-200 origin-center
                            ${open ? "rotate-45 translate-y-[6px]" : ""}`} />
@@ -72,7 +75,7 @@ export default function Nav() {
       </div>
 
       {open && (
-        <div className="sm:hidden border-t border-white/10 bg-[#08111f]/95">
+        <div id="mobile-nav-menu" className="sm:hidden border-t border-white/10 bg-[#08111f]/95">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-1">
             {[...links, { href: "/pricing", label: "Pricing" }, { href: "/how-it-works", label: "Docs" }].map(({ href, label }) => (
               <Link
@@ -120,6 +123,7 @@ function NavLink({
       href={href}
       className={`px-3 py-1.5 font-mono text-[11px] tracking-[0.18em] rounded-full
                  transition-all duration-150 uppercase border
+                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d7cff]
                  ${active
                    ? "text-white border-[#4d7cff]/40 bg-[#4d7cff]/14 shadow-[0_8px_22px_rgba(77,124,255,0.16)]"
                    : "text-[#9fb0cf] border-transparent hover:text-white hover:border-white/10 hover:bg-white/[0.03]"

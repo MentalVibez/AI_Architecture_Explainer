@@ -7,6 +7,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      STAGING_HOST: ${{ secrets.STAGING_HOST }}
     steps:
       - name: Check staging secrets
         id: staging_secrets
@@ -30,38 +32,66 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
+            set -e
             cd /srv/atlas
             git pull origin main
+
+            # Bring up Postgres first so migrations can connect
+            docker compose --env-file .env.staging up -d postgres
+            echo "Waiting for Postgres to be healthy..."
+            for i in $(seq 1 15); do
+              if docker compose --env-file .env.staging exec -T postgres \
+                  pg_isready -U atlas -d atlas > /dev/null 2>&1; then
+                echo "Postgres healthy after $i attempts"
+                break
+              fi
+              sleep 2
+              if [ "$i" = "15" ]; then
+                echo "Postgres did not become ready in 30s" && exit 1
+              fi
+            done
+
+            # Build and start all services (entrypoint runs alembic upgrade head)
             docker compose --env-file .env.staging up --build -d
+
+            # Verify worker is alive
             docker compose ps
             docker compose exec -T worker python -c "import os; os.kill(1, 0)"
+
+            # Prune old images to keep disk usage in check
             docker image prune -f
 
-      - name: Smoke test
+      - name: Smoke test (backend)
         if: steps.staging_secrets.outputs.configured == 'true'
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
         run: |
-          for i in $(seq 1 12); do
+          for i in $(seq 1 18); do
             if curl -sf "http://${STAGING_HOST}:8000/ready" > /dev/null; then
               echo "Backend healthy after attempt $i"
               break
             fi
-            echo "Attempt $i: not ready, retrying in 5s..."
+            echo "Attempt $i: backend not ready, retrying in 5s..."
             sleep 5
-            if [ "$i" = "12" ]; then
-              echo "Backend failed to become ready after 60s" && exit 1
+            if [ "$i" = "18" ]; then
+              echo "Backend failed to become ready after 90s" && exit 1
             fi
           done
 
-          for i in $(seq 1 12); do
-            if curl -sf "http://${STAGING_HOST}:3000/health" > /dev/null; then
-              echo "Frontend proxy healthy after attempt $i"
+      - name: Smoke test (nginx/frontend)
+        if: steps.staging_secrets.outputs.configured == 'true'
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+        run: |
+          # Nginx proxies the frontend on port 443 (self-signed cert → -k)
+          for i in $(seq 1 18); do
+            if curl -ksfL "https://${STAGING_HOST}/" -o /dev/null; then
+              echo "Nginx/frontend healthy after attempt $i"
               exit 0
             fi
-            echo "Attempt $i: frontend not ready, retrying in 5s..."
+            echo "Attempt $i: nginx not ready, retrying in 5s..."
             sleep 5
-            if [ "$i" = "12" ]; then
-              echo "Frontend failed to become healthy after 60s" && exit 1
+            if [ "$i" = "18" ]; then
+              echo "Nginx/frontend failed to become healthy after 90s" && exit 1
             fi
           done

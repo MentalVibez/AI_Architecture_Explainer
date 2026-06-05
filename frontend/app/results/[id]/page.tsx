@@ -13,6 +13,7 @@ import WorkspaceSync from "@/components/workspace/WorkspaceSync";
 import WorkspaceRunSync from "@/components/workspace/WorkspaceRunSync";
 import CopyLinkButton from "@/components/CopyLinkButton";
 import DownloadGuideButton from "@/components/DownloadGuideButton";
+import DevcontainerPanel from "@/components/DevcontainerPanel";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -119,6 +120,16 @@ export default async function ResultPage({ params, searchParams }: Props) {
             >
               Open Map
             </Link>
+            {repoLabel && (
+              <a
+                href={`https://codespaces.new/${repoLabel}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-emerald-600/20 border border-emerald-500/30 px-4 py-2 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-emerald-300 hover:bg-emerald-600/30 hover:border-emerald-500/50 hover:text-emerald-200"
+              >
+                Launch Codespace ↗
+              </a>
+            )}
             {result.share_slug && (
               <CopyLinkButton path={`/r/${result.share_slug}`} />
             )}
@@ -153,6 +164,10 @@ export default async function ResultPage({ params, searchParams }: Props) {
           )}
         </div>
       </header>
+
+      {repoLabel && (
+        <DevcontainerPanel jobId={result.id} repoLabel={repoLabel} />
+      )}
 
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="panel rounded-[28px] p-6">
@@ -262,7 +277,7 @@ export default async function ResultPage({ params, searchParams }: Props) {
             Static analysis only: these tabs surface likely repository risks and supporting evidence without making runtime claims.
           </p>
         </div>
-        <AnalysisTabs result={result} initialTab={initialDiagnosticTab} />
+        <AnalysisTabs result={result} resultId={resultId} initialTab={initialDiagnosticTab} />
       </section>
 
       <CodebaseGuideSection guide={guide} repoLabel={repoLabel} />

@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.Column("error_message", sa.Text, nullable=True),
         sa.Column("started_at", sa.DateTime, nullable=True),
         sa.Column("completed_at", sa.DateTime, nullable=True),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime, server_default=sa.text("CURRENT_TIMESTAMP")),
     )
     op.create_index("ix_review_jobs_status", "review_jobs", ["status"])
 
@@ -78,7 +78,7 @@ def upgrade() -> None:
         sa.Column("error_code", sa.String(50), nullable=True),
         sa.Column("error_message", sa.Text, nullable=True),
         # Timestamps
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime, server_default=sa.text("CURRENT_TIMESTAMP")),
         sa.Column("completed_at", sa.DateTime, nullable=True),
     )
     op.create_index("ix_reviews_job_id", "reviews", ["job_id"])

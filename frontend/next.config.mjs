@@ -1,7 +1,38 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
-const BACKEND = process.env.API_URL ?? "http://localhost:8000";
+function normalizeBackendUrl(value) {
+  if (!value) return "http://localhost:8000";
+
+  try {
+    const url = new URL(value);
+    if (url.protocol === "http:" && url.hostname.endsWith(".railway.app")) {
+      url.protocol = "https:";
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return value.replace(/\/$/, "");
+  }
+}
+
+const BACKEND = normalizeBackendUrl(
+  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL,
+);
+
+function getConnectSrc() {
+  const sources = ["'self'", "ws:", "wss:", "https://*.sentry.io"];
+
+  try {
+    const backendOrigin = new URL(BACKEND).origin;
+    if (!sources.includes(backendOrigin)) {
+      sources.push(backendOrigin);
+    }
+  } catch {
+    // Relative or invalid backend values are not valid CSP sources.
+  }
+
+  return `connect-src ${sources.join(" ")}`;
+}
 
 const nextConfig = {
   async headers() {
@@ -14,7 +45,7 @@ const nextConfig = {
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob: https:",
           "font-src 'self' data:",
-          "connect-src 'self' ws: wss: https://*.sentry.io",
+          getConnectSrc(),
           "worker-src 'self' blob:",
           "base-uri 'self'",
           "form-action 'self'",

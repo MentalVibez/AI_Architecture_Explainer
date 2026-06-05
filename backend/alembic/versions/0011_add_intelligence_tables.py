@@ -47,7 +47,7 @@ def upgrade() -> None:
         sa.Column("confidence", sa.Float(), nullable=False, server_default="0"),
         sa.Column("sensitive_operations", sa.Text(), nullable=True),
         sa.Column("framework_signals", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("result_id", "path", name="uq_file_intelligence_result_path"),
     )
@@ -62,7 +62,7 @@ def upgrade() -> None:
         sa.Column("kind", sa.String(length=32), nullable=False),
         sa.Column("confidence", sa.String(length=16), nullable=False),
         sa.Column("unresolved_reason", sa.String(length=32), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "result_id", "source_path", "raw_import",
@@ -86,7 +86,7 @@ def upgrade() -> None:
         sa.Column("remediation", sa.Text(), nullable=True),
         sa.Column("score_impact", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("confidence", sa.Float(), nullable=False, server_default="1"),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_code_findings_result_id", "code_findings", ["result_id"])
@@ -112,7 +112,7 @@ def upgrade() -> None:
         sa.Column("graph_confidence", sa.Float(), nullable=False, server_default="0"),
         sa.Column("confirmed_edge_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("unresolved_edge_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("result_id", name="uq_production_scores_result_id"),
     )
@@ -127,7 +127,7 @@ def upgrade() -> None:
         sa.Column("label", sa.String(length=16), nullable=False),
         sa.Column("finding_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("deductions_text", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("score_id", "dimension", name="uq_dimension_scores_score_dimension"),
         sa.ForeignKeyConstraint(

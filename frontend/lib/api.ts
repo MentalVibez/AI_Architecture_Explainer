@@ -58,6 +58,10 @@ export async function getResult(resultId: number): Promise<AnalysisResult> {
   return apiFetch<AnalysisResult>(`/api/results/${resultId}`);
 }
 
+export async function refreshDiagnostics(resultId: number): Promise<{ status: string; refreshed: boolean }> {
+  return apiFetch(`/api/results/${resultId}/refresh-diagnostics`, { method: "POST" });
+}
+
 export async function getCodebaseGuide(resultId: number): Promise<CodebaseGuide> {
   return apiFetch<CodebaseGuide>(`/api/results/${resultId}/guide`);
 }

@@ -17,7 +17,9 @@
  * - NOT_FOUND renders "Not yet analyzed", not "No issues found"
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { refreshDiagnostics } from "@/lib/api";
 
 // ─────────────────────────────────────────────────────────
 // Types — mirrors the API response shapes exactly
@@ -439,14 +441,71 @@ function TierDisclosure({ disclosure, tier }: { disclosure: string; tier: string
 const TAB_LABELS = ["Setup", "Debug", "Change"] as const;
 type TabLabel = (typeof TAB_LABELS)[number];
 
+type DiagRefreshState = "idle" | "running" | "failed";
+
 export default function AnalysisTabs({
   result,
+  resultId,
   initialTab = "Setup",
 }: {
   result: AnalysisResult;
+  resultId?: number;
   initialTab?: TabLabel;
 }) {
+  const router = useRouter();
   const [active, setActive] = useState<TabLabel>(initialTab);
+  const [diagState, setDiagState] = useState<DiagRefreshState>("idle");
+  const triggered = useRef(false);
+
+  const allTabsNull = !result.setup_risk && !result.debug_readiness && !result.change_risk;
+
+  useEffect(() => {
+    if (!allTabsNull || !resultId || triggered.current) return;
+    triggered.current = true;
+    setDiagState("running");
+    refreshDiagnostics(resultId)
+      .then(() => router.refresh())
+      .catch(() => setDiagState("failed"));
+  }, [allTabsNull, resultId, router]);
+
+  if (diagState === "running") {
+    return (
+      <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
+        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#6d7f9f]">
+          Running diagnostics
+        </p>
+        <p className="text-sm text-[#94a8cb]">
+          Scanning the repository for setup, debug, and change signals…
+        </p>
+      </div>
+    );
+  }
+
+  if (diagState === "failed") {
+    return (
+      <div className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
+        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#ff8d8d]">
+          Diagnostics unavailable
+        </p>
+        <p className="text-sm text-[#94a8cb]">
+          Could not run the diagnostic pipeline for this result.
+        </p>
+        {resultId && (
+          <button
+            onClick={() => {
+              setDiagState("running");
+              refreshDiagnostics(resultId)
+                .then(() => router.refresh())
+                .catch(() => setDiagState("failed"));
+            }}
+            className="mt-2 rounded-full border border-white/10 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-[#c2d3f2] hover:border-white/20 hover:text-white"
+          >
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 import app.models  # noqa: F401 — ensure all existing models are registered
 import app.models.analysis  # noqa: F401 — registers account/workspace metadata
+import app.models.devcontainer  # noqa: F401 — devcontainer, audit_log, analysis_embedding
 from alembic import context
 from app.core.config import settings
 from app.core.database import Base as CoreBase
