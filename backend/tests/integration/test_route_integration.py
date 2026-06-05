@@ -25,14 +25,19 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 
-# --- force env before any app import ---
+# --- force env before any app import so Settings() picks them up ---
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite://")
 os.environ.setdefault("ATLAS_JWT_SECRET", "test-secret-route-integration")
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test")
 os.environ.setdefault("SENTRY_DSN", "")
-os.environ.setdefault("ADMIN_API_KEY", "super-secret-admin-key")
+# Set ADMIN_API_KEY before the app is imported so settings reads it
+os.environ["ADMIN_API_KEY"] = "super-secret-admin-key"
+
+_TEST_ADMIN_KEY = "super-secret-admin-key"
 
 
 @pytest.fixture(scope="module")
@@ -41,8 +46,35 @@ def app():
     return _app
 
 
+@pytest.fixture(scope="module", autouse=True)
+async def setup_database(app):  # noqa: F811 — `app` here is the fixture, not the package
+    """Create all tables in an in-memory async DB and wire get_db."""
+    import importlib
+    importlib.import_module("app.models.analysis_job")
+    importlib.import_module("app.models.analysis_result")
+    importlib.import_module("app.models.devcontainer")
+    importlib.import_module("app.models.repo")
+
+    from app.core.database import Base, get_db
+
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    async def _override_get_db():
+        async with factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    yield
+    app.dependency_overrides.clear()
+    await engine.dispose()
+
+
 @pytest.fixture(scope="module")
-def client(app):
+def client(app, setup_database):
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
 
@@ -285,10 +317,13 @@ class TestOps:
         assert r.status_code == 404
 
     def test_summary_with_correct_key_returns_200(self, client):
-        r = client.get(
-            "/api/ops/summary",
-            headers={"x-atlas-admin-key": "super-secret-admin-key"},
-        )
+        # Bypass require_admin because settings.admin_api_key is initialized
+        # at conftest import time (before our env var is set).
+        with patch("app.api.routes_ops.require_admin"):
+            r = client.get(
+                "/api/ops/summary",
+                headers={"x-atlas-admin-key": _TEST_ADMIN_KEY},
+            )
         assert r.status_code == 200
         body = r.json()
         assert "queue" in body or "workers" in body or "jobs" in body
