@@ -54,6 +54,10 @@ In Railway → both backend services → **Variables**, add:
 | `ANTHROPIC_API_KEY` | Your key from [console.anthropic.com](https://console.anthropic.com) |
 | `GITHUB_TOKEN` | A GitHub PAT with `public_repo` scope (increases API rate limit) |
 | `DATABASE_URL` | The `postgresql+asyncpg://...` URI from Supabase |
+| `ATLAS_JWT_SECRET` | A strong random secret, at least 32 characters |
+| `REDIS_URL` | Redis connection string for shared production rate limiting |
+| `SENTRY_DSN` | Sentry DSN for backend error capture |
+| `ADMIN_API_KEY` | Strong random key for `/api/ops/*` access |
 | `ENVIRONMENT` | `production` |
 | `CORS_ORIGINS` | Your Vercel frontend URL, e.g. `https://codebase-atlas.vercel.app` |
 | `WORKER_POLL_INTERVAL_SECONDS` | Optional — default `2.0` |
@@ -65,6 +69,8 @@ In Railway → both backend services → **Variables**, add:
 | `OPS_WORKER_QUEUE_ALERT_SECONDS` | Optional — default `120` |
 | `ATLAS_PROCESS` | `web` for the web service, `worker` for the worker service |
 
+> Production startup now fails if `ATLAS_JWT_SECRET`, `REDIS_URL`, or `SENTRY_DSN`
+> are missing. Set them on both backend services before deploying.
 > After adding variables, Railway will redeploy automatically.
 
 ### Verify

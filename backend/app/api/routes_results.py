@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.security import require_admin
 from app.models.analysis_result import AnalysisResult
 from app.schemas.onboarding import CodebaseGuideResponse, OnboardingPlanResponse
 from app.schemas.result_response import AnalysisResultResponse
@@ -66,6 +67,7 @@ async def get_codebase_guide(
 @router.post("/results/{result_id}/refresh-diagnostics", response_model=RefreshDiagnosticsResponse)
 async def refresh_diagnostics(
     result_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> RefreshDiagnosticsResponse:
     """Re-run diagnostic tab analysis for a result that is missing setup/debug/change data.
@@ -75,6 +77,7 @@ async def refresh_diagnostics(
     """
     from app.services.atlas_worker import _has_all_diagnostic_tabs, _populate_diagnostic_tabs
 
+    require_admin(request)
     analysis = await _load_analysis_result(result_id, db)
 
     if _has_all_diagnostic_tabs(analysis):

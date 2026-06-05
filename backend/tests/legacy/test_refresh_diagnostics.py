@@ -22,6 +22,8 @@ from tests.legacy.conftest import TestSessionLocal
 # Helpers
 # ─────────────────────────────────────────────────────────
 
+_ADMIN_HEADERS = {"x-atlas-admin-key": "test-admin-key"}
+
 def _minimal_stack() -> dict:
     return {"frontend": [], "backend": [], "database": [], "infra": [], "testing": []}
 
@@ -70,7 +72,7 @@ async def _make_result(
 # ─────────────────────────────────────────────────────────
 
 async def test_refresh_diagnostics_404_on_missing_result(client):
-    response = await client.post("/api/results/99999/refresh-diagnostics")
+    response = await client.post("/api/results/99999/refresh-diagnostics", headers=_ADMIN_HEADERS)
     assert response.status_code == 404
 
 
@@ -82,7 +84,10 @@ async def test_refresh_diagnostics_noop_when_all_tabs_present(client):
         change_risk=present,
     )
 
-    response = await client.post(f"/api/results/{result_id}/refresh-diagnostics")
+    response = await client.post(
+        f"/api/results/{result_id}/refresh-diagnostics",
+        headers=_ADMIN_HEADERS,
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -93,7 +98,10 @@ async def test_refresh_diagnostics_noop_when_all_tabs_present(client):
 async def test_refresh_diagnostics_422_when_repo_info_missing(client):
     result_id = await _make_result(raw_evidence=[{}])  # no "repo" key
 
-    response = await client.post(f"/api/results/{result_id}/refresh-diagnostics")
+    response = await client.post(
+        f"/api/results/{result_id}/refresh-diagnostics",
+        headers=_ADMIN_HEADERS,
+    )
 
     assert response.status_code == 422
 
@@ -114,7 +122,10 @@ async def test_refresh_diagnostics_populates_null_tabs(client):
         "app.services.atlas_worker._populate_diagnostic_tabs",
         side_effect=_fake_populate,
     ):
-        response = await client.post(f"/api/results/{result_id}/refresh-diagnostics")
+        response = await client.post(
+            f"/api/results/{result_id}/refresh-diagnostics",
+            headers=_ADMIN_HEADERS,
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -151,9 +162,20 @@ async def test_refresh_diagnostics_correct_owner_repo_passed(client):
         await db.flush()
 
     with patch("app.services.atlas_worker._populate_diagnostic_tabs", side_effect=_capture):
-        response = await client.post(f"/api/results/{result_id}/refresh-diagnostics")
+        response = await client.post(
+            f"/api/results/{result_id}/refresh-diagnostics",
+            headers=_ADMIN_HEADERS,
+        )
 
     assert response.status_code == 200
     assert captured["owner"] == "django"
     assert captured["repo"] == "django"
     assert captured["default_branch"] == "stable/4.2.x"
+
+
+async def test_refresh_diagnostics_requires_admin_key(client):
+    result_id = await _make_result()
+
+    response = await client.post(f"/api/results/{result_id}/refresh-diagnostics")
+
+    assert response.status_code == 404

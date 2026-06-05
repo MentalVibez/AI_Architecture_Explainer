@@ -47,17 +47,19 @@ def _validate_production_config() -> None:
     if settings.environment != "production":
         return
 
+    if len(settings.atlas_jwt_secret.strip()) < 32:
+        raise RuntimeError(
+            "ATLAS_JWT_SECRET must be set to a strong random value in production."
+        )
+
     if not settings.redis_url:
-        logger.warning(
-            "REDIS_URL is not set. Rate limiting falls back to in-process counters "
-            "that do not survive restarts and are not shared across multiple instances. "
-            "Add a Redis add-on in Railway and set REDIS_URL."
+        raise RuntimeError(
+            "REDIS_URL must be set in production for shared rate limiting."
         )
 
     if not settings.sentry_dsn:
-        logger.warning(
-            "SENTRY_DSN is not set. Unhandled exceptions will not be captured. "
-            "Create a Sentry project and set SENTRY_DSN in Railway."
+        raise RuntimeError(
+            "SENTRY_DSN must be set in production for error capture."
         )
 
     if not settings.admin_api_key.strip():

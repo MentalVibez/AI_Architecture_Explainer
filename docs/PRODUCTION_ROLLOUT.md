@@ -19,6 +19,19 @@ Before touching production:
 4. Confirm Supabase/Postgres credentials are ready.
 5. Confirm Anthropic and GitHub tokens are ready.
 6. Confirm the frontend production URL is known for `CORS_ORIGINS`.
+7. Confirm `ATLAS_JWT_SECRET`, `REDIS_URL`, `SENTRY_DSN`, and `ADMIN_API_KEY` are ready.
+
+### Required release gates
+
+Do not deploy to production unless all of the following are true:
+
+1. `backend.yml` passed on the target commit.
+2. `frontend.yml` passed on the target commit.
+3. `security.yml` passed on the target commit.
+4. The most recent scheduled or manually triggered `production-smoke.yml` run is green, or you are intentionally deploying to fix a known smoke failure.
+5. No open incident blocks the release, including unresolved backup-restore drill failures.
+
+If any gate is red, pause the rollout until the failure is understood and accepted explicitly.
 
 ---
 
@@ -43,6 +56,10 @@ Apply the same backend env vars to both services:
 - `ANTHROPIC_API_KEY`
 - `GITHUB_TOKEN`
 - `DATABASE_URL`
+- `ATLAS_JWT_SECRET`
+- `REDIS_URL`
+- `SENTRY_DSN`
+- `ADMIN_API_KEY`
 - `ENVIRONMENT=production`
 - `CORS_ORIGINS=https://your-frontend-domain`
 - `WORKER_POLL_INTERVAL_SECONDS=2.0`
@@ -58,10 +75,20 @@ Apply the same backend env vars to both services:
 2. Deploy the backend worker service.
 3. Watch both logs until startup completes.
 4. Verify both services ran `alembic upgrade head`.
-5. Deploy or confirm the frontend in Vercel.
-6. Update `NEXT_PUBLIC_API_URL` and `API_URL` in Vercel if the backend URL changed.
+5. If either service exits immediately, check for missing required env vars first.
+6. Deploy or confirm the frontend in Vercel.
+7. Update `NEXT_PUBLIC_API_URL` and `API_URL` in Vercel if the backend URL changed.
 
 Do not start smoke tests until both backend services are healthy.
+
+### Promotion policy
+
+- Treat production deployment as blocked if backend or frontend CI is red.
+- Treat production deployment as blocked if the manual smoke test in this document fails.
+- Treat production deployment as blocked if `/api/ops/summary` remains in `watch` after worker recovery checks.
+- If production smoke fails after deployment, either:
+  - roll back immediately, or
+  - declare an active incident and assign an owner before continuing forward.
 
 ---
 
@@ -245,6 +272,18 @@ After the smoke test passes:
 4. Confirm homepage ops panel shows healthy state.
 5. Check Railway logs for repeated worker restarts.
 6. Check Supabase for connection or migration errors.
+
+## Branch protection policy
+
+Apply these repo settings outside the codebase:
+
+- Require pull requests before merging to `main`
+- Require `Backend CI`
+- Require `Frontend CI`
+- Require `Security Scan`
+- Restrict direct pushes to `main`
+
+`Production Smoke` should remain an operational release signal rather than a merge prerequisite, because it runs against the live site after deployment.
 
 ---
 

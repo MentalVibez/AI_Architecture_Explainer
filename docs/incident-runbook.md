@@ -63,7 +63,9 @@ If `database` is `unreachable`:
 
 If the backend process itself is down:
 - Railway → `web` service → Deployments → check for crash or failed healthcheck
-- View logs for the last startup error (usually a bad env var or failed migration)
+- View logs for the last startup error
+- First verify required env vars are present on both backend services:
+  `ATLAS_JWT_SECRET`, `REDIS_URL`, `SENTRY_DSN`, `DATABASE_URL`, `ANTHROPIC_API_KEY`
 
 ---
 
@@ -103,6 +105,21 @@ curl -I https://www.codebaseatlas.com
 
 > **Warning: this replaces all data in the target database. Do not run against production unless the production database is actually corrupted or lost.**
 
+### Restore drill policy
+
+- Run a restore drill at least once per quarter and after any major schema migration sequence.
+- Restore into a non-production database first, never directly into production for drills.
+- Record:
+  - backup artifact timestamp
+  - restore start and finish times
+  - whether `alembic upgrade head` succeeded after restore
+  - whether `/ready` returned `200`
+  - whether one Atlas job and one Review job completed successfully after restore
+- Current operating target:
+  - `RPO`: 24 hours or less
+  - `RTO`: 2 hours or less
+- If a drill exceeds the target or fails validation, open a follow-up issue before the next release.
+
 ### From GitHub Actions artifact (Free plan)
 
 1. Go to GitHub → Actions → `Database Backup` → find the most recent successful run
@@ -120,6 +137,8 @@ pg_restore \
 ```
 
 4. After restore: run `alembic upgrade head` to apply any migrations that postdate the backup
+5. Verify `GET /ready` returns healthy before allowing application traffic
+6. Submit one Atlas job and one Review job as post-restore smoke validation
 
 ### From Supabase PITR (Pro plan only)
 
@@ -148,9 +167,10 @@ Then redeploy the previous backend image.
 | `DIRECT_URL` | web, worker | Non-pooled URL — used by Alembic migrations |
 | `ANTHROPIC_API_KEY` | web, worker | Required for all LLM calls |
 | `GITHUB_TOKEN` | web, worker | Avoids 60 req/hr anonymous GitHub rate limit |
+| `ATLAS_JWT_SECRET` | web, worker | Required for session signing and validation; startup fails if weak or missing |
 | `ADMIN_API_KEY` | web | Protects `/api/ops/summary` |
-| `REDIS_URL` | web, worker | Required for cross-instance rate limiting |
-| `SENTRY_DSN` | web, worker | Error capture |
+| `REDIS_URL` | web, worker | Required for shared production rate limiting; startup fails if missing |
+| `SENTRY_DSN` | web, worker | Required for error capture; startup fails if missing |
 | `ENVIRONMENT` | web, worker | Must be `production` |
 | `CORS_ORIGINS` | web | Comma-separated list of allowed frontend origins |
 

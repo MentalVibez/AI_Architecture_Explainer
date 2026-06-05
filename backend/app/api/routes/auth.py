@@ -10,6 +10,8 @@ Flow:
 """
 from __future__ import annotations
 
+import hmac
+import secrets
 import time
 from typing import Annotated
 from urllib.parse import urlencode
@@ -27,7 +29,9 @@ _GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 _GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
 _GITHUB_USER_URL = "https://api.github.com/user"
 _COOKIE_NAME = "atlas_session"
+_OAUTH_STATE_COOKIE = "atlas_oauth_state"
 _ALGORITHM = "HS256"
+_OAUTH_STATE_TTL_SECONDS = 600
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -75,6 +79,22 @@ def _set_session_cookie(response: Response, token: str) -> None:
     )
 
 
+def _set_oauth_state_cookie(response: Response, state: str) -> None:
+    response.set_cookie(
+        key=_OAUTH_STATE_COOKIE,
+        value=state,
+        httponly=True,
+        secure=settings.environment != "development",
+        samesite="lax",
+        max_age=_OAUTH_STATE_TTL_SECONDS,
+        path="/",
+    )
+
+
+def _clear_oauth_state_cookie(response: Response) -> None:
+    response.delete_cookie(key=_OAUTH_STATE_COOKIE, path="/")
+
+
 # ── Dependency: current user ──────────────────────────────────────────────────
 
 async def get_current_user(
@@ -96,20 +116,36 @@ async def login(request: Request):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="GitHub OAuth is not configured (GITHUB_CLIENT_ID missing)",
         )
+    state = secrets.token_urlsafe(32)
     params = urlencode({
         "client_id": settings.github_client_id,
         "redirect_uri": settings.atlas_oauth_redirect_uri,
         "scope": "read:user user:email read:org",
+        "state": state,
     })
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=f"{_GITHUB_AUTHORIZE_URL}?{params}")
+    redirect = RedirectResponse(url=f"{_GITHUB_AUTHORIZE_URL}?{params}")
+    _set_oauth_state_cookie(redirect, state)
+    return redirect
 
 
 @router.get("/callback")
-async def callback(code: str, response: Response):
+async def callback(
+    code: str,
+    request: Request,
+    state: str | None = None,
+):
     """GitHub redirects here with ?code=... after the user authorizes."""
     if not settings.github_client_id or not settings.github_client_secret:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OAuth not configured")
+
+    expected_state = request.cookies.get(_OAUTH_STATE_COOKIE, "")
+    supplied_state = state or ""
+    if not expected_state or not supplied_state or not hmac.compare_digest(supplied_state, expected_state):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth state",
+        )
 
     async with httpx.AsyncClient() as client:
         # Exchange code for access token
@@ -150,6 +186,7 @@ async def callback(code: str, response: Response):
     # Return a response that sets the cookie and redirects to the app
     from fastapi.responses import RedirectResponse
     redirect = RedirectResponse(url="/", status_code=302)
+    _clear_oauth_state_cookie(redirect)
     _set_session_cookie(redirect, jwt_token)
     return redirect
 

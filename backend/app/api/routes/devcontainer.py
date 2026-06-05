@@ -258,7 +258,10 @@ async def get_devcontainer_versions(
     """Return all devcontainer versions for a job, newest first."""
     stmt = (
         select(Devcontainer)
-        .where(Devcontainer.job_id == job_id)
+        .where(
+            Devcontainer.job_id == job_id,
+            Devcontainer.org_id == current_user["login"],
+        )
         .order_by(Devcontainer.version_number.desc())
     )
     versions = (await db.execute(stmt)).scalars().all()
@@ -290,7 +293,11 @@ async def download_devcontainer(
     """Download a devcontainer as a ZIP containing devcontainer.json and setup.sh."""
     stmt = (
         select(Devcontainer)
-        .where(Devcontainer.job_id == job_id, Devcontainer.version_number == version)
+        .where(
+            Devcontainer.job_id == job_id,
+            Devcontainer.version_number == version,
+            Devcontainer.org_id == current_user["login"],
+        )
         .limit(1)
     )
     dc = (await db.execute(stmt)).scalar_one_or_none()
@@ -330,7 +337,11 @@ async def update_devcontainer_version(
     """Create a new version based on an existing one with custom overrides."""
     stmt = (
         select(Devcontainer)
-        .where(Devcontainer.job_id == job_id, Devcontainer.version_number == version_number)
+        .where(
+            Devcontainer.job_id == job_id,
+            Devcontainer.version_number == version_number,
+            Devcontainer.org_id == current_user["login"],
+        )
         .limit(1)
     )
     current = (await db.execute(stmt)).scalar_one_or_none()
