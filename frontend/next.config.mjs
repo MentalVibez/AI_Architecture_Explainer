@@ -4,20 +4,20 @@ import { withSentryConfig } from "@sentry/nextjs";
 function normalizeBackendUrl(value) {
   if (!value) return "http://localhost:8000";
 
+  const trimmed = value.trim();
+
   try {
-    const url = new URL(value);
+    const url = new URL(trimmed);
     if (url.protocol === "http:" && url.hostname.endsWith(".railway.app")) {
       url.protocol = "https:";
     }
     return url.toString().replace(/\/$/, "");
   } catch {
-    return value.replace(/\/$/, "");
+    return trimmed.replace(/\/$/, "");
   }
 }
 
-const BACKEND = normalizeBackendUrl(
-  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL,
-);
+const BACKEND = normalizeBackendUrl(process.env.API_URL);
 
 function getConnectSrc() {
   const sources = ["'self'", "ws:", "wss:", "https://*.sentry.io"];
